@@ -1,0 +1,20 @@
+name: 'Arduino Libraries - Compile Examples'
+description: 'Compiles all the examples included in the library'
+inputs:
+  cli-version:
+    description: 'Version of arduino-cli to use when builing'
+    default: 'latest'
+  fqbn:
+    description: 'Full qualified board name'
+    required: true
+    default: 'arduino:avr:uno'
+  libraries:
+    description: 'List of library dependencies to install (space separated)'
+    default: ''
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.cli-version }}
+    - ${{ inputs.fqbn }}
+    - ${{ inputs.libraries }}
