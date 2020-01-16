@@ -1,15 +1,20 @@
 #!/bin/bash -x
 
 CLI_VERSION=$1
-FQBN=$2
+FQBN_ARG=$2
 LIBRARIES=$3
 
 # Determine cli archive
 CLI_ARCHIVE=arduino-cli_${CLI_VERSION}_Linux_64bit.tar.gz
 
+declare -a -r FQBN_ARRAY="(${FQBN_ARG})"
+FQBN="${FQBN_ARRAY[0]}"
 # Extract the core name from the FQBN
 # for example arduino:avr:uno => arduino:avr
 CORE=`echo "$FQBN" | cut -d':' -f1,2`
+
+# Additional Boards Manager URL
+ADDITIONAL_URL="${FQBN_ARRAY[1]}"
 
 # Download the arduino-cli
 wget -P $HOME https://downloads.arduino.cc/arduino-cli/$CLI_ARCHIVE
@@ -22,8 +27,13 @@ tar xf $HOME/$CLI_ARCHIVE -C $HOME/bin
 export PATH=$PATH:$HOME/bin
 
 # Update the code index and install the required CORE
-arduino-cli core update-index
-arduino-cli core install $CORE
+if [ -z "$ADDITIONAL_URL" ]; then
+  arduino-cli core update-index
+  arduino-cli core install $CORE
+else
+  arduino-cli core update-index --additional-urls $ADDITIONAL_URL
+  arduino-cli core install $CORE --additional-urls $ADDITIONAL_URL
+fi
 
 # Install libraries if needed
 if [ -z "$LIBRARIES" ]

@@ -5,7 +5,7 @@ inputs:
     description: 'Version of arduino-cli to use when builing'
     default: 'latest'
   fqbn:
-    description: 'Full qualified board name'
+    description: 'Full qualified board name, with Boards Manager URL if needed'
     required: true
     default: 'arduino:avr:uno'
   libraries:
