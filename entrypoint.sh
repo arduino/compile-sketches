@@ -49,7 +49,15 @@ ln -s $PWD $HOME/Arduino/libraries/.
 
 # Find all the examples and loop build each
 EXAMPLES=`find examples/ -name '*.ino' | xargs dirname | uniq`
+# Set default exit status
+SCRIPT_EXIT_STATUS=0
 for EXAMPLE in $EXAMPLES; do
   echo Building example $EXAMPLE
   arduino-cli compile --verbose --warnings all --fqbn $FQBN $EXAMPLE
-done || exit 1
+  ARDUINO_CLI_EXIT_STATUS=$?
+  if [[ $ARDUINO_CLI_EXIT_STATUS -ne 0 ]]; then
+    SCRIPT_EXIT_STATUS=$ARDUINO_CLI_EXIT_STATUS
+  fi
+done
+
+exit $SCRIPT_EXIT_STATUS
