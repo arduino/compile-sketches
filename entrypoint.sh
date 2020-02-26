@@ -44,8 +44,7 @@ else
 fi
 
 # Install libraries if needed
-if [ -z "$LIBRARIES" ]
-then
+if [ -z "$LIBRARIES" ]; then
   echo "No libraries to install"
 else
   # Support library names which contain whitespace
