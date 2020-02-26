@@ -40,7 +40,10 @@ if [ -z "$LIBRARIES" ]
 then
   echo "No libraries to install"
 else
-  arduino-cli lib install $LIBRARIES
+  # Support library names which contain whitespace
+  declare -a -r LIBRARIES_ARRAY="(${LIBRARIES})"
+
+  arduino-cli lib install "${LIBRARIES_ARRAY[@]}"
 fi
 
 # Symlink the library that needs to be built in the sketchbook
