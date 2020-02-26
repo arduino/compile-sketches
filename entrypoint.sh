@@ -1,20 +1,20 @@
 #!/bin/bash
 
-CLI_VERSION="$1"
-FQBN_ARG="$2"
-LIBRARIES="$3"
+readonly CLI_VERSION="$1"
+readonly FQBN_ARG="$2"
+readonly LIBRARIES="$3"
 
 # Determine cli archive
-CLI_ARCHIVE="arduino-cli_${CLI_VERSION}_Linux_64bit.tar.gz"
+readonly CLI_ARCHIVE="arduino-cli_${CLI_VERSION}_Linux_64bit.tar.gz"
 
 declare -a -r FQBN_ARRAY="(${FQBN_ARG})"
-FQBN="${FQBN_ARRAY[0]}"
+readonly FQBN="${FQBN_ARRAY[0]}"
 # Extract the core name from the FQBN
 # for example arduino:avr:uno => arduino:avr
-CORE="$(echo "$FQBN" | cut -d':' -f1,2)"
+readonly CORE="$(echo "$FQBN" | cut -d':' -f1,2)"
 
 # Additional Boards Manager URL
-ADDITIONAL_URL="${FQBN_ARRAY[1]}"
+readonly ADDITIONAL_URL="${FQBN_ARRAY[1]}"
 
 # Download the arduino-cli
 wget --no-verbose -P "$HOME" "https://downloads.arduino.cc/arduino-cli/$CLI_ARCHIVE" || {
@@ -61,7 +61,7 @@ mkdir -p "$HOME/Arduino/libraries"
 ln -s "$PWD" "$HOME/Arduino/libraries/."
 
 # Find all the examples and loop build each
-EXAMPLES="$(find "examples/" -name '*.ino' -print0 | xargs --null dirname | uniq)"
+readonly EXAMPLES="$(find "examples/" -name '*.ino' -print0 | xargs --null dirname | uniq)"
 if [[ "$EXAMPLES" == "" ]]; then
   exit 1
 fi
