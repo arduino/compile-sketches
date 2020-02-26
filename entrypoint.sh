@@ -11,19 +11,19 @@ declare -a -r FQBN_ARRAY="(${FQBN_ARG})"
 readonly FQBN="${FQBN_ARRAY[0]}"
 # Extract the core name from the FQBN
 # for example arduino:avr:uno => arduino:avr
-readonly CORE="$(echo "$FQBN" | cut -d':' -f1,2)"
+readonly CORE="$(echo "$FQBN" | cut --delimiter=':' --fields=1,2)"
 
 # Additional Boards Manager URL
 readonly ADDITIONAL_URL="${FQBN_ARRAY[1]}"
 
 # Download the arduino-cli
-wget --no-verbose -P "$HOME" "https://downloads.arduino.cc/arduino-cli/$CLI_ARCHIVE" || {
+wget --no-verbose --directory-prefix="$HOME" "https://downloads.arduino.cc/arduino-cli/$CLI_ARCHIVE" || {
   exit 1
 }
 
 # Extract the arduino-cli to $HOME/bin
 mkdir "$HOME/bin"
-tar xf "$HOME/$CLI_ARCHIVE" -C "$HOME/bin" || {
+tar --extract --file="$HOME/$CLI_ARCHIVE" --directory="$HOME/bin" || {
   exit 1
 }
 
@@ -57,8 +57,8 @@ else
 fi
 
 # Symlink the library that needs to be built in the sketchbook
-mkdir -p "$HOME/Arduino/libraries"
-ln -s "$PWD" "$HOME/Arduino/libraries/."
+mkdir --parents "$HOME/Arduino/libraries"
+ln --symbolic "$PWD" "$HOME/Arduino/libraries/."
 
 # Find all the examples and loop build each
 readonly EXAMPLES="$(find "examples/" -name '*.ino' -print0 | xargs --null dirname | uniq)"
