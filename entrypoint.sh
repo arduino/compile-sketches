@@ -17,11 +17,15 @@ CORE="$(echo "$FQBN" | cut -d':' -f1,2)"
 ADDITIONAL_URL="${FQBN_ARRAY[1]}"
 
 # Download the arduino-cli
-wget --no-verbose -P "$HOME" "https://downloads.arduino.cc/arduino-cli/$CLI_ARCHIVE"
+wget --no-verbose -P "$HOME" "https://downloads.arduino.cc/arduino-cli/$CLI_ARCHIVE" || {
+  exit 1
+}
 
 # Extract the arduino-cli to $HOME/bin
 mkdir "$HOME/bin"
-tar xf "$HOME/$CLI_ARCHIVE" -C "$HOME/bin"
+tar xf "$HOME/$CLI_ARCHIVE" -C "$HOME/bin" || {
+  exit 1
+}
 
 # Add arduino-cli to the PATH
 export PATH="$PATH:$HOME/bin"
@@ -29,10 +33,14 @@ export PATH="$PATH:$HOME/bin"
 # Update the code index and install the required CORE
 if [ -z "$ADDITIONAL_URL" ]; then
   arduino-cli core update-index
-  arduino-cli core install "$CORE"
+  arduino-cli core install "$CORE" || {
+    exit 1
+  }
 else
   arduino-cli core update-index --additional-urls "$ADDITIONAL_URL"
-  arduino-cli core install "$CORE" --additional-urls "$ADDITIONAL_URL"
+  arduino-cli core install "$CORE" --additional-urls "$ADDITIONAL_URL" || {
+    exit 1
+  }
 fi
 
 # Install libraries if needed
@@ -43,7 +51,9 @@ else
   # Support library names which contain whitespace
   declare -a -r LIBRARIES_ARRAY="(${LIBRARIES})"
 
-  arduino-cli lib install "${LIBRARIES_ARRAY[@]}"
+  arduino-cli lib install "${LIBRARIES_ARRAY[@]}" || {
+    exit 1
+  }
 fi
 
 # Symlink the library that needs to be built in the sketchbook
@@ -52,15 +62,16 @@ ln -s "$PWD" "$HOME/Arduino/libraries/."
 
 # Find all the examples and loop build each
 EXAMPLES="$(find "examples/" -name '*.ino' -print0 | xargs --null dirname | uniq)"
+if [[ "$EXAMPLES" == "" ]]; then
+  exit 1
+fi
 # Set default exit status
 SCRIPT_EXIT_STATUS=0
 for EXAMPLE in $EXAMPLES; do
   echo "Building example $EXAMPLE"
-  arduino-cli compile --verbose --warnings all --fqbn "$FQBN" "$EXAMPLE"
-  ARDUINO_CLI_EXIT_STATUS=$?
-  if [[ $ARDUINO_CLI_EXIT_STATUS -ne 0 ]]; then
-    SCRIPT_EXIT_STATUS=$ARDUINO_CLI_EXIT_STATUS
-  fi
+  arduino-cli compile --verbose --warnings all --fqbn "$FQBN" "$EXAMPLE" || {
+    SCRIPT_EXIT_STATUS="$?"
+  }
 done
 
 exit $SCRIPT_EXIT_STATUS
