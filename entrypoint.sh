@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 CLI_VERSION=$1
 FQBN_ARG=$2
@@ -17,7 +17,7 @@ CORE=`echo "$FQBN" | cut -d':' -f1,2`
 ADDITIONAL_URL="${FQBN_ARRAY[1]}"
 
 # Download the arduino-cli
-wget -P $HOME https://downloads.arduino.cc/arduino-cli/$CLI_ARCHIVE
+wget --no-verbose -P $HOME https://downloads.arduino.cc/arduino-cli/$CLI_ARCHIVE
 
 # Extract the arduino-cli to $HOME/bin
 mkdir $HOME/bin
