@@ -6,7 +6,6 @@ inputs:
     default: 'latest'
   fqbn:
     description: 'Full qualified board name, with Boards Manager URL if needed'
-    required: true
     default: 'arduino:avr:uno'
   libraries:
     description: 'List of library dependencies to install (space separated)'

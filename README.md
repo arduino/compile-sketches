@@ -10,7 +10,7 @@ The version of `arduino-cli` to use. Default `"latest"`.
 
 ### `fqbn`
 
-**Required** The fully qualified board name to use when compiling. Default `"arduino:avr:uno"`.
+The fully qualified board name to use when compiling. Default `"arduino:avr:uno"`.
 For 3rd party boards, also specify the Boards Manager URL:
 ```yaml
   fqbn: '"sandeepmistry:nRF5:Generic_nRF52832" "https://sandeepmistry.github.io/arduino-nRF5/package_nRF5_boards_index.json"'
