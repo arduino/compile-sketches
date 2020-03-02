@@ -2,7 +2,7 @@
 FROM ubuntu:latest
 
 # Install prerequisites
-RUN apt-get update --quiet=2 && apt-get install --quiet=2 -y wget
+RUN apt-get update --quiet=2 && apt-get install --quiet=2 --assume-yes wget
 CMD /bin/bash
 
 # Copies your code file from your action repository to the filesystem path `/` of the container
