@@ -1,0 +1,2 @@
+google-auth~=1.11
+google-api-python-client~=1.7

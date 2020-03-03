@@ -22,6 +22,18 @@ inputs:
   size-deltas-report-folder-name:
     description: 'Folder to save the memory usage change report to'
     default: 'size-deltas-reports'
+  enable-size-trends-report:
+    description: 'Set to true to cause the action to record the memory usage of size-reports-sketch'
+    default: false
+  keyfile:
+    description: 'Google key file used to update the size trends report Google Sheets spreadsheet.'
+    default: ''
+  size-trends-report-spreadsheet-id:
+    description: 'The ID of the Google Sheets spreadsheet to write the memory usage trends data to'
+    default: ''
+  size-trends-report-sheet-name:
+    description: 'The sheet name in the Google Sheets spreadsheet used for the memory usage trends report'
+    default: 'Sheet1'
 runs:
   using: 'docker'
   image: 'Dockerfile'
@@ -33,3 +45,6 @@ runs:
     - ${{ inputs.size-report-sketch }}
     - ${{ inputs.enable-size-deltas-report }}
     - ${{ inputs.size-deltas-report-folder-name }}
+    - ${{ inputs.enable-size-trends-report }}
+    - ${{ inputs.size-trends-report-spreadsheet-id }}
+    - ${{ inputs.size-trends-report-sheet-name }}
