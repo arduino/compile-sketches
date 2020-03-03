@@ -10,6 +10,18 @@ inputs:
   libraries:
     description: 'List of library dependencies to install (space separated)'
     default: ''
+  github-token:
+    description: 'GitHub access token used to get information from the GitHub API. Only needed if you are using the size report features with private repositories.'
+    default: ''
+  size-report-sketch:
+    description: 'Name of the sketch used to compare memory usage change'
+    default: ''
+  enable-size-deltas-report:
+    description: 'Set to true to cause the action to determine the change in memory usage for the size-reports-sketch'
+    default: false
+  size-deltas-report-folder-name:
+    description: 'Folder to save the memory usage change report to'
+    default: 'size-deltas-reports'
 runs:
   using: 'docker'
   image: 'Dockerfile'
@@ -17,3 +29,7 @@ runs:
     - ${{ inputs.cli-version }}
     - ${{ inputs.fqbn }}
     - ${{ inputs.libraries }}
+    - ${{ inputs.github-token }}
+    - ${{ inputs.size-report-sketch }}
+    - ${{ inputs.enable-size-deltas-report }}
+    - ${{ inputs.size-deltas-report-folder-name }}
