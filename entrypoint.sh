@@ -25,24 +25,9 @@ readonly CORE="$(echo "$FQBN" | cut --delimiter=':' --fields=1,2)"
 # Additional Boards Manager URL
 readonly ADDITIONAL_URL="${FQBN_ARRAY[1]}"
 
-# Get value from a key=value properties list file
-function get_property_value() {
-  local -r filePath="$1"
-  local -r key="$2"
-
-  local propertyValue
-  propertyValue="$(grep --regex='^[[:blank:]]*'"$key"'[[:blank:]]*=' "$filePath" | cut --delimiter='=' --fields=2)"
-  # Strip leading spaces
-  propertyValue="${propertyValue#"${propertyValue%%[! ]*}"}"
-  # Strip trailing spaces
-  propertyValue="${propertyValue%"${propertyValue##*[! ]}"}"
-
-  echo "$propertyValue"
-}
-
 function compile_example() {
   local -r examplePath="$1"
-  arduino-cli compile --verbose --warnings all --fqbn "$FQBN" --output "${OUTPUT_FOLDER_PATH}/${OUTPUT_NAME}" "$examplePath" || {
+  arduino-cli compile --verbose --warnings all --fqbn "$FQBN" "$examplePath" || {
     return $?
   }
 }
@@ -60,11 +45,11 @@ function check_sizes() {
 # Get the memory usage from the compilation output
 function compile_example_get_size_from_output() {
   local -r examplePath="$1"
-  local compilationOutput
 
   FLASH_SIZE=""
   RAM_SIZE=""
 
+  local compilationOutput
   compilationOutput=$(compile_example "$EXAMPLE" 2>&1)
   local -r compileExampleExitStatus=$?
   # Display the compilation output
@@ -91,48 +76,11 @@ function compile_example_get_size_from_output() {
     fi
   done <<<"$compilationOutput"
 
-  # Some hardware cores aren't configured to output RAM usage by global variables, but the flash usage should at least be in the output
+  # Some platforms aren't configured to output RAM usage by global variables (e.g., Arduino SAM Boards), but the flash usage should at least be in the output
   if [[ "$FLASH_SIZE" == "" && "$RAM_SIZE" == "" ]]; then
     echo "::error::Something went wrong while while determining memory usage of the size-report-sketch"
     exit 1
   fi
-}
-
-# Parse the compiler size command to determine memory usage
-function get_size_from_size_output() {
-  local -r sizeOutput="$1"
-  local -r sizeRegex="$2"
-
-  local -r sizeOutputLines="$(echo "$sizeOutput" | grep --perl-regexp --regex="$sizeRegex")"
-
-  local totalSize=0
-  while read -r -a replyArray; do
-    local replyValue="${replyArray[1]}"
-    totalSize="$((totalSize + replyValue))"
-  done <<<"$sizeOutputLines"
-
-  if [[ "$totalSize" == "" ]]; then
-    echo "::error::Something went wrong while while determining memory usage of the size-report-sketch"
-    exit 1
-  fi
-
-  echo "$totalSize"
-}
-
-# Use the compiler size command to determine memory usage
-function compile_example_get_size_from_size_cmd() {
-  local -r examplePath="$1"
-
-  FLASH_SIZE=""
-  RAM_SIZE=""
-
-  compile_example "$EXAMPLE" || {
-    return $?
-  }
-
-  local -r size_output="$("$COMPILER_SIZE_CMD_PATH" -A "${OUTPUT_FOLDER_PATH}/${OUTPUT_NAME}.elf")"
-  FLASH_SIZE="$(get_size_from_size_output "$size_output" "$RECIPE_SIZE_REGEX")"
-  RAM_SIZE="$(get_size_from_size_output "$size_output" "$RECIPE_SIZE_REGEX_DATA")"
 }
 
 if [[ "$GITHUB_EVENT_NAME" != "pull_request" ]]; then
@@ -244,33 +192,6 @@ fi
 mkdir --parents "$HOME/Arduino/libraries"
 ln --symbolic "$PWD" "$HOME/Arduino/libraries/."
 
-GET_SIZE_FROM_OUTPUT=true
-if [[ ("$ENABLE_SIZE_DELTAS_REPORT" == "true" || "$ENABLE_SIZE_TRENDS_REPORT" == "true") && ("$CORE" == "arduino:sam" || "$CORE" == "arduino:samd") ]]; then
-  # arduino-cli doesn't report RAM usage for Arduino SAM Boards or Arduino SAMD Boards and doesn't include the data section in the flash usage report, so it's necessary to determine the sizes independently
-  GET_SIZE_FROM_OUTPUT=false
-
-  DATA_DIRECTORY_PATH="$(arduino-cli config dump --format json | jq --raw-output '.directories.data')"
-  DATA_DIRECTORY_PATH="${DATA_DIRECTORY_PATH//\"/}"
-
-  readonly VENDOR="$(echo "$FQBN" | cut --delimiter=':' --fields=1)"
-  readonly ARCHITECTURE="$(echo "$FQBN" | cut --delimiter=':' --fields=2)"
-  readonly PLATFORM_TXT_PATH="$(find "${DATA_DIRECTORY_PATH}/packages/${VENDOR}/hardware/${ARCHITECTURE}" -name platform.txt)"
-  if [[ "$PLATFORM_TXT_PATH" == "" ]]; then
-    echo "::error::Unable to find platform folder"
-    exit 1
-  fi
-
-  readonly COMPILER_SIZE_CMD="$(get_property_value "$PLATFORM_TXT_PATH" 'compiler\.size\.cmd')"
-  readonly COMPILER_SIZE_CMD_PATH="$(find "$DATA_DIRECTORY_PATH/packages/$VENDOR/tools" -name "$COMPILER_SIZE_CMD")"
-  if [[ "$COMPILER_SIZE_CMD_PATH" == "" ]]; then
-    echo "::error::Unable to find compiler size tool"
-    exit 1
-  fi
-
-  readonly RECIPE_SIZE_REGEX='(?:\.text|\.data)\s+[0-9]'
-  readonly RECIPE_SIZE_REGEX_DATA='(?:\.data|\.bss)\s+[0-9]'
-fi
-
 if [[ "$ENABLE_SIZE_TRENDS_REPORT" == "true" ]]; then
   apt-get install --quiet=2 --assume-yes python3 >/dev/null || {
     echo "::error::Failed to install Python"
@@ -286,11 +207,6 @@ if [[ "$ENABLE_SIZE_TRENDS_REPORT" == "true" ]]; then
     exit 1
   }
 fi
-
-# Create a folder for the compilation output files
-readonly OUTPUT_FOLDER_PATH="$(mktemp -d)"
-# The name of the output files. arduino-cli adds the file extensions.
-readonly OUTPUT_NAME='output'
 
 # Find all the examples and loop build each
 readonly EXAMPLES="$(find "examples/" -name '*.ino' -print0 | xargs --null dirname | uniq)"
@@ -312,17 +228,10 @@ for EXAMPLE in $EXAMPLES; do
     # Do determine size
 
     # Determine memory usage of the sketch at the tip of the pull request branch
-    if [[ "$GET_SIZE_FROM_OUTPUT" == "true" ]]; then
-      compile_example_get_size_from_output "$EXAMPLE" || {
-        SCRIPT_EXIT_STATUS="$?"
-        continue
-      }
-    else
-      compile_example_get_size_from_size_cmd "$EXAMPLE" || {
-        SCRIPT_EXIT_STATUS="$?"
-        continue
-      }
-    fi
+    compile_example_get_size_from_output "$EXAMPLE" || {
+      SCRIPT_EXIT_STATUS="$?"
+      continue
+    }
     check_sizes
 
     # Install Git
@@ -370,11 +279,7 @@ for EXAMPLE in $EXAMPLES; do
       }
 
       # Compile the example sketch and get the sizes
-      if [[ "$GET_SIZE_FROM_OUTPUT" == "true" ]]; then
-        compile_example_get_size_from_output "$EXAMPLE"
-      else
-        compile_example_get_size_from_size_cmd "$EXAMPLE"
-      fi
+      compile_example_get_size_from_output "$EXAMPLE"
       check_sizes
 
       if [[ "$CURRENT_FLASH_SIZE" == "$SIZE_NOT_APPLICABLE_INDICATOR" || "$FLASH_SIZE" == "$SIZE_NOT_APPLICABLE_INDICATOR" ]]; then
