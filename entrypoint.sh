@@ -115,19 +115,6 @@ if [[ "$ENABLE_SIZE_TRENDS_REPORT" == "true" && "$SIZE_TRENDS_REPORT_SPREADSHEET
   exit 1
 fi
 
-if [[ "$ENABLE_SIZE_DELTAS_REPORT" == "true" || "$ENABLE_SIZE_TRENDS_REPORT" == "true" ]]; then
-  apt-get install --quiet=2 --assume-yes curl >/dev/null || {
-    echo "::error::Failed to install curl"
-    exit 1
-  }
-
-  # https://stedolan.github.io/jq/
-  apt-get install --quiet=2 --assume-yes jq >/dev/null || {
-    echo "::error::Failed to install jq"
-    exit 1
-  }
-fi
-
 # Only publish size trends report on push to the default branch
 if [[ "$ENABLE_SIZE_TRENDS_REPORT" == "true" ]]; then
   # Determine the current branch
@@ -192,22 +179,6 @@ fi
 mkdir --parents "$HOME/Arduino/libraries"
 ln --symbolic "$PWD" "$HOME/Arduino/libraries/."
 
-if [[ "$ENABLE_SIZE_TRENDS_REPORT" == "true" ]]; then
-  apt-get install --quiet=2 --assume-yes python3 >/dev/null || {
-    echo "::error::Failed to install Python"
-    exit 1
-  }
-  apt-get install --quiet=2 --assume-yes python3-pip >/dev/null || {
-    echo "::error::Failed to install pip"
-    exit 1
-  }
-  # Install dependencies of reportsizetrends.py
-  pip3 install --quiet --requirement /reportsizetrends/requirements.txt || {
-    echo "::error::Failed to install Python modules"
-    exit 1
-  }
-fi
-
 # Find all the examples and loop build each
 readonly EXAMPLES="$(find "examples/" -name '*.ino' -print0 | xargs --null dirname | uniq)"
 if [[ "$EXAMPLES" == "" ]]; then
@@ -233,14 +204,6 @@ for EXAMPLE in $EXAMPLES; do
       continue
     }
     check_sizes
-
-    # Install Git
-    if [[ "$ENABLE_SIZE_DELTAS_REPORT" == "true" || "$ENABLE_SIZE_TRENDS_REPORT" == "true" ]]; then
-      apt-get install --quiet=2 --assume-yes git >/dev/null || {
-        echo "::error::Failed to install git"
-        exit 1
-      }
-    fi
 
     readonly CURRENT_FLASH_SIZE="$FLASH_SIZE"
     readonly CURRENT_RAM_SIZE="$RAM_SIZE"
