@@ -10,6 +10,9 @@ inputs:
   libraries:
     description: 'List of library dependencies to install (space separated)'
     default: ''
+  sketch-paths:
+    description: 'List of paths containing sketches to compile.'
+    default: 'examples'
   github-token:
     description: 'GitHub access token used to get information from the GitHub API. Only needed if you are using the size report features with private repositories.'
     default: ''
@@ -41,6 +44,7 @@ runs:
     - ${{ inputs.cli-version }}
     - ${{ inputs.fqbn }}
     - ${{ inputs.libraries }}
+    - ${{ inputs.sketch-paths }}
     - ${{ inputs.github-token }}
     - ${{ inputs.size-report-sketch }}
     - ${{ inputs.enable-size-deltas-report }}

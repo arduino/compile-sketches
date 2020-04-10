@@ -3,13 +3,14 @@
 readonly CLI_VERSION="${1}"
 readonly FQBN_ARG="${2}"
 readonly LIBRARIES="${3}"
-readonly GH_TOKEN="${4}"
-readonly SIZE_REPORT_SKETCH="${5}"
-ENABLE_SIZE_DELTAS_REPORT="${6}"
-readonly SIZE_DELTAS_REPORT_FOLDER_NAME="${7}"
-ENABLE_SIZE_TRENDS_REPORT="${8}"
-readonly SIZE_TRENDS_REPORT_SPREADSHEET_ID="${9}"
-readonly SIZE_TRENDS_REPORT_SHEET_NAME="${10}"
+readonly SKETCH_PATHS="${4}"
+readonly GH_TOKEN="${5}"
+readonly SIZE_REPORT_SKETCH="${6}"
+ENABLE_SIZE_DELTAS_REPORT="${7}"
+readonly SIZE_DELTAS_REPORT_FOLDER_NAME="${8}"
+ENABLE_SIZE_TRENDS_REPORT="${9}"
+readonly SIZE_TRENDS_REPORT_SPREADSHEET_ID="${10}"
+readonly SIZE_TRENDS_REPORT_SHEET_NAME="${11}"
 
 readonly SIZE_NOT_APPLICABLE_INDICATOR='"N/A"'
 
@@ -24,6 +25,8 @@ readonly CORE="$(echo "$FQBN" | cut --delimiter=':' --fields=1,2)"
 
 # Additional Boards Manager URL
 readonly ADDITIONAL_URL="${FQBN_ARRAY[1]}"
+
+declare -a -r SKETCH_PATHS_ARRAY="(${SKETCH_PATHS})"
 
 function compile_example() {
   local -r examplePath="$1"
@@ -179,101 +182,109 @@ fi
 mkdir --parents "$HOME/Arduino/libraries"
 ln --symbolic "$PWD" "$HOME/Arduino/libraries/."
 
-# Find all the examples and loop build each
-readonly EXAMPLES="$(find "examples/" -name '*.ino' -print0 | xargs --null dirname | uniq)"
-if [[ "$EXAMPLES" == "" ]]; then
-  exit 1
-fi
 # Set default exit status
 SCRIPT_EXIT_STATUS=0
-for EXAMPLE in $EXAMPLES; do
-  echo "Building example $EXAMPLE"
 
-  if [[ ("$ENABLE_SIZE_DELTAS_REPORT" != "true" && "$ENABLE_SIZE_TRENDS_REPORT" != "true") || "${EXAMPLE##*/}" != "$SIZE_REPORT_SKETCH" ]]; then
-    # Don't determine size
-    compile_example "$EXAMPLE" || {
-      SCRIPT_EXIT_STATUS="$?"
-    }
-    continue
-  elif [[ ("$ENABLE_SIZE_DELTAS_REPORT" == "true" || "$ENABLE_SIZE_TRENDS_REPORT" == "true") && "${EXAMPLE##*/}" == "$SIZE_REPORT_SKETCH" ]]; then
-    # Do determine size
+for SKETCH_PATH in "${SKETCH_PATHS_ARRAY[@]}"; do
+  if [[ ! -e "$SKETCH_PATH" ]]; then
+    echo "::error::$SKETCH_PATH doesn't exist"
+    exit 1
+  fi
 
-    # Determine memory usage of the sketch at the tip of the pull request branch
-    compile_example_get_size_from_output "$EXAMPLE" || {
-      SCRIPT_EXIT_STATUS="$?"
+  # Find all the examples and loop build each
+  EXAMPLES="$(find "$SKETCH_PATH" -name '*.ino' -print0 | xargs --null dirname | uniq)"
+  if [[ "$EXAMPLES" == "" ]]; then
+    exit 1
+  fi
+  for EXAMPLE in $EXAMPLES; do
+    echo "Building example $EXAMPLE"
+
+    if [[ ("$ENABLE_SIZE_DELTAS_REPORT" != "true" && "$ENABLE_SIZE_TRENDS_REPORT" != "true") || "${EXAMPLE##*/}" != "$SIZE_REPORT_SKETCH" ]]; then
+      # Don't determine size
+      compile_example "$EXAMPLE" || {
+        SCRIPT_EXIT_STATUS="$?"
+      }
       continue
-    }
-    check_sizes
+    elif [[ ("$ENABLE_SIZE_DELTAS_REPORT" == "true" || "$ENABLE_SIZE_TRENDS_REPORT" == "true") && "${EXAMPLE##*/}" == "$SIZE_REPORT_SKETCH" ]]; then
+      # Do determine size
 
-    readonly CURRENT_FLASH_SIZE="$FLASH_SIZE"
-    readonly CURRENT_RAM_SIZE="$RAM_SIZE"
-
-    if [[ "$ENABLE_SIZE_TRENDS_REPORT" == "true" ]]; then
-      readonly SHORT_COMMIT_HASH="$(git rev-parse --short HEAD)"
-      python3 /reportsizetrends/reportsizetrends.py --spreadsheet-id "$SIZE_TRENDS_REPORT_SPREADSHEET_ID" --sheet-name "$SIZE_TRENDS_REPORT_SHEET_NAME" --google-key-file "$INPUT_KEYFILE" --sketch-name="$EXAMPLE" --commit-hash="$SHORT_COMMIT_HASH" --commit-url="https://github.com/${GITHUB_REPOSITORY}/commit/${SHORT_COMMIT_HASH}" --fqbn="$FQBN" --flash="$CURRENT_FLASH_SIZE" --ram="$CURRENT_RAM_SIZE" || {
-        echo "::error::Could not update size trends report spreadsheet"
-        exit 1
+      # Determine memory usage of the sketch at the tip of the pull request branch
+      compile_example_get_size_from_output "$EXAMPLE" || {
+        SCRIPT_EXIT_STATUS="$?"
+        continue
       }
-    fi
-
-    if [[ "$ENABLE_SIZE_DELTAS_REPORT" == "true" ]]; then
-      # Determine memory usage of the sketch at the tip of the target repository's default branch
-
-      # Save the commit hash for the tip of the pull request branch
-      readonly CURRENT_COMMIT="$(git rev-parse HEAD)"
-
-      # checkout the tip of the pull request's base branch
-
-      # Determine the pull request number, to use for the GitHub API request
-      readonly PULL_REQUEST_NUMBER="$(jq --raw-output '.pull_request.number' "$GITHUB_EVENT_PATH")"
-      if [[ "$GH_TOKEN" == "" ]]; then
-        # Access token is not needed for public repositories
-        readonly BASE_BRANCH_NAME="$(curl "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${PULL_REQUEST_NUMBER}" | jq --raw-output .base.ref)"
-      else
-        readonly BASE_BRANCH_NAME="$(curl --header "Authorization: token ${GH_TOKEN}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${PULL_REQUEST_NUMBER}" | jq --raw-output .base.ref)"
-      fi
-      if [[ "$BASE_BRANCH_NAME" == "null" ]]; then
-        echo "::error::Unable to determine base branch name. Please specify the size-report-github-token argument in your workflow configuration."
-        exit 1
-      fi
-      git checkout "$BASE_BRANCH_NAME" || {
-        echo "::error::Failed to checkout base branch"
-        exit 1
-      }
-
-      # Compile the example sketch and get the sizes
-      compile_example_get_size_from_output "$EXAMPLE"
       check_sizes
 
-      if [[ "$CURRENT_FLASH_SIZE" == "$SIZE_NOT_APPLICABLE_INDICATOR" || "$FLASH_SIZE" == "$SIZE_NOT_APPLICABLE_INDICATOR" ]]; then
-        FLASH_DELTA="$SIZE_NOT_APPLICABLE_INDICATOR"
-      else
-        FLASH_DELTA="$((CURRENT_FLASH_SIZE - FLASH_SIZE))"
-      fi
-      echo "Change in flash memory usage: $FLASH_DELTA"
-      if [[ "$CURRENT_RAM_SIZE" == "$SIZE_NOT_APPLICABLE_INDICATOR" || "$RAM_SIZE" == "$SIZE_NOT_APPLICABLE_INDICATOR" ]]; then
-        RAM_DELTA="$SIZE_NOT_APPLICABLE_INDICATOR"
-      else
-        RAM_DELTA="$((CURRENT_RAM_SIZE - RAM_SIZE))"
-      fi
-      echo "Change in RAM used by globals: $RAM_DELTA"
+      readonly CURRENT_FLASH_SIZE="$FLASH_SIZE"
+      readonly CURRENT_RAM_SIZE="$RAM_SIZE"
 
-      # Create the report folder
-      readonly SIZE_REPORT_FOLDER_PATH="${GITHUB_WORKSPACE}/${SIZE_DELTAS_REPORT_FOLDER_NAME}"
-      if ! [[ -d "$SIZE_REPORT_FOLDER_PATH" ]]; then
-        mkdir --parents "$SIZE_REPORT_FOLDER_PATH"
+      if [[ "$ENABLE_SIZE_TRENDS_REPORT" == "true" ]]; then
+        readonly SHORT_COMMIT_HASH="$(git rev-parse --short HEAD)"
+        python3 /reportsizetrends/reportsizetrends.py --spreadsheet-id "$SIZE_TRENDS_REPORT_SPREADSHEET_ID" --sheet-name "$SIZE_TRENDS_REPORT_SHEET_NAME" --google-key-file "$INPUT_KEYFILE" --sketch-name="$EXAMPLE" --commit-hash="$SHORT_COMMIT_HASH" --commit-url="https://github.com/${GITHUB_REPOSITORY}/commit/${SHORT_COMMIT_HASH}" --fqbn="$FQBN" --flash="$CURRENT_FLASH_SIZE" --ram="$CURRENT_RAM_SIZE" || {
+          echo "::error::Could not update size trends report spreadsheet"
+          exit 1
+        }
       fi
-      # Create the report file
-      readonly SIZE_REPORT_FILE_PATH="${SIZE_REPORT_FOLDER_PATH}/${FQBN//:/-}.json"
-      echo "{\"fqbn\": \"${FQBN}\", \"sketch\": \"${EXAMPLE}\", \"previous_flash\": ${FLASH_SIZE}, \"flash\": ${CURRENT_FLASH_SIZE}, \"flash_delta\": ${FLASH_DELTA}, \"previous_ram\": ${RAM_SIZE}, \"ram\": ${CURRENT_RAM_SIZE}, \"ram_delta\": ${RAM_DELTA}}" | jq . >"$SIZE_REPORT_FILE_PATH"
 
-      # Switch back to the previous commit in the repository
-      git checkout "$CURRENT_COMMIT" || {
-        echo "::error::Could not checkout the PR's head branch"
-        exit 1
-      }
+      if [[ "$ENABLE_SIZE_DELTAS_REPORT" == "true" ]]; then
+        # Determine memory usage of the sketch at the tip of the target repository's default branch
+
+        # Save the commit hash for the tip of the pull request branch
+        readonly CURRENT_COMMIT="$(git rev-parse HEAD)"
+
+        # checkout the tip of the pull request's base branch
+
+        # Determine the pull request number, to use for the GitHub API request
+        readonly PULL_REQUEST_NUMBER="$(jq --raw-output '.pull_request.number' "$GITHUB_EVENT_PATH")"
+        if [[ "$GH_TOKEN" == "" ]]; then
+          # Access token is not needed for public repositories
+          readonly BASE_BRANCH_NAME="$(curl "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${PULL_REQUEST_NUMBER}" | jq --raw-output .base.ref)"
+        else
+          readonly BASE_BRANCH_NAME="$(curl --header "Authorization: token ${GH_TOKEN}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/pulls/${PULL_REQUEST_NUMBER}" | jq --raw-output .base.ref)"
+        fi
+        if [[ "$BASE_BRANCH_NAME" == "null" ]]; then
+          echo "::error::Unable to determine base branch name. Please specify the size-report-github-token argument in your workflow configuration."
+          exit 1
+        fi
+        git checkout "$BASE_BRANCH_NAME" || {
+          echo "::error::Failed to checkout base branch"
+          exit 1
+        }
+
+        # Compile the example sketch and get the sizes
+        compile_example_get_size_from_output "$EXAMPLE"
+        check_sizes
+
+        if [[ "$CURRENT_FLASH_SIZE" == "$SIZE_NOT_APPLICABLE_INDICATOR" || "$FLASH_SIZE" == "$SIZE_NOT_APPLICABLE_INDICATOR" ]]; then
+          FLASH_DELTA="$SIZE_NOT_APPLICABLE_INDICATOR"
+        else
+          FLASH_DELTA="$((CURRENT_FLASH_SIZE - FLASH_SIZE))"
+        fi
+        echo "Change in flash memory usage: $FLASH_DELTA"
+        if [[ "$CURRENT_RAM_SIZE" == "$SIZE_NOT_APPLICABLE_INDICATOR" || "$RAM_SIZE" == "$SIZE_NOT_APPLICABLE_INDICATOR" ]]; then
+          RAM_DELTA="$SIZE_NOT_APPLICABLE_INDICATOR"
+        else
+          RAM_DELTA="$((CURRENT_RAM_SIZE - RAM_SIZE))"
+        fi
+        echo "Change in RAM used by globals: $RAM_DELTA"
+
+        # Create the report folder
+        readonly SIZE_REPORT_FOLDER_PATH="${GITHUB_WORKSPACE}/${SIZE_DELTAS_REPORT_FOLDER_NAME}"
+        if ! [[ -d "$SIZE_REPORT_FOLDER_PATH" ]]; then
+          mkdir --parents "$SIZE_REPORT_FOLDER_PATH"
+        fi
+        # Create the report file
+        readonly SIZE_REPORT_FILE_PATH="${SIZE_REPORT_FOLDER_PATH}/${FQBN//:/-}.json"
+        echo "{\"fqbn\": \"${FQBN}\", \"sketch\": \"${EXAMPLE}\", \"previous_flash\": ${FLASH_SIZE}, \"flash\": ${CURRENT_FLASH_SIZE}, \"flash_delta\": ${FLASH_DELTA}, \"previous_ram\": ${RAM_SIZE}, \"ram\": ${CURRENT_RAM_SIZE}, \"ram_delta\": ${RAM_DELTA}}" | jq . >"$SIZE_REPORT_FILE_PATH"
+
+        # Switch back to the previous commit in the repository
+        git checkout "$CURRENT_COMMIT" || {
+          echo "::error::Could not checkout the PR's head branch"
+          exit 1
+        }
+      fi
     fi
-  fi
+  done
 done
 
 exit $SCRIPT_EXIT_STATUS
