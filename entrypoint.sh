@@ -246,6 +246,7 @@ for SKETCH_PATH in "${SKETCH_PATHS_ARRAY[@]}"; do
           echo "::error::Unable to determine base branch name. Please specify the size-report-github-token argument in your workflow configuration."
           exit 1
         fi
+        git fetch --no-tags --prune --depth=1 origin +"$BASE_BRANCH_NAME"
         git checkout "$BASE_BRANCH_NAME" || {
           echo "::error::Failed to checkout base branch"
           exit 1
