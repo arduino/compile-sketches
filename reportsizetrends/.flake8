@@ -1,0 +1,5 @@
+[flake8]
+doctests = True
+max-complexity = 10
+max-line-length = 120
+select = E,W,F,C,N

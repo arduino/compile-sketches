@@ -20,6 +20,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install --requirement "$GITHUB_WORKSPACE/libraries/compile-examples/reportsizetrends/requirements.txt"
 
+      - name: Lint with flake8
+        run: |
+          pip install --quiet flake8
+          pip install --quiet pep8-naming
+          flake8 --show-source "$GITHUB_WORKSPACE/libraries/compile-examples/reportsizetrends"
+
       - name: Run Python unit tests
         run: |
           export PYTHONPATH="$GITHUB_WORKSPACE/libraries/compile-examples/reportsizetrends"
