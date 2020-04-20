@@ -72,8 +72,8 @@ class ReportSizeTrends:
     shared_data_first_column_letter = timestamp_column_letter
     shared_data_last_column_letter = commit_hash_column_letter
     shared_data_columns_headings_data = (
-            "[[\"" + timestamp_column_heading + "\",\"" + sketch_name_column_heading + "\",\"" +
-            commit_hash_column_heading + "\"]]")
+        "[[\"" + timestamp_column_heading + "\",\"" + sketch_name_column_heading + "\",\"" +
+        commit_hash_column_heading + "\"]]")
 
     # These are appended to the FQBN as the size data column headings
     flash_heading_indicator = " flash"
@@ -146,8 +146,8 @@ class ReportSizeTrends:
     def populate_shared_data_headings(self):
         """Add the headings to the shared data columns (timestamp, sketch name, commit)"""
         spreadsheet_range = (
-                self.sheet_name + "!" + self.shared_data_first_column_letter + self.heading_row_number + ":" +
-                self.shared_data_last_column_letter + self.heading_row_number)
+            self.sheet_name + "!" + self.shared_data_first_column_letter + self.heading_row_number + ":" +
+            self.shared_data_last_column_letter + self.heading_row_number)
         request = self.service.spreadsheets().values().update(spreadsheetId=self.spreadsheet_id,
                                                               range=spreadsheet_range,
                                                               valueInputOption="RAW",

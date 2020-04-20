@@ -139,9 +139,9 @@ class TestReportsizetrends(unittest.TestCase):
 
         report_size_trends.populate_shared_data_headings()
         spreadsheet_range = (
-                sheet_name + "!" + report_size_trends.shared_data_first_column_letter +
-                report_size_trends.heading_row_number + ":" + report_size_trends.shared_data_last_column_letter +
-                report_size_trends.heading_row_number
+            sheet_name + "!" + report_size_trends.shared_data_first_column_letter +
+            report_size_trends.heading_row_number + ":" + report_size_trends.shared_data_last_column_letter +
+            report_size_trends.heading_row_number
         )
         Service.update.assert_called_once_with(
             spreadsheetId=spreadsheet_id,
