@@ -72,8 +72,8 @@ class ReportSizeTrends:
     shared_data_first_column_letter = timestamp_column_letter
     shared_data_last_column_letter = commit_hash_column_letter
     shared_data_columns_headings_data = (
-            "[[\"" + timestamp_column_heading + "\",\"" + sketch_name_column_heading + "\",\"" +
-            commit_hash_column_heading + "\"]]")
+        "[[\"" + timestamp_column_heading + "\",\"" + sketch_name_column_heading + "\",\""
+        + commit_hash_column_heading + "\"]]")
 
     # These are appended to the FQBN as the size data column headings
     flash_heading_indicator = " flash"
@@ -146,8 +146,8 @@ class ReportSizeTrends:
     def populate_shared_data_headings(self):
         """Add the headings to the shared data columns (timestamp, sketch name, commit)"""
         spreadsheet_range = (
-                self.sheet_name + "!" + self.shared_data_first_column_letter + self.heading_row_number + ":" +
-                self.shared_data_last_column_letter + self.heading_row_number)
+            self.sheet_name + "!" + self.shared_data_first_column_letter + self.heading_row_number + ":"
+            + self.shared_data_last_column_letter + self.heading_row_number)
         request = self.service.spreadsheets().values().update(spreadsheetId=self.spreadsheet_id,
                                                               range=spreadsheet_range,
                                                               valueInputOption="RAW",
@@ -189,12 +189,12 @@ class ReportSizeTrends:
         flash_column_letter -- letter of the column that contains the flash usage data
         ram_column_letter -- letter of the column that contains the dynamic memory used by globals data
         """
-        logger.info("No data columns found for " + self.fqbn + ". Adding column headings at columns " +
-                    flash_column_letter + " and " + ram_column_letter)
-        spreadsheet_range = (self.sheet_name + "!" + flash_column_letter + self.heading_row_number + ":" +
-                             ram_column_letter + self.heading_row_number)
-        board_data_headings_data = ("[[\"" + self.fqbn + self.flash_heading_indicator + "\",\"" + self.fqbn +
-                                    self.ram_heading_indicator + "\"]]")
+        logger.info("No data columns found for " + self.fqbn + ". Adding column headings at columns "
+                    + flash_column_letter + " and " + ram_column_letter)
+        spreadsheet_range = (self.sheet_name + "!" + flash_column_letter + self.heading_row_number + ":"
+                             + ram_column_letter + self.heading_row_number)
+        board_data_headings_data = ("[[\"" + self.fqbn + self.flash_heading_indicator + "\",\"" + self.fqbn
+                                    + self.ram_heading_indicator + "\"]]")
         request = self.service.spreadsheets().values().update(spreadsheetId=self.spreadsheet_id,
                                                               range=spreadsheet_range,
                                                               valueInputOption="RAW",
@@ -207,8 +207,8 @@ class ReportSizeTrends:
         populated -- whether the shared data has already been added to the row
         number -- the row number
         """
-        spreadsheet_range = (self.sheet_name + "!" + self.commit_hash_column_letter + ":" +
-                             self.commit_hash_column_letter)
+        spreadsheet_range = (self.sheet_name + "!" + self.commit_hash_column_letter + ":"
+                             + self.commit_hash_column_letter)
         request = self.service.spreadsheets().values().get(spreadsheetId=self.spreadsheet_id,
                                                            range=spreadsheet_range)
         commit_hash_column_data = request.execute()
@@ -233,13 +233,13 @@ class ReportSizeTrends:
         Keyword arguments:
         row_number -- row number
         """
-        logger.info("No row found for the commit hash: " + self.commit_hash + ". Creating a new row #" +
-                    str(row_number))
-        spreadsheet_range = (self.sheet_name + "!" + self.shared_data_first_column_letter + str(row_number) +
-                             ":" + self.shared_data_last_column_letter + str(row_number))
-        shared_data_columns_data = ("[[\"" + "{:%Y-%m-%d %H:%M:%S}".format(datetime.datetime.now()) + "\",\"" +
-                                    self.sketch_name + "\",\"=HYPERLINK(\\\"" + self.commit_url + "\\\",T(\\\"" +
-                                    self.commit_hash + "\\\"))\"]]")
+        logger.info("No row found for the commit hash: " + self.commit_hash + ". Creating a new row #"
+                    + str(row_number))
+        spreadsheet_range = (self.sheet_name + "!" + self.shared_data_first_column_letter + str(row_number)
+                             + ":" + self.shared_data_last_column_letter + str(row_number))
+        shared_data_columns_data = ("[[\"" + "{:%Y-%m-%d %H:%M:%S}".format(datetime.datetime.now()) + "\",\""
+                                    + self.sketch_name + "\",\"=HYPERLINK(\\\"" + self.commit_url + "\\\",T(\\\""
+                                    + self.commit_hash + "\\\"))\"]]")
         request = self.service.spreadsheets().values().update(spreadsheetId=self.spreadsheet_id,
                                                               range=spreadsheet_range,
                                                               valueInputOption="USER_ENTERED",
@@ -257,8 +257,8 @@ class ReportSizeTrends:
         flash -- flash usage
         ram -- dynamic memory used for global variables
         """
-        spreadsheet_range = (self.sheet_name + "!" + flash_column_letter + str(row_number) + ":" +
-                             ram_column_letter + str(row_number))
+        spreadsheet_range = (self.sheet_name + "!" + flash_column_letter + str(row_number) + ":"
+                             + ram_column_letter + str(row_number))
         size_data = "[[" + flash + "," + ram + "]]"
         request = self.service.spreadsheets().values().update(spreadsheetId=self.spreadsheet_id,
                                                               range=spreadsheet_range,
