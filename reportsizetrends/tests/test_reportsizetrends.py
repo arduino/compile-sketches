@@ -66,11 +66,12 @@ class TestReportsizetrends(unittest.TestCase):
         )
         report_size_trends.get_current_row.assert_called_once()
         report_size_trends.create_row.assert_called_once_with(row_number=current_row["number"])
-        report_size_trends.write_memory_usage_data.assert_called_once_with(flash_column_letter=data_column_letters["flash"],
-                                                                           ram_column_letter=data_column_letters["ram"],
-                                                                           row_number=current_row["number"],
-                                                                           flash=flash,
-                                                                           ram=ram)
+        report_size_trends.write_memory_usage_data.assert_called_once_with(
+            flash_column_letter=data_column_letters["flash"],
+            ram_column_letter=data_column_letters["ram"],
+            row_number=current_row["number"],
+            flash=flash,
+            ram=ram)
 
         # Test populated shared data headings
         heading_row_data = {"values": "foo"}
@@ -292,7 +293,8 @@ class TestReportsizetrends(unittest.TestCase):
         Service.execute = unittest.mock.MagicMock()
         report_size_trends.service = Service()
 
-        report_size_trends.write_memory_usage_data(flash_column_letter=flash_column_letter, ram_column_letter=ram_column_letter,
+        report_size_trends.write_memory_usage_data(flash_column_letter=flash_column_letter,
+                                                   ram_column_letter=ram_column_letter,
                                                    row_number=row_number, flash=flash, ram=ram)
         spreadsheet_range = (sheet_name + "!" + flash_column_letter + str(row_number) + ":" +
                              ram_column_letter + str(row_number))
