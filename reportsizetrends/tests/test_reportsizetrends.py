@@ -1,5 +1,8 @@
+import datetime
+import json
 import unittest.mock
-from reportsizetrends import *
+
+import reportsizetrends
 
 
 # Stub
@@ -17,14 +20,14 @@ class Service:
 
 # noinspection PyUnresolvedReferences
 class TestReportsizetrends(unittest.TestCase):
-    set_verbosity(enable_verbosity=False)
+    reportsizetrends.set_verbosity(enable_verbosity=False)
 
     # @unittest.skip("")
     def test_set_verbosity(self):
         with self.assertRaises(TypeError):
-            set_verbosity(enable_verbosity=2)
-        set_verbosity(enable_verbosity=True)
-        set_verbosity(enable_verbosity=False)
+            reportsizetrends.set_verbosity(enable_verbosity=2)
+        reportsizetrends.set_verbosity(enable_verbosity=True)
+        reportsizetrends.set_verbosity(enable_verbosity=False)
 
     # @unittest.skip("")
     def test_report_size_trends(self):
@@ -34,15 +37,15 @@ class TestReportsizetrends(unittest.TestCase):
         heading_row_data = {}
         current_row = {"populated": False, "number": 42}
         data_column_letters = {"populated": False, "flash": "A", "ram": "B"}
-        report_size_trends = ReportSizeTrends(google_key_file=google_key_file,
-                                              spreadsheet_id="foo",
-                                              sheet_name="foo",
-                                              sketch_name="foo",
-                                              commit_hash="foo",
-                                              commit_url="foo",
-                                              fqbn="foo",
-                                              flash=flash,
-                                              ram=ram)
+        report_size_trends = reportsizetrends.ReportSizeTrends(google_key_file=google_key_file,
+                                                               spreadsheet_id="foo",
+                                                               sheet_name="foo",
+                                                               sketch_name="foo",
+                                                               commit_hash="foo",
+                                                               commit_url="foo",
+                                                               fqbn="foo",
+                                                               flash=flash,
+                                                               ram=ram)
 
         report_size_trends.get_service = unittest.mock.MagicMock()
         report_size_trends.get_heading_row_data = unittest.mock.MagicMock(return_value=heading_row_data)
@@ -98,15 +101,15 @@ class TestReportsizetrends(unittest.TestCase):
     def test_get_heading_row_data(self):
         spreadsheet_id = "test_spreadsheet_id"
         sheet_name = "test_sheet_name"
-        report_size_trends = ReportSizeTrends(google_key_file="foo",
-                                              spreadsheet_id=spreadsheet_id,
-                                              sheet_name=sheet_name,
-                                              sketch_name="foo",
-                                              commit_hash="foo",
-                                              commit_url="foo",
-                                              fqbn="foo",
-                                              flash=42,
-                                              ram=11)
+        report_size_trends = reportsizetrends.ReportSizeTrends(google_key_file="foo",
+                                                               spreadsheet_id=spreadsheet_id,
+                                                               sheet_name=sheet_name,
+                                                               sketch_name="foo",
+                                                               commit_hash="foo",
+                                                               commit_url="foo",
+                                                               fqbn="foo",
+                                                               flash=42,
+                                                               ram=11)
         heading_row_data = "test_heading_row_data"
 
         Service.get = unittest.mock.MagicMock(return_value=Service())
@@ -123,15 +126,15 @@ class TestReportsizetrends(unittest.TestCase):
     def test_populate_shared_data_headings(self):
         spreadsheet_id = "test_spreadsheet_id"
         sheet_name = "test_sheet_name"
-        report_size_trends = ReportSizeTrends(google_key_file="foo",
-                                              spreadsheet_id=spreadsheet_id,
-                                              sheet_name=sheet_name,
-                                              sketch_name="foo",
-                                              commit_hash="foo",
-                                              commit_url="foo",
-                                              fqbn="foo",
-                                              flash=42,
-                                              ram=11)
+        report_size_trends = reportsizetrends.ReportSizeTrends(google_key_file="foo",
+                                                               spreadsheet_id=spreadsheet_id,
+                                                               sheet_name=sheet_name,
+                                                               sketch_name="foo",
+                                                               commit_hash="foo",
+                                                               commit_url="foo",
+                                                               fqbn="foo",
+                                                               flash=42,
+                                                               ram=11)
 
         Service.update = unittest.mock.MagicMock(return_value=Service())
         Service.execute = unittest.mock.MagicMock()
@@ -156,15 +159,15 @@ class TestReportsizetrends(unittest.TestCase):
     def test_get_data_column_letters(self):
         fqbn = "test_fqbn"
 
-        report_size_trends = ReportSizeTrends(google_key_file="foo",
-                                              spreadsheet_id="foo",
-                                              sheet_name="foo",
-                                              sketch_name="foo",
-                                              commit_hash="foo",
-                                              commit_url="foo",
-                                              fqbn=fqbn,
-                                              flash=42,
-                                              ram=11)
+        report_size_trends = reportsizetrends.ReportSizeTrends(google_key_file="foo",
+                                                               spreadsheet_id="foo",
+                                                               sheet_name="foo",
+                                                               sketch_name="foo",
+                                                               commit_hash="foo",
+                                                               commit_url="foo",
+                                                               fqbn=fqbn,
+                                                               flash=42,
+                                                               ram=11)
         heading_row_data = {"values": [["foo", "bar"]]}
         column_letters = report_size_trends.get_data_column_letters(heading_row_data)
         self.assertEqual(False, column_letters["populated"])
@@ -182,15 +185,15 @@ class TestReportsizetrends(unittest.TestCase):
         spreadsheet_id = "test_spreadsheet_id"
         sheet_name = "test_sheet_name"
         fqbn = "test_fqbn"
-        report_size_trends = ReportSizeTrends(google_key_file="foo",
-                                              spreadsheet_id=spreadsheet_id,
-                                              sheet_name=sheet_name,
-                                              sketch_name="foo",
-                                              commit_hash="foo",
-                                              commit_url="foo",
-                                              fqbn=fqbn,
-                                              flash=42,
-                                              ram=11)
+        report_size_trends = reportsizetrends.ReportSizeTrends(google_key_file="foo",
+                                                               spreadsheet_id=spreadsheet_id,
+                                                               sheet_name=sheet_name,
+                                                               sketch_name="foo",
+                                                               commit_hash="foo",
+                                                               commit_url="foo",
+                                                               fqbn=fqbn,
+                                                               flash=42,
+                                                               ram=11)
         flash_column_letter = "A"
         ram_column_letter = "B"
 
@@ -215,15 +218,15 @@ class TestReportsizetrends(unittest.TestCase):
         spreadsheet_id = "test_spreadsheet_id"
         sheet_name = "test_sheet_name"
         commit_hash = "test_commit_hash"
-        report_size_trends = ReportSizeTrends(google_key_file="foo",
-                                              spreadsheet_id=spreadsheet_id,
-                                              sheet_name=sheet_name,
-                                              sketch_name="foo",
-                                              commit_hash=commit_hash,
-                                              commit_url="foo",
-                                              fqbn="foo",
-                                              flash=42,
-                                              ram=11)
+        report_size_trends = reportsizetrends.ReportSizeTrends(google_key_file="foo",
+                                                               spreadsheet_id=spreadsheet_id,
+                                                               sheet_name=sheet_name,
+                                                               sketch_name="foo",
+                                                               commit_hash=commit_hash,
+                                                               commit_url="foo",
+                                                               fqbn="foo",
+                                                               flash=42,
+                                                               ram=11)
         Service.get = unittest.mock.MagicMock(return_value=Service())
         Service.execute = unittest.mock.MagicMock(return_value={"values": [["foo"], [commit_hash]]})
         report_size_trends.service = Service()
@@ -243,15 +246,15 @@ class TestReportsizetrends(unittest.TestCase):
         sketch_name = "test_sketch_name"
         fqbn = "test_fqbn"
         commit_url = "test_commit_url"
-        report_size_trends = ReportSizeTrends(google_key_file="foo",
-                                              spreadsheet_id=spreadsheet_id,
-                                              sheet_name=sheet_name,
-                                              sketch_name=sketch_name,
-                                              commit_hash="foo",
-                                              commit_url=commit_url,
-                                              fqbn=fqbn,
-                                              flash=42,
-                                              ram=11)
+        report_size_trends = reportsizetrends.ReportSizeTrends(google_key_file="foo",
+                                                               spreadsheet_id=spreadsheet_id,
+                                                               sheet_name=sheet_name,
+                                                               sketch_name=sketch_name,
+                                                               commit_hash="foo",
+                                                               commit_url=commit_url,
+                                                               fqbn=fqbn,
+                                                               flash=42,
+                                                               ram=11)
         row_number = 42
 
         Service.update = unittest.mock.MagicMock(return_value=Service())
@@ -274,15 +277,15 @@ class TestReportsizetrends(unittest.TestCase):
     def test_write_memory_usage_data(self):
         spreadsheet_id = "test_spreadsheet_id"
         sheet_name = "test_sheet_name"
-        report_size_trends = ReportSizeTrends(google_key_file="foo",
-                                              spreadsheet_id=spreadsheet_id,
-                                              sheet_name=sheet_name,
-                                              sketch_name="foo",
-                                              commit_hash="foo",
-                                              commit_url="foo",
-                                              fqbn="foo",
-                                              flash=42,
-                                              ram=11)
+        report_size_trends = reportsizetrends.ReportSizeTrends(google_key_file="foo",
+                                                               spreadsheet_id=spreadsheet_id,
+                                                               sheet_name=sheet_name,
+                                                               sketch_name="foo",
+                                                               commit_hash="foo",
+                                                               commit_url="foo",
+                                                               fqbn="foo",
+                                                               flash=42,
+                                                               ram=11)
         flash_column_letter = "A"
         ram_column_letter = "B"
         row_number = 42
