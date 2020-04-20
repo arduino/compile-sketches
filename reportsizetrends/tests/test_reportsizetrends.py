@@ -114,8 +114,8 @@ class TestReportsizetrends(unittest.TestCase):
         report_size_trends.service = Service()
 
         self.assertEqual(heading_row_data, report_size_trends.get_heading_row_data())
-        spreadsheet_range = (sheet_name + "!" + report_size_trends.heading_row_number + ":" +
-                             report_size_trends.heading_row_number)
+        spreadsheet_range = (sheet_name + "!" + report_size_trends.heading_row_number + ":"
+                             + report_size_trends.heading_row_number)
         Service.get.assert_called_once_with(spreadsheetId=spreadsheet_id, range=spreadsheet_range)
         Service.execute.assert_called_once()
 
@@ -139,9 +139,9 @@ class TestReportsizetrends(unittest.TestCase):
 
         report_size_trends.populate_shared_data_headings()
         spreadsheet_range = (
-            sheet_name + "!" + report_size_trends.shared_data_first_column_letter +
-            report_size_trends.heading_row_number + ":" + report_size_trends.shared_data_last_column_letter +
-            report_size_trends.heading_row_number
+            sheet_name + "!" + report_size_trends.shared_data_first_column_letter
+            + report_size_trends.heading_row_number + ":" + report_size_trends.shared_data_last_column_letter
+            + report_size_trends.heading_row_number
         )
         Service.update.assert_called_once_with(
             spreadsheetId=spreadsheet_id,
@@ -200,10 +200,10 @@ class TestReportsizetrends(unittest.TestCase):
 
         report_size_trends.populate_data_column_headings(flash_column_letter=flash_column_letter,
                                                          ram_column_letter=ram_column_letter)
-        spreadsheet_range = (sheet_name + "!" + flash_column_letter + report_size_trends.heading_row_number + ":" +
-                             ram_column_letter + report_size_trends.heading_row_number)
-        board_data_headings_data = ("[[\"" + fqbn + report_size_trends.flash_heading_indicator + "\",\"" + fqbn +
-                                    report_size_trends.ram_heading_indicator + "\"]]")
+        spreadsheet_range = (sheet_name + "!" + flash_column_letter + report_size_trends.heading_row_number + ":"
+                             + ram_column_letter + report_size_trends.heading_row_number)
+        board_data_headings_data = ("[[\"" + fqbn + report_size_trends.flash_heading_indicator + "\",\"" + fqbn
+                                    + report_size_trends.ram_heading_indicator + "\"]]")
         Service.update.assert_called_once_with(spreadsheetId=spreadsheet_id,
                                                range=spreadsheet_range,
                                                valueInputOption="RAW",
@@ -229,8 +229,8 @@ class TestReportsizetrends(unittest.TestCase):
         report_size_trends.service = Service()
 
         self.assertEqual({"populated": True, "number": 2}, report_size_trends.get_current_row())
-        spreadsheet_range = (sheet_name + "!" + report_size_trends.commit_hash_column_letter + ":" +
-                             report_size_trends.commit_hash_column_letter)
+        spreadsheet_range = (sheet_name + "!" + report_size_trends.commit_hash_column_letter + ":"
+                             + report_size_trends.commit_hash_column_letter)
         Service.get.assert_called_once_with(spreadsheetId=spreadsheet_id, range=spreadsheet_range)
         Service.execute.assert_called_once()
         Service.execute = unittest.mock.MagicMock(return_value={"values": [["foo"], ["bar"]]})
@@ -259,11 +259,11 @@ class TestReportsizetrends(unittest.TestCase):
         report_size_trends.service = Service()
 
         report_size_trends.create_row(row_number=row_number)
-        spreadsheet_range = (sheet_name + "!" + report_size_trends.shared_data_first_column_letter + str(row_number) +
-                             ":" + report_size_trends.shared_data_last_column_letter + str(row_number))
-        shared_data_columns_data = ("[[\"" + '{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()) + "\",\"" +
-                                    sketch_name + "\",\"=HYPERLINK(\\\"" + report_size_trends.commit_url +
-                                    "\\\",T(\\\"" + report_size_trends.commit_hash + "\\\"))\"]]")
+        spreadsheet_range = (sheet_name + "!" + report_size_trends.shared_data_first_column_letter + str(row_number)
+                             + ":" + report_size_trends.shared_data_last_column_letter + str(row_number))
+        shared_data_columns_data = ("[[\"" + '{:%Y-%m-%d %H:%M:%S}'.format(datetime.datetime.now()) + "\",\""
+                                    + sketch_name + "\",\"=HYPERLINK(\\\"" + report_size_trends.commit_url
+                                    + "\\\",T(\\\"" + report_size_trends.commit_hash + "\\\"))\"]]")
         Service.update.assert_called_once_with(spreadsheetId=spreadsheet_id,
                                                range=spreadsheet_range,
                                                valueInputOption="USER_ENTERED",
@@ -296,8 +296,8 @@ class TestReportsizetrends(unittest.TestCase):
         report_size_trends.write_memory_usage_data(flash_column_letter=flash_column_letter,
                                                    ram_column_letter=ram_column_letter,
                                                    row_number=row_number, flash=flash, ram=ram)
-        spreadsheet_range = (sheet_name + "!" + flash_column_letter + str(row_number) + ":" +
-                             ram_column_letter + str(row_number))
+        spreadsheet_range = (sheet_name + "!" + flash_column_letter + str(row_number) + ":"
+                             + ram_column_letter + str(row_number))
         size_data = "[[" + flash + "," + ram + "]]"
         Service.update.assert_called_once_with(spreadsheetId=spreadsheet_id,
                                                range=spreadsheet_range,
