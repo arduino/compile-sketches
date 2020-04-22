@@ -24,14 +24,12 @@ class Service:
 class TestReportsizetrends(unittest.TestCase):
     reportsizetrends.set_verbosity(enable_verbosity=False)
 
-    # @unittest.skip("")
     def test_set_verbosity(self):
         with pytest.raises(TypeError):
             reportsizetrends.set_verbosity(enable_verbosity=2)
         reportsizetrends.set_verbosity(enable_verbosity=True)
         reportsizetrends.set_verbosity(enable_verbosity=False)
 
-    # @unittest.skip("")
     def test_report_size_trends(self):
         google_key_file = "test_google_key_file"
         flash = 42
@@ -99,7 +97,6 @@ class TestReportsizetrends(unittest.TestCase):
         report_size_trends.report_size_trends()
         report_size_trends.create_row.assert_not_called()
 
-    # @unittest.skip("")
     def test_get_heading_row_data(self):
         spreadsheet_id = "test_spreadsheet_id"
         sheet_name = "test_sheet_name"
@@ -124,7 +121,6 @@ class TestReportsizetrends(unittest.TestCase):
         Service.get.assert_called_once_with(spreadsheetId=spreadsheet_id, range=spreadsheet_range)
         Service.execute.assert_called_once()
 
-    # @unittest.skip("")
     def test_populate_shared_data_headings(self):
         spreadsheet_id = "test_spreadsheet_id"
         sheet_name = "test_sheet_name"
@@ -157,7 +153,6 @@ class TestReportsizetrends(unittest.TestCase):
         )
         Service.execute.assert_called_once()
 
-    # @unittest.skip("")
     def test_get_data_column_letters(self):
         fqbn = "test_fqbn"
 
@@ -182,7 +177,6 @@ class TestReportsizetrends(unittest.TestCase):
         assert "B" == column_letters["flash"]
         assert "C" == column_letters["ram"]
 
-    # @unittest.skip("")
     def test_populate_data_column_headings(self):
         spreadsheet_id = "test_spreadsheet_id"
         sheet_name = "test_sheet_name"
@@ -215,7 +209,6 @@ class TestReportsizetrends(unittest.TestCase):
                                                body={"values": json.loads(board_data_headings_data)})
         Service.execute.assert_called_once()
 
-    # @unittest.skip("")
     def test_get_current_row(self):
         spreadsheet_id = "test_spreadsheet_id"
         sheet_name = "test_sheet_name"
@@ -241,7 +234,6 @@ class TestReportsizetrends(unittest.TestCase):
         Service.execute = unittest.mock.MagicMock(return_value={"values": [["foo"], ["bar"]]})
         assert {"populated": False, "number": 3} == report_size_trends.get_current_row()
 
-    # @unittest.skip("")
     def test_create_row(self):
         spreadsheet_id = "test_spreadsheet_id"
         sheet_name = "test_sheet_name"
@@ -275,7 +267,6 @@ class TestReportsizetrends(unittest.TestCase):
                                                body={"values": json.loads(shared_data_columns_data)})
         Service.execute.assert_called_once()
 
-    # @unittest.skip("")
     def test_write_memory_usage_data(self):
         spreadsheet_id = "test_spreadsheet_id"
         sheet_name = "test_sheet_name"
