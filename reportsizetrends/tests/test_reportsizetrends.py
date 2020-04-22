@@ -2,6 +2,8 @@ import datetime
 import json
 import unittest.mock
 
+import pytest
+
 import reportsizetrends
 
 
@@ -24,7 +26,7 @@ class TestReportsizetrends(unittest.TestCase):
 
     # @unittest.skip("")
     def test_set_verbosity(self):
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             reportsizetrends.set_verbosity(enable_verbosity=2)
         reportsizetrends.set_verbosity(enable_verbosity=True)
         reportsizetrends.set_verbosity(enable_verbosity=False)
@@ -116,7 +118,7 @@ class TestReportsizetrends(unittest.TestCase):
         Service.execute = unittest.mock.MagicMock(return_value=heading_row_data)
         report_size_trends.service = Service()
 
-        self.assertEqual(heading_row_data, report_size_trends.get_heading_row_data())
+        assert heading_row_data == report_size_trends.get_heading_row_data()
         spreadsheet_range = (sheet_name + "!" + report_size_trends.heading_row_number + ":"
                              + report_size_trends.heading_row_number)
         Service.get.assert_called_once_with(spreadsheetId=spreadsheet_id, range=spreadsheet_range)
@@ -170,15 +172,15 @@ class TestReportsizetrends(unittest.TestCase):
                                                                ram=11)
         heading_row_data = {"values": [["foo", "bar"]]}
         column_letters = report_size_trends.get_data_column_letters(heading_row_data)
-        self.assertEqual(False, column_letters["populated"])
-        self.assertEqual("C", column_letters["flash"])
-        self.assertEqual("D", column_letters["ram"])
+        assert column_letters["populated"] is False
+        assert "C" == column_letters["flash"]
+        assert "D" == column_letters["ram"]
 
         heading_row_data = {"values": [["foo", report_size_trends.fqbn + report_size_trends.flash_heading_indicator]]}
         column_letters = report_size_trends.get_data_column_letters(heading_row_data)
-        self.assertEqual(True, column_letters["populated"])
-        self.assertEqual("B", column_letters["flash"])
-        self.assertEqual("C", column_letters["ram"])
+        assert column_letters["populated"] is True
+        assert "B" == column_letters["flash"]
+        assert "C" == column_letters["ram"]
 
     # @unittest.skip("")
     def test_populate_data_column_headings(self):
@@ -231,13 +233,13 @@ class TestReportsizetrends(unittest.TestCase):
         Service.execute = unittest.mock.MagicMock(return_value={"values": [["foo"], [commit_hash]]})
         report_size_trends.service = Service()
 
-        self.assertEqual({"populated": True, "number": 2}, report_size_trends.get_current_row())
+        assert {"populated": True, "number": 2} == report_size_trends.get_current_row()
         spreadsheet_range = (sheet_name + "!" + report_size_trends.commit_hash_column_letter + ":"
                              + report_size_trends.commit_hash_column_letter)
         Service.get.assert_called_once_with(spreadsheetId=spreadsheet_id, range=spreadsheet_range)
         Service.execute.assert_called_once()
         Service.execute = unittest.mock.MagicMock(return_value={"values": [["foo"], ["bar"]]})
-        self.assertEqual({"populated": False, "number": 3}, report_size_trends.get_current_row())
+        assert {"populated": False, "number": 3} == report_size_trends.get_current_row()
 
     # @unittest.skip("")
     def test_create_row(self):
