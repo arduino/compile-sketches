@@ -40,15 +40,3 @@ inputs:
 runs:
   using: 'docker'
   image: 'Dockerfile'
-  args:
-    - ${{ inputs.cli-version }}
-    - ${{ inputs.fqbn }}
-    - ${{ inputs.libraries }}
-    - ${{ inputs.sketch-paths }}
-    - ${{ inputs.github-token }}
-    - ${{ inputs.size-report-sketch }}
-    - ${{ inputs.enable-size-deltas-report }}
-    - ${{ inputs.size-deltas-report-folder-name }}
-    - ${{ inputs.enable-size-trends-report }}
-    - ${{ inputs.size-trends-report-spreadsheet-id }}
-    - ${{ inputs.size-trends-report-sheet-name }}
