@@ -71,6 +71,7 @@ def test_main(monkeypatch, mocker):
     monkeypatch.setenv("INPUT_LIBRARIES", libraries)
     monkeypatch.setenv("INPUT_SKETCH-PATHS", sketch_paths)
     monkeypatch.setenv("INPUT_GITHUB-TOKEN", github_token)
+    monkeypatch.setenv("INPUT_VERBOSE", verbose)
     monkeypatch.setenv("INPUT_SIZE-REPORT-SKETCH", report_sketch)
     monkeypatch.setenv("INPUT_ENABLE-SIZE-DELTAS-REPORT", enable_size_deltas_report)
     monkeypatch.setenv("INPUT_SIZE-DELTAS-REPORT-FOLDER-NAME", sketches_report_path)

@@ -24,6 +24,10 @@ List of library dependencies to install (space separated). Default `""`.
 
 List of paths containing sketches to compile. These paths will be searched recursively. Default `"examples"`.
 
+### `verbose`
+
+Set to true to show verbose output in the log. Default `false`
+
 ### `github-token`
 
 GitHub access token used to get information from the GitHub API. Only needed if you're using the size report features with private repositories. It will be convenient to use [`${{ secrets.GITHUB_TOKEN }}`](https://help.github.com/en/actions/configuring-and-managing-workflows/authenticating-with-the-github_token). Default `""`.

@@ -24,7 +24,7 @@ def main():
         fqbn_arg=os.environ["INPUT_FQBN"],
         libraries=os.environ["INPUT_LIBRARIES"],
         sketch_paths=os.environ["INPUT_SKETCH-PATHS"],
-        verbose="true",
+        verbose=os.environ["INPUT_VERBOSE"],
         github_token=os.environ["INPUT_GITHUB-TOKEN"],
         report_sketch=os.environ["INPUT_SIZE-REPORT-SKETCH"],
         enable_size_deltas_report=os.environ["INPUT_ENABLE-SIZE-DELTAS-REPORT"],
