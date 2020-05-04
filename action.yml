@@ -13,6 +13,9 @@ inputs:
   sketch-paths:
     description: 'List of paths containing sketches to compile.'
     default: 'examples'
+  verbose:
+    description: 'Set to true to show verbose output in the log'
+    default: false
   github-token:
     description: 'GitHub access token used to get information from the GitHub API. Only needed if you are using the size report features with private repositories.'
     default: ''
@@ -40,15 +43,3 @@ inputs:
 runs:
   using: 'docker'
   image: 'Dockerfile'
-  args:
-    - ${{ inputs.cli-version }}
-    - ${{ inputs.fqbn }}
-    - ${{ inputs.libraries }}
-    - ${{ inputs.sketch-paths }}
-    - ${{ inputs.github-token }}
-    - ${{ inputs.size-report-sketch }}
-    - ${{ inputs.enable-size-deltas-report }}
-    - ${{ inputs.size-deltas-report-folder-name }}
-    - ${{ inputs.enable-size-trends-report }}
-    - ${{ inputs.size-trends-report-spreadsheet-id }}
-    - ${{ inputs.size-trends-report-sheet-name }}

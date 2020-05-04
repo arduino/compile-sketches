@@ -18,15 +18,18 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          pip install --requirement "$GITHUB_WORKSPACE/libraries/compile-examples/compilesketches/requirements.txt"
           pip install --requirement "$GITHUB_WORKSPACE/libraries/compile-examples/reportsizetrends/requirements.txt"
 
       - name: Lint with flake8
         run: |
           pip install --quiet flake8
           pip install --quiet pep8-naming
+          flake8 --show-source "$GITHUB_WORKSPACE/libraries/compile-examples/compilesketches"
           flake8 --show-source "$GITHUB_WORKSPACE/libraries/compile-examples/reportsizetrends"
 
       - name: Run Python unit tests
         run: |
-          export PYTHONPATH="$GITHUB_WORKSPACE/libraries/compile-examples/reportsizetrends"
+          export PYTHONPATH="$GITHUB_WORKSPACE/libraries/compile-examples/compilesketches:$GITHUB_WORKSPACE/libraries/compile-examples/reportsizetrends"
+          pytest "$GITHUB_WORKSPACE/libraries/compile-examples/compilesketches/tests"
           python -m unittest discover "$GITHUB_WORKSPACE/libraries/compile-examples/reportsizetrends/tests"
