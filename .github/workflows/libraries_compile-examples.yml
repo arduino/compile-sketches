@@ -32,4 +32,4 @@ jobs:
         run: |
           export PYTHONPATH="$GITHUB_WORKSPACE/libraries/compile-examples/compilesketches:$GITHUB_WORKSPACE/libraries/compile-examples/reportsizetrends"
           pytest "$GITHUB_WORKSPACE/libraries/compile-examples/compilesketches/tests"
-          python -m unittest discover "$GITHUB_WORKSPACE/libraries/compile-examples/reportsizetrends/tests"
+          pytest "$GITHUB_WORKSPACE/libraries/compile-examples/reportsizetrends/tests"
