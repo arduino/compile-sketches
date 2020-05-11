@@ -305,6 +305,21 @@ def test_install_platforms(mocker, fqbn_arg, expected_platform, expected_additio
     )
 
 
+@pytest.mark.parametrize(
+    "dependency_list, expected_dependency_type_list",
+    [([None], []),
+     ([{compilesketches.CompileSketches.dependency_name_key: "FooBar"}], ["manager"])]
+)
+def test_sort_dependency_list(monkeypatch, dependency_list, expected_dependency_type_list):
+    monkeypatch.setenv("GITHUB_WORKSPACE", "/foo/GitHubWorkspace")
+
+    compile_sketches = get_compilesketches_object()
+
+    for dependency, expected_dependency_type in zip(dependency_list, expected_dependency_type_list):
+        assert dependency in getattr(compile_sketches.sort_dependency_list(dependency_list=[dependency]),
+                                     expected_dependency_type)
+
+
 @pytest.mark.parametrize("additional_url_list",
                          [["https://example.com/package_foo_index.json", "https://example.com/package_bar_index.json"],
                           []])
@@ -427,11 +442,35 @@ def test_run_command(capsys, mocker, enable_output, exit_on_failure, returncode,
     subprocess.run.assert_called_once_with(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
 
-@pytest.mark.parametrize("libraries", ['"foo" "bar"', ""])
-def test_install_libraries(monkeypatch, mocker, libraries):
-    monkeypatch.setenv("GITHUB_WORKSPACE", "/foo/bar")
+@pytest.mark.parametrize(
+    "dependency, expected_name",
+    [({compilesketches.CompileSketches.dependency_name_key: "Foo",
+       compilesketches.CompileSketches.dependency_version_key: "1.2.3"}, "Foo@1.2.3"),
+     ({compilesketches.CompileSketches.dependency_name_key: "Foo",
+       compilesketches.CompileSketches.dependency_version_key: "latest"}, "Foo"),
+     ({compilesketches.CompileSketches.dependency_name_key: "Foo@1.2.3"}, "Foo@1.2.3"),
+     ({compilesketches.CompileSketches.dependency_name_key: "Foo"}, "Foo")])
+def test_get_manager_dependency_name(dependency, expected_name):
+    compile_sketches = get_compilesketches_object()
+    assert compile_sketches.get_manager_dependency_name(dependency=dependency) == expected_name
+
+
+@pytest.mark.parametrize("libraries, expected_manager",
+                         [("", []),
+                          ("foo bar", [{compilesketches.CompileSketches.dependency_name_key: "foo"},
+                                       {compilesketches.CompileSketches.dependency_name_key: "bar"}]),
+                          ("\"foo\" \"bar\"", [{compilesketches.CompileSketches.dependency_name_key: "foo"},
+                                               {compilesketches.CompileSketches.dependency_name_key: "bar"}]),
+                          ("-", []),
+                          ("- " + compilesketches.CompileSketches.dependency_name_key + ": foo",
+                           [{compilesketches.CompileSketches.dependency_name_key: "foo"}])])
+def test_install_libraries(monkeypatch, mocker, libraries, expected_manager):
+    libraries_path = pathlib.Path("/foo/LibrariesPath")
+
+    monkeypatch.setenv("GITHUB_WORKSPACE", "/foo/GitHubWorkspace")
 
     compile_sketches = get_compilesketches_object(libraries=libraries)
+    compile_sketches.libraries_path = libraries_path
 
     mocker.patch.object(pathlib.Path, "mkdir", autospec=True)
     mocker.patch("compilesketches.CompileSketches.install_libraries_from_library_manager", autospec=True)
@@ -440,35 +479,31 @@ def test_install_libraries(monkeypatch, mocker, libraries):
     compile_sketches.install_libraries()
 
     # noinspection PyUnresolvedReferences
-    pathlib.Path.mkdir.assert_called()
+    pathlib.Path.mkdir.assert_called_with(libraries_path, parents=True, exist_ok=True)
 
-    if len(compile_sketches.libraries) > 0:
+    if len(expected_manager) > 0:
         compile_sketches.install_libraries_from_library_manager.assert_called_once_with(
             compile_sketches,
-            library_name_list=compilesketches.parse_list_input(compile_sketches.libraries)
-        )
+            library_list=expected_manager)
     else:
         compile_sketches.install_libraries_from_library_manager.assert_not_called()
 
-    compile_sketches.install_libraries_from_path.assert_called_once_with(
-        compile_sketches,
-        library_path_list=[pathlib.Path(os.environ["GITHUB_WORKSPACE"])]
-    )
+    compile_sketches.install_libraries_from_path.assert_called_once()
 
 
 def test_install_libraries_from_library_manager(mocker):
     run_command_output_level = unittest.mock.sentinel.run_command_output_level
-    library_name_list = [unittest.mock.sentinel.library_name1, unittest.mock.sentinel.library_name2]
-
     compile_sketches = get_compilesketches_object()
+
+    library_list = [{compile_sketches.dependency_name_key: "foo"}, {compile_sketches.dependency_name_key: "bar"}]
 
     mocker.patch("compilesketches.CompileSketches.get_run_command_output_level", autospec=True,
                  return_value=run_command_output_level)
     mocker.patch("compilesketches.CompileSketches.run_arduino_cli_command", autospec=True)
 
-    compile_sketches.install_libraries_from_library_manager(library_name_list=library_name_list)
+    compile_sketches.install_libraries_from_library_manager(library_list=library_list)
 
-    lib_install_command = ["lib", "install"] + library_name_list
+    lib_install_command = ["lib", "install"] + [library["name"] for library in library_list]
     compile_sketches.run_arduino_cli_command.assert_called_once_with(compile_sketches,
                                                                      command=lib_install_command,
                                                                      enable_output=run_command_output_level)
@@ -1064,6 +1099,7 @@ def test_verbose_print(capsys, verbose):
 @pytest.mark.parametrize("list_argument, expected_list",
                          [("", []),
                           ("foobar", ["foobar"]),
+                          ("foo bar", ["foo", "bar"]),
                           ("\"foo bar\"", ["foo bar"]),
                           ("\'foo bar\'", ["foo bar"]),
                           ("\'\"foo bar\" \"baz\"\'", ["foo bar", "baz"]),

@@ -14,6 +14,8 @@ import urllib.request
 
 import git
 import github
+import yaml
+import yaml.parser
 
 import reportsizetrends
 
@@ -83,6 +85,11 @@ class CompileSketches:
     report_ram_key = "ram"
     report_previous_ram_key = "previous_ram"
     report_ram_delta_key = "ram_delta"
+
+    dependency_name_key = "name"
+    dependency_version_key = "version"
+
+    latest_release_indicator = "latest"
 
     def __init__(self, cli_version, fqbn_arg, libraries, sketch_paths, verbose, github_token, report_sketch,
                  enable_size_deltas_report, sketches_report_path, enable_size_trends_report, google_key_file,
@@ -225,6 +232,25 @@ class CompileSketches:
         self.install_platforms_from_board_manager(platform_list=[fqbn_platform_name],
                                                   additional_url_list=additional_url_list)
 
+    def sort_dependency_list(self, dependency_list):
+        """Sort a list of sketch dependencies by source type
+
+        Keyword arguments:
+        dependency_list -- a list of dictionaries defining dependencies
+        """
+        sorted_dependencies = self.Dependencies()
+        for dependency in dependency_list:
+            if dependency is not None:
+                sorted_dependencies.manager.append(dependency)
+
+        return sorted_dependencies
+
+    class Dependencies:
+        """Container for sorted sketch dependencies"""
+
+        def __init__(self):
+            self.manager = []
+
     def install_platforms_from_board_manager(self, platform_list, additional_url_list):
         """Install platform dependencies from the Arduino Board Manager
 
@@ -249,6 +275,20 @@ class CompileSketches:
 
         # Install the platforms
         self.run_arduino_cli_command(command=core_install_command, enable_output=self.get_run_command_output_level())
+
+    def get_manager_dependency_name(self, dependency):
+        """Return the appropriate name value for a repository dependency
+
+        Keyword arguments:
+        dependency -- dictionary defining the Library/Board Manger dependency
+        """
+        name = dependency[self.dependency_name_key]
+        if self.dependency_version_key in dependency:
+            # If "latest" special version name is used, just don't add a version to cause LM to use the latest release
+            if dependency[self.dependency_version_key] != self.latest_release_indicator:
+                name = name + "@" + dependency[self.dependency_version_key]
+
+        return name
 
     def get_run_command_output_level(self):
         """Determine and return the appropriate output setting for the run_command function."""
@@ -316,23 +356,38 @@ class CompileSketches:
         """Install Arduino libraries."""
         self.libraries_path.mkdir(parents=True, exist_ok=True)
 
-        libraries_list = parse_list_input(self.libraries)
-        if len(libraries_list) > 0:
-            self.install_libraries_from_library_manager(library_name_list=libraries_list)
+        libraries = yaml.load(stream="", Loader=yaml.SafeLoader)
+        try:
+            libraries = yaml.load(stream=self.libraries, Loader=yaml.SafeLoader)
+        except yaml.parser.ParserError:
+            # This exception occurs when the space separated list items are individually quoted (e.g., '"Foo" "Bar"')
+            pass
+
+        library_list = self.Dependencies()
+        if type(libraries) is list:
+            # libraries input is YAML
+            library_list = self.sort_dependency_list(libraries)
+        else:
+            # libraries input uses the old space-separated list syntax
+            library_list.manager = [{self.dependency_name_key: library_name}
+                                    for library_name in parse_list_input(self.libraries)]
+
+        if len(library_list.manager) > 0:
+            self.install_libraries_from_library_manager(library_list=library_list.manager)
 
         # TODO: this is in anticipation of allowing arbitrary paths to be specified by the user, rather than assuming
         #       there is a library in the root of the repo (not the case when testing platforms and sketches)
         # Install the repository as a library by creating a symlink in the sketchbook
         self.install_libraries_from_path(library_path_list=[pathlib.Path(os.environ["GITHUB_WORKSPACE"])])
 
-    def install_libraries_from_library_manager(self, library_name_list):
+    def install_libraries_from_library_manager(self, library_list):
         """Install libraries using the Arduino Library Manager
 
         Keyword arguments:
-        library_name_list -- list of library names
+        library_list -- list of dictionaries defining the dependencies
         """
         lib_install_command = ["lib", "install"]
-        lib_install_command.extend(library_name_list)
+        lib_install_command.extend([self.get_manager_dependency_name(library) for library in library_list])
         self.run_arduino_cli_command(command=lib_install_command, enable_output=self.get_run_command_output_level())
 
     def install_libraries_from_path(self, library_path_list):

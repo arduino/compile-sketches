@@ -18,7 +18,18 @@ For 3rd party boards, also specify the Boards Manager URL:
 
 ### `libraries`
 
-List of library dependencies to install (space separated). Default `""`.
+YAML-format list of library dependencies to install.
+
+Note: the original space-separated list format is also supported. When this syntax is used, the repository under test will always be installed as a library.
+
+#### Sources:
+
+##### Library Manager
+
+Keys:
+- `name` - name of the library.
+- `version` - version of the library to install. Default is the latest version.
+
 
 ### `sketch-paths`
 
@@ -106,6 +117,10 @@ Only compiling examples:
 - uses: arduino/actions/libraries/compile-examples@master
   with:
     fqbn: 'arduino:avr:uno'
+    libraries: |
+      - name: Servo
+      - name: Stepper
+        version: 1.1.3
 ```
 
 Storing the memory usage change report as a [workflow artifact](https://help.github.com/en/actions/configuring-and-managing-workflows/persisting-workflow-data-using-artifacts):
