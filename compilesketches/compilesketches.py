@@ -88,6 +88,8 @@ class CompileSketches:
 
     dependency_name_key = "name"
     dependency_version_key = "version"
+    dependency_source_path_key = "source-path"
+    dependency_destination_name_key = "destination-name"
 
     latest_release_indicator = "latest"
 
@@ -241,7 +243,12 @@ class CompileSketches:
         sorted_dependencies = self.Dependencies()
         for dependency in dependency_list:
             if dependency is not None:
-                sorted_dependencies.manager.append(dependency)
+                if self.dependency_source_path_key in dependency:
+                    # Libraries with source-path and no source-url are assumed to be paths
+                    sorted_dependencies.path.append(dependency)
+                else:
+                    # All others are Library/Board Manager names
+                    sorted_dependencies.manager.append(dependency)
 
         return sorted_dependencies
 
@@ -250,6 +257,7 @@ class CompileSketches:
 
         def __init__(self):
             self.manager = []
+            self.path = []
 
     def install_platforms_from_board_manager(self, platform_list, additional_url_list):
         """Install platform dependencies from the Arduino Board Manager
@@ -372,13 +380,15 @@ class CompileSketches:
             library_list.manager = [{self.dependency_name_key: library_name}
                                     for library_name in parse_list_input(self.libraries)]
 
+            # The original behavior of the action was to assume the root of the repo is a library to be installed, so
+            # that behavior is retained when using the old input syntax
+            library_list.path = [{self.dependency_source_path_key: pathlib.Path(os.environ["GITHUB_WORKSPACE"])}]
+
         if len(library_list.manager) > 0:
             self.install_libraries_from_library_manager(library_list=library_list.manager)
 
-        # TODO: this is in anticipation of allowing arbitrary paths to be specified by the user, rather than assuming
-        #       there is a library in the root of the repo (not the case when testing platforms and sketches)
-        # Install the repository as a library by creating a symlink in the sketchbook
-        self.install_libraries_from_path(library_path_list=[pathlib.Path(os.environ["GITHUB_WORKSPACE"])])
+        if len(library_list.path) > 0:
+            self.install_libraries_from_path(library_list=library_list.path)
 
     def install_libraries_from_library_manager(self, library_list):
         """Install libraries using the Arduino Library Manager
@@ -390,18 +400,37 @@ class CompileSketches:
         lib_install_command.extend([self.get_manager_dependency_name(library) for library in library_list])
         self.run_arduino_cli_command(command=lib_install_command, enable_output=self.get_run_command_output_level())
 
-    def install_libraries_from_path(self, library_path_list):
+    def install_libraries_from_path(self, library_list):
         """Install libraries from local paths
 
         Keyword arguments:
-        library_path_list -- list of paths to install libraries from. Relative paths are assumed to be relative to the
-                             Docker container workspace (root of the repository)
+        library_list -- list of dictionaries defining the dependencies
         """
-        self.verbose_print("Installing libraries from paths:", list_to_string(library_path_list))
-        for library_path in library_path_list:
-            # Install the repository as a library by creating a symlink in the sketchbook
-            library_symlink_path = self.libraries_path.joinpath(library_path.name)
-            library_symlink_path.symlink_to(target=library_path, target_is_directory=True)
+        for library in library_list:
+            source_path = absolute_path(library[self.dependency_source_path_key])
+            self.verbose_print("Installing library from path:", path_relative_to_workspace(source_path))
+
+            if not source_path.exists():
+                print("::error::Library source path:", path_relative_to_workspace(source_path), "doesn't exist")
+                sys.exit(1)
+
+            # Determine library folder name (important because it is a factor in dependency resolution)
+            if self.dependency_destination_name_key in library:
+                # If a name was specified, use it
+                destination_name = library[self.dependency_destination_name_key]
+            elif (
+                source_path == pathlib.Path(os.environ["GITHUB_WORKSPACE"])
+            ):
+                # If source_path is the root of the workspace (i.e., repository root), name the folder according to the
+                # repository name, otherwise it will unexpectedly be "workspace"
+                destination_name = os.environ["GITHUB_REPOSITORY"].split(sep="/")[1]
+            else:
+                # Use the existing folder name
+                destination_name = source_path.name
+
+            # Install the library by creating a symlink in the sketchbook
+            library_symlink_path = self.libraries_path.joinpath(destination_name)
+            library_symlink_path.symlink_to(target=source_path, target_is_directory=True)
 
     def find_sketches(self):
         """Return a list of all sketches under the paths specified in the sketch paths list recursively."""

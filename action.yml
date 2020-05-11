@@ -8,8 +8,8 @@ inputs:
     description: 'Full qualified board name, with Boards Manager URL if needed'
     default: 'arduino:avr:uno'
   libraries:
-    default: ''
     description: 'YAML-format list of library dependencies to install'
+    default: '- source-path: ./'
   sketch-paths:
     description: 'List of paths containing sketches to compile.'
     default: 'examples'

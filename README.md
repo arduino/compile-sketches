@@ -20,6 +20,8 @@ For 3rd party boards, also specify the Boards Manager URL:
 
 YAML-format list of library dependencies to install.
 
+Default `"- source-path: ./"`. This causes the repository to be installed as a library. If there are no library dependencies and you want to override the default, set the `libraries` input to an empty list (`- libraries: '-'`).
+
 Note: the original space-separated list format is also supported. When this syntax is used, the repository under test will always be installed as a library.
 
 #### Sources:
@@ -29,6 +31,12 @@ Note: the original space-separated list format is also supported. When this synt
 Keys:
 - `name` - name of the library.
 - `version` - version of the library to install. Default is the latest version.
+
+##### Local path
+
+Keys:
+- `source-path` - path to install as a library. Relative paths are assumed to be relative to the root of the repository.
+- `destination-name` - folder name to install the library to. By default, the folder will be named according to the source repository or subfolder name.
 
 
 ### `sketch-paths`

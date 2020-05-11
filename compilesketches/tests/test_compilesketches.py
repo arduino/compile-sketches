@@ -308,6 +308,7 @@ def test_install_platforms(mocker, fqbn_arg, expected_platform, expected_additio
 @pytest.mark.parametrize(
     "dependency_list, expected_dependency_type_list",
     [([None], []),
+     ([{compilesketches.CompileSketches.dependency_source_path_key: "foo/bar"}], ["path"]),
      ([{compilesketches.CompileSketches.dependency_name_key: "FooBar"}], ["manager"])]
 )
 def test_sort_dependency_list(monkeypatch, dependency_list, expected_dependency_type_list):
@@ -455,16 +456,22 @@ def test_get_manager_dependency_name(dependency, expected_name):
     assert compile_sketches.get_manager_dependency_name(dependency=dependency) == expected_name
 
 
-@pytest.mark.parametrize("libraries, expected_manager",
-                         [("", []),
-                          ("foo bar", [{compilesketches.CompileSketches.dependency_name_key: "foo"},
-                                       {compilesketches.CompileSketches.dependency_name_key: "bar"}]),
-                          ("\"foo\" \"bar\"", [{compilesketches.CompileSketches.dependency_name_key: "foo"},
-                                               {compilesketches.CompileSketches.dependency_name_key: "bar"}]),
-                          ("-", []),
-                          ("- " + compilesketches.CompileSketches.dependency_name_key + ": foo",
-                           [{compilesketches.CompileSketches.dependency_name_key: "foo"}])])
-def test_install_libraries(monkeypatch, mocker, libraries, expected_manager):
+@pytest.mark.parametrize(
+    "libraries, expected_manager, expected_path",
+    [("", [], [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.PurePath("/foo/GitHubWorkspace")}]),
+     ("foo bar", [{compilesketches.CompileSketches.dependency_name_key: "foo"},
+                  {compilesketches.CompileSketches.dependency_name_key: "bar"}],
+      [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.PurePath("/foo/GitHubWorkspace")}]),
+     ("\"foo\" \"bar\"", [{compilesketches.CompileSketches.dependency_name_key: "foo"},
+                          {compilesketches.CompileSketches.dependency_name_key: "bar"}],
+      [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.PurePath("/foo/GitHubWorkspace")}]),
+     ("-", [], []),
+     ("- " + compilesketches.CompileSketches.dependency_name_key + ": foo",
+      [{compilesketches.CompileSketches.dependency_name_key: "foo"}], []),
+     ("- " + compilesketches.CompileSketches.dependency_source_path_key + ": /foo/bar", [],
+      [{compilesketches.CompileSketches.dependency_source_path_key: "/foo/bar"}])]
+)
+def test_install_libraries(monkeypatch, mocker, libraries, expected_manager, expected_path):
     libraries_path = pathlib.Path("/foo/LibrariesPath")
 
     monkeypatch.setenv("GITHUB_WORKSPACE", "/foo/GitHubWorkspace")
@@ -488,7 +495,12 @@ def test_install_libraries(monkeypatch, mocker, libraries, expected_manager):
     else:
         compile_sketches.install_libraries_from_library_manager.assert_not_called()
 
-    compile_sketches.install_libraries_from_path.assert_called_once()
+    if len(expected_path) > 0:
+        compile_sketches.install_libraries_from_path.assert_called_once_with(
+            compile_sketches,
+            library_list=expected_path)
+    else:
+        compile_sketches.install_libraries_from_path.assert_not_called()
 
 
 def test_install_libraries_from_library_manager(mocker):
@@ -509,17 +521,56 @@ def test_install_libraries_from_library_manager(mocker):
                                                                      enable_output=run_command_output_level)
 
 
-def test_install_libraries_from_path(mocker):
-    library_path_list = [pathlib.Path("FooLibrary"), pathlib.Path("bar/Barlibrary")]
+@pytest.mark.parametrize("path_exists, library_list, expected_destination_name_list",
+                         [(False, [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.Path(
+                             "/foo/GitHubWorkspace/Nonexistent")}], []),
+                          (True, [{compilesketches.CompileSketches.dependency_destination_name_key: "FooName",
+                                   compilesketches.CompileSketches.dependency_source_path_key: pathlib.Path(
+                                       "/foo/GitHubWorkspace/FooLibrary")}], ["FooName"]),
+                          (True, [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.Path(
+                              "/foo/GitHubWorkspace")}], ["FooRepoName"]),
+                          (True,
+                           [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.Path(
+                               "/foo/GitHubWorkspace/Bar")}], ["Bar"])])
+def test_install_libraries_from_path(capsys, monkeypatch, mocker, path_exists, library_list,
+                                     expected_destination_name_list):
+    libraries_path = pathlib.Path("/foo/LibrariesPath")
+    symlink_source_path = pathlib.Path("/foo/SymlinkSourcePath")
+
+    monkeypatch.setenv("GITHUB_WORKSPACE", "/foo/GitHubWorkspace")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "foo/FooRepoName")
 
     compile_sketches = get_compilesketches_object()
+    compile_sketches.libraries_path = libraries_path
 
+    mocker.patch.object(pathlib.Path, "exists", autospec=True, return_value=path_exists)
+    mocker.patch.object(pathlib.Path, "joinpath", autospec=True, return_value=symlink_source_path)
     mocker.patch.object(pathlib.Path, "symlink_to", autospec=True)
 
-    compile_sketches.install_libraries_from_path(library_path_list=library_path_list)
+    if not path_exists:
+        with pytest.raises(expected_exception=SystemExit, match="1"):
+            compile_sketches.install_libraries_from_path(library_list=library_list)
+        assert capsys.readouterr().out.strip() == (
+            "::error::Library source path: "
+            + str(compilesketches.path_relative_to_workspace(library_list[0]["source-path"]))
+            + " doesn't exist"
+        )
 
-    # noinspection PyUnresolvedReferences
-    pathlib.Path.symlink_to.assert_called()
+    else:
+        compile_sketches.install_libraries_from_path(library_list=library_list)
+
+        joinpath_calls = []
+        symlink_to_calls = []
+        for library, expected_destination_name in zip(library_list, expected_destination_name_list):
+            joinpath_calls.append(unittest.mock.call(libraries_path, expected_destination_name))
+            symlink_to_calls.append(
+                unittest.mock.call(symlink_source_path,
+                                   target=library[compilesketches.CompileSketches.dependency_source_path_key],
+                                   target_is_directory=True))
+
+        # noinspection PyUnresolvedReferences
+        pathlib.Path.joinpath.assert_has_calls(calls=joinpath_calls)
+        pathlib.Path.symlink_to.assert_has_calls(calls=symlink_to_calls)
 
 
 def test_find_sketches(capsys, monkeypatch):
