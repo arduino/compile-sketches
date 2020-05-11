@@ -226,6 +226,12 @@ class CompileSketches:
                                                   additional_url_list=additional_url_list)
 
     def install_platforms_from_board_manager(self, platform_list, additional_url_list):
+        """Install platform dependencies from the Arduino Board Manager
+
+        Keyword arguments:
+        platform_list -- a list of platform names
+        additional_url_list -- a list of additional Board Manager URLs for 3rd party platforms
+        """
         core_update_index_command = ["core", "update-index"]
 
         core_install_command = ["core", "install"]
@@ -245,6 +251,7 @@ class CompileSketches:
         self.run_arduino_cli_command(command=core_install_command, enable_output=self.get_run_command_output_level())
 
     def get_run_command_output_level(self):
+        """Determine and return the appropriate output setting for the run_command function."""
         if self.verbose:
             enable_stdout = self.RunCommandOutput.ALWAYS
         else:
