@@ -15,6 +15,8 @@ import pytest
 import compilesketches
 import reportsizetrends
 
+test_data_path = pathlib.PurePath(os.path.dirname(os.path.realpath(__file__)), "testdata")
+
 
 def get_compilesketches_object(
     cli_version=unittest.mock.sentinel.cli_version,
@@ -256,8 +258,7 @@ def test_compile_sketches(mocker, compilation_success_list, expected_success, do
 def test_install_arduino_cli(tmpdir, mocker):
     cli_version = "1.2.3"
     arduino_cli_user_directory_path = pathlib.PurePath("/foo/arduino_cli_user_directory_path")
-    source_file_path = pathlib.PurePath(os.path.dirname(os.path.realpath(__file__)),
-                                        "testdata", "githubevent.json")
+    source_file_path = test_data_path.joinpath("githubevent.json")
     # Create temporary folder
     arduino_cli_installation_path = pathlib.PurePath(tmpdir.mkdir("test_install_arduino_cli"))
     output_archive_path = arduino_cli_installation_path.joinpath("foo_archive.tar.gz")
@@ -580,8 +581,7 @@ def test_find_sketches(capsys, monkeypatch):
 
     # Test sketch path doesn't exist
     compile_sketches = get_compilesketches_object(
-        sketch_paths="\'\"" + os.path.dirname(os.path.realpath(__file__))
-                     + "/testdata/HasSketches\" \"" + nonexistent_sketch_path + "\"\'"
+        sketch_paths="\'\"" + nonexistent_sketch_path + "\"\'"
     )
     with pytest.raises(expected_exception=SystemExit, match="1"):
         compile_sketches.find_sketches()
@@ -590,76 +590,64 @@ def test_find_sketches(capsys, monkeypatch):
 
     # Test sketch path is a sketch file
     compile_sketches = get_compilesketches_object(
-        sketch_paths="\"" + os.path.dirname(os.path.realpath(__file__)) + "/testdata/HasSketches/Sketch1/Sketch1.ino\""
+        sketch_paths="\"" + str(test_data_path.joinpath("HasSketches", "Sketch1", "Sketch1.ino")) + "\""
     )
     assert compile_sketches.find_sketches() == [
-        pathlib.Path(os.path.dirname(os.path.realpath(__file__)), "testdata", "HasSketches", "Sketch1")
+        test_data_path.joinpath("HasSketches", "Sketch1")
     ]
 
     # Test sketch path is a non-sketch file
-    non_sketch_path = os.path.dirname(os.path.realpath(__file__)) + "/testdata/NoSketches/NotSketch/NotSketch.foo"
+    non_sketch_path = str(test_data_path.joinpath("NoSketches", "NotSketch", "NotSketch.foo"))
     compile_sketches = get_compilesketches_object(sketch_paths="\"" + non_sketch_path + "\"")
     with pytest.raises(expected_exception=SystemExit, match="1"):
         compile_sketches.find_sketches()
-    assert capsys.readouterr().out.strip() == ("::error::Sketch path: " + str(pathlib.PurePath(non_sketch_path))
-                                               + " is not a sketch")
+    assert capsys.readouterr().out.strip() == ("::error::Sketch path: " + non_sketch_path + " is not a sketch")
 
     # Test sketch path is a sketch folder
     compile_sketches = get_compilesketches_object(
-        sketch_paths="\"" + os.path.dirname(os.path.realpath(__file__)) + "/testdata/HasSketches/Sketch1\""
+        sketch_paths="\"" + str(test_data_path.joinpath("HasSketches", "Sketch1")) + "\""
     )
     assert compile_sketches.find_sketches() == [
-        pathlib.Path(os.path.dirname(os.path.realpath(__file__)), "testdata", "HasSketches", "Sketch1")
+        test_data_path.joinpath("HasSketches", "Sketch1")
     ]
 
     # Test sketch path does contain sketches
     compile_sketches = get_compilesketches_object(
-        sketch_paths="\"" + os.path.dirname(os.path.realpath(__file__)) + "/testdata/HasSketches\"")
+        sketch_paths="\"" + str(test_data_path.joinpath("HasSketches")) + "\"")
     assert compile_sketches.find_sketches() == [
-        pathlib.Path(os.path.dirname(os.path.realpath(__file__)), "testdata", "HasSketches", "Sketch1"),
-        pathlib.Path(os.path.dirname(os.path.realpath(__file__)), "testdata", "HasSketches", "Sketch2")
+        test_data_path.joinpath("HasSketches", "Sketch1"),
+        test_data_path.joinpath("HasSketches", "Sketch2")
     ]
 
     # Test sketch path doesn't contain any sketches
-    no_sketches_path = os.path.dirname(os.path.realpath(__file__)) + "/testdata/NoSketches"
+    no_sketches_path = str(test_data_path.joinpath("NoSketches"))
     compile_sketches = get_compilesketches_object(
         sketch_paths="\"" + no_sketches_path + "\"")
     with pytest.raises(expected_exception=SystemExit, match="1"):
         compile_sketches.find_sketches()
     assert capsys.readouterr().out.strip() == ("::error::No sketches were found in "
-                                               + str(pathlib.PurePath(no_sketches_path)))
+                                               + no_sketches_path)
 
 
 def test_path_is_sketch():
     # Sketch file
-    assert compilesketches.path_is_sketch(
-        path=pathlib.Path(os.path.dirname(os.path.realpath(__file__)),
-                          "testdata",
-                          "HasSketches",
-                          "Sketch1",
-                          "Sketch1.ino")
-    ) is True
+    assert compilesketches.path_is_sketch(path=test_data_path.joinpath("HasSketches", "Sketch1", "Sketch1.ino")) is True
 
     # Not a sketch file
     assert compilesketches.path_is_sketch(
-        path=pathlib.Path(os.path.dirname(os.path.realpath(__file__)),
-                          "testdata",
-                          "NoSketches",
-                          "NotSketch",
-                          "NotSketch.foo")
-    ) is False
+        path=test_data_path.joinpath("NoSketches", "NotSketch", "NotSketch.foo")) is False
 
     # Sketch folder
     assert compilesketches.path_is_sketch(
-        path=pathlib.Path(os.path.dirname(os.path.realpath(__file__)), "testdata", "HasSketches", "Sketch1")) is True
+        path=test_data_path.joinpath("HasSketches", "Sketch1")) is True
 
     # No files in path
     assert compilesketches.path_is_sketch(
-        path=pathlib.Path(os.path.dirname(os.path.realpath(__file__)), "testdata", "HasSketches")) is False
+        path=test_data_path.joinpath("HasSketches")) is False
 
     # Not a sketch folder
     assert compilesketches.path_is_sketch(
-        path=pathlib.Path(os.path.dirname(os.path.realpath(__file__)), "testdata", "NoSketches", "NotSketch")) is False
+        path=test_data_path.joinpath("NoSketches", "NotSketch")) is False
 
 
 @pytest.mark.parametrize("returncode, expected_success", [(1, False),
@@ -943,7 +931,7 @@ def test_checkout_pull_request_base_ref(monkeypatch, mocker):
 
     monkeypatch.setenv("GITHUB_REPOSITORY", "fooRepository/fooOwner")
     monkeypatch.setenv("GITHUB_WORKSPACE", "/fooWorkspace")
-    monkeypatch.setenv("GITHUB_EVENT_PATH", os.path.dirname(os.path.realpath(__file__)) + "/testdata/githubevent.json")
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(test_data_path.joinpath("githubevent.json")))
 
     compile_sketches = get_compilesketches_object()
 
