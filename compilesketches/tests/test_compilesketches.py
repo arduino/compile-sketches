@@ -333,8 +333,14 @@ def test_install_platforms(mocker, fqbn_arg, expected_platform, expected_additio
          [{compilesketches.CompileSketches.dependency_source_url_key: "https://example.com/foo/bar.git/"}],
          ["repository"]),
      ([{compilesketches.CompileSketches.dependency_source_url_key: "git://example.com/foo/bar"}], ["repository"]),
+     ([{compilesketches.CompileSketches.dependency_source_url_key: "https://example.com/foo/bar"}], ["download"]),
      ([{compilesketches.CompileSketches.dependency_source_path_key: "foo/bar"}], ["path"]),
      ([{compilesketches.CompileSketches.dependency_name_key: "FooBar"}], ["manager"]),
+     ([{compilesketches.CompileSketches.dependency_source_url_key: "git://example.com/foo/bar"},
+       {compilesketches.CompileSketches.dependency_source_url_key: "https://example.com/foo/bar"},
+       {compilesketches.CompileSketches.dependency_source_path_key: "foo/bar"},
+       {compilesketches.CompileSketches.dependency_name_key: "FooBar"}],
+      ["repository", "download", "path", "manager"]),
      ([{compilesketches.CompileSketches.dependency_source_url_key: "git://example.com/foo/bar"}], ["repository"]),
      ]
 )
@@ -494,24 +500,27 @@ def test_get_repository_dependency_ref(dependency, expected_ref):
 
 
 @pytest.mark.parametrize(
-    "libraries, expected_manager, expected_path, expected_repository",
+    "libraries, expected_manager, expected_path, expected_repository, expected_download",
     [("", [], [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.PurePath("/foo/GitHubWorkspace")}],
-      []),
+      [], []),
      ("foo bar", [{compilesketches.CompileSketches.dependency_name_key: "foo"},
                   {compilesketches.CompileSketches.dependency_name_key: "bar"}],
-      [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.PurePath("/foo/GitHubWorkspace")}], []),
+      [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.PurePath("/foo/GitHubWorkspace")}], [], []),
      ("\"foo\" \"bar\"", [{compilesketches.CompileSketches.dependency_name_key: "foo"},
                           {compilesketches.CompileSketches.dependency_name_key: "bar"}],
-      [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.PurePath("/foo/GitHubWorkspace")}], []),
-     ("-", [], [], []),
+      [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.PurePath("/foo/GitHubWorkspace")}], [], []),
+     ("-", [], [], [], []),
      ("- " + compilesketches.CompileSketches.dependency_name_key + ": foo",
-      [{compilesketches.CompileSketches.dependency_name_key: "foo"}], [], []),
+      [{compilesketches.CompileSketches.dependency_name_key: "foo"}], [], [], []),
      ("- " + compilesketches.CompileSketches.dependency_source_path_key + ": /foo/bar", [],
-      [{compilesketches.CompileSketches.dependency_source_path_key: "/foo/bar"}], []),
+      [{compilesketches.CompileSketches.dependency_source_path_key: "/foo/bar"}], [], []),
      ("- " + compilesketches.CompileSketches.dependency_source_url_key + ": https://example.com/foo.git", [], [],
-      [{"source-url": "https://example.com/foo.git"}])]
+      [{"source-url": "https://example.com/foo.git"}], []),
+     ("- " + compilesketches.CompileSketches.dependency_source_url_key + ": https://example.com/foo.zip", [], [], [],
+      [{"source-url": "https://example.com/foo.zip"}])]
 )
-def test_install_libraries(monkeypatch, mocker, libraries, expected_manager, expected_path, expected_repository):
+def test_install_libraries(monkeypatch, mocker, libraries, expected_manager, expected_path, expected_repository,
+                           expected_download):
     libraries_path = pathlib.Path("/foo/LibrariesPath")
 
     monkeypatch.setenv("GITHUB_WORKSPACE", "/foo/GitHubWorkspace")
@@ -523,6 +532,7 @@ def test_install_libraries(monkeypatch, mocker, libraries, expected_manager, exp
     mocker.patch("compilesketches.CompileSketches.install_libraries_from_library_manager", autospec=True)
     mocker.patch("compilesketches.CompileSketches.install_libraries_from_path", autospec=True)
     mocker.patch("compilesketches.CompileSketches.install_libraries_from_repository", autospec=True)
+    mocker.patch("compilesketches.CompileSketches.install_libraries_from_download", autospec=True)
 
     compile_sketches.install_libraries()
 
@@ -549,6 +559,13 @@ def test_install_libraries(monkeypatch, mocker, libraries, expected_manager, exp
             library_list=expected_repository)
     else:
         compile_sketches.install_libraries_from_repository.assert_not_called()
+
+    if len(expected_download) > 0:
+        compile_sketches.install_libraries_from_download.assert_called_once_with(
+            compile_sketches,
+            library_list=expected_download)
+    else:
+        compile_sketches.install_libraries_from_download.assert_not_called()
 
 
 def test_install_libraries_from_library_manager(mocker):
@@ -656,6 +673,35 @@ def test_install_libraries_from_repository(mocker):
 
     compile_sketches.get_repository_dependency_ref.assert_has_calls(calls=get_repository_dependency_ref_calls)
     compile_sketches.install_from_repository.assert_has_calls(calls=install_from_repository_calls)
+
+
+def test_install_libraries_from_download(mocker):
+    library_list = [
+        {compilesketches.CompileSketches.dependency_source_url_key: unittest.mock.sentinel.source_url1,
+         compilesketches.CompileSketches.dependency_source_path_key: unittest.mock.sentinel.source_path,
+         compilesketches.CompileSketches.dependency_destination_name_key: unittest.mock.sentinel.destination_name},
+        {compilesketches.CompileSketches.dependency_source_url_key: unittest.mock.sentinel.source_url2}
+    ]
+
+    expected_source_path_list = [unittest.mock.sentinel.source_path, "."]
+    expected_destination_name_list = [unittest.mock.sentinel.destination_name, None]
+
+    compile_sketches = get_compilesketches_object()
+
+    mocker.patch("compilesketches.install_from_download", autospec=True)
+
+    compile_sketches.install_libraries_from_download(library_list=library_list)
+
+    install_libraries_from_download_calls = []
+    for library, expected_source_path, expected_destination_name in zip(library_list, expected_source_path_list,
+                                                                        expected_destination_name_list):
+        install_libraries_from_download_calls.append(
+            unittest.mock.call(url=library[compilesketches.CompileSketches.dependency_source_url_key],
+                               source_path=expected_source_path,
+                               destination_parent_path=compilesketches.CompileSketches.libraries_path,
+                               destination_name=expected_destination_name)
+        )
+    compilesketches.install_from_download.assert_has_calls(calls=install_libraries_from_download_calls)
 
 
 def test_find_sketches(capsys, monkeypatch):

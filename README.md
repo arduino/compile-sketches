@@ -46,6 +46,12 @@ Keys:
 - `source-path` - path to install as a library. Paths are relative to the root of the repository. The default is to install from the root of the repository.
 - `destination-name` - folder name to install the library to. By default, the folder will be named according to the source repository or subfolder name.
 
+##### Archive download
+
+Keys:
+- `source-url` - download URL for the archive (e.g., `https://github.com/arduino-libraries/Servo/archive/master.zip`).
+- `source-path` - path to install as a library. Paths are relative to the root folder of the archive. If the archive doesn't have a root folder, use `..` as `source-path` to install from the archive root. The default is to install from the root folder of the archive.
+- `destination-name` - folder name to install the library to. By default, the folder will be named according to the source archive or subfolder name.
 
 ### `sketch-paths`
 

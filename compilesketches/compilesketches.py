@@ -238,6 +238,9 @@ class CompileSketches:
                         or dependency[self.dependency_source_url_key].startswith("git://")
                     ):
                         sorted_dependencies.repository.append(dependency)
+                    else:
+                        # All other URLs are assumed to be downloads
+                        sorted_dependencies.download.append(dependency)
                 elif self.dependency_source_path_key in dependency:
                     # Libraries with source-path and no source-url are assumed to be paths
                     sorted_dependencies.path.append(dependency)
@@ -254,6 +257,7 @@ class CompileSketches:
             self.manager = []
             self.path = []
             self.repository = []
+            self.download = []
 
     def install_platforms_from_board_manager(self, platform_list, additional_url_list):
         """Install platform dependencies from the Arduino Board Manager
@@ -460,6 +464,9 @@ class CompileSketches:
         if len(library_list.repository) > 0:
             self.install_libraries_from_repository(library_list=library_list.repository)
 
+        if len(library_list.download) > 0:
+            self.install_libraries_from_download(library_list=library_list.download)
+
     def install_libraries_from_library_manager(self, library_list):
         """Install libraries using the Arduino Library Manager
 
@@ -531,6 +538,29 @@ class CompileSketches:
                                          source_path=source_path,
                                          destination_parent_path=self.libraries_path,
                                          destination_name=destination_name)
+
+    def install_libraries_from_download(self, library_list):
+        """Install libraries by downloading them
+
+        Keyword arguments:
+        library_list -- list of dictionaries defining the dependencies
+        """
+        for library in library_list:
+            self.verbose_print("Installing library from download URL:", library[self.dependency_source_url_key])
+            if self.dependency_source_path_key in library:
+                source_path = library[self.dependency_source_path_key]
+            else:
+                source_path = "."
+
+            if self.dependency_destination_name_key in library:
+                destination_name = library[self.dependency_destination_name_key]
+            else:
+                destination_name = None
+
+            install_from_download(url=library[self.dependency_source_url_key],
+                                  source_path=source_path,
+                                  destination_parent_path=self.libraries_path,
+                                  destination_name=destination_name)
 
     def find_sketches(self):
         """Return a list of all sketches under the paths specified in the sketch paths list recursively."""
