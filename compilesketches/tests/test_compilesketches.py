@@ -7,8 +7,6 @@ import subprocess
 import tarfile
 import tempfile
 import unittest.mock
-import urllib
-import urllib.request
 
 import git
 import github
@@ -286,33 +284,23 @@ def test_compile_sketches(mocker, compilation_success_list, expected_success, do
         )
 
 
-def test_install_arduino_cli(tmpdir, mocker):
+def test_install_arduino_cli(mocker):
     cli_version = "1.2.3"
+    arduino_cli_installation_path = unittest.mock.sentinel.arduino_cli_installation_path
     arduino_cli_user_directory_path = pathlib.PurePath("/foo/arduino_cli_user_directory_path")
-    source_file_path = test_data_path.joinpath("githubevent.json")
-    # Create temporary folder
-    arduino_cli_installation_path = pathlib.PurePath(tmpdir.mkdir("test_install_arduino_cli"))
-    output_archive_path = arduino_cli_installation_path.joinpath("foo_archive.tar.gz")
-
-    # Create an archive file
-    with tarfile.open(name=output_archive_path, mode="w:gz") as tar:
-        tar.add(name=source_file_path, arcname=source_file_path.name)
 
     compile_sketches = get_compilesketches_object(cli_version=cli_version)
     compile_sketches.arduino_cli_installation_path = arduino_cli_installation_path
     compile_sketches.arduino_cli_user_directory_path = arduino_cli_user_directory_path
 
-    # Patch urllib.request.urlopen so that the generated archive file is opened instead of the Arduino CLI download
-    mocker.patch("urllib.request.urlopen",
-                 return_value=urllib.request.urlopen(url="file:///" + str(output_archive_path)))
+    mocker.patch("compilesketches.install_from_download", autospec=True)
 
     compile_sketches.install_arduino_cli()
 
-    urllib.request.urlopen.assert_called_once_with(url="https://downloads.arduino.cc/arduino-cli/arduino-cli_"
-                                                       + cli_version + "_Linux_64bit.tar.gz")
-
-    # Verify that the installation matches the source file
-    assert filecmp.cmp(f1=source_file_path, f2=arduino_cli_installation_path.joinpath(source_file_path.name)) is True
+    compilesketches.install_from_download.assert_called_once_with(
+        url="https://downloads.arduino.cc/arduino-cli/arduino-cli_" + cli_version + "_Linux_64bit.tar.gz",
+        source_path="arduino-cli",
+        destination_parent_path=arduino_cli_installation_path)
 
     assert os.environ["ARDUINO_DIRECTORIES_USER"] == str(arduino_cli_user_directory_path)
 
@@ -1286,6 +1274,62 @@ def test_absolute_path(monkeypatch, path, expected_absolute_path):
 def test_list_to_string():
     path = pathlib.PurePath("/foo/bar")
     assert compilesketches.list_to_string([42, path]) == "42 " + str(path)
+
+
+@pytest.mark.parametrize("arcname, source_path, destination_name, expected_destination_name, expected_success",
+                         [("FooArcname", ".", None, "FooArcname", True),
+                          ("FooArcname", "./Sketch1", "FooDestinationName", "FooDestinationName", True),
+                          ("FooArcname", "Sketch1", None, "Sketch1", True),
+                          (".", "Sketch1", None, "Sketch1", True),
+                          ("FooArcname", "Nonexistent", None, "", False), ])
+def test_install_from_download(capsys,
+                               tmp_path,
+                               arcname,
+                               source_path,
+                               destination_name,
+                               expected_destination_name,
+                               expected_success):
+    url_source_path = test_data_path.joinpath("HasSketches")
+
+    # Create temporary folder
+    url_path = tmp_path.joinpath("url_path")
+    url_path.mkdir()
+    url_archive_path = url_path.joinpath("foo_archive.tar.gz")
+    url = url_archive_path.as_uri()
+
+    # Create an archive file
+    with tarfile.open(name=url_archive_path, mode="w:gz", format=tarfile.GNU_FORMAT) as tar:
+        tar.add(name=url_source_path, arcname=arcname)
+
+    destination_parent_path = tmp_path.joinpath("destination_parent_path")
+
+    if expected_success:
+        compilesketches.install_from_download(url=url,
+                                              source_path=source_path,
+                                              destination_parent_path=destination_parent_path,
+                                              destination_name=destination_name)
+
+        # Verify that the installation matches the source
+        assert directories_are_same(left_directory=url_source_path.joinpath(source_path),
+                                    right_directory=destination_parent_path.joinpath(expected_destination_name))
+    else:
+        with pytest.raises(expected_exception=SystemExit, match="1"):
+            compilesketches.install_from_download(url=url,
+                                                  source_path=source_path,
+                                                  destination_parent_path=destination_parent_path,
+                                                  destination_name=destination_name)
+        assert capsys.readouterr().out.strip() == ("::error::Archive source path: " + source_path + " not found")
+
+
+@pytest.mark.parametrize("archive_extract_path, expected_archive_root_path",
+                         [(test_data_path.joinpath("test_get_archive_root_folder_name", "has-root"),
+                           test_data_path.joinpath("test_get_archive_root_folder_name", "has-root", "root")),
+                          (test_data_path.joinpath("test_get_archive_root_folder_name", "has-file"),
+                           test_data_path.joinpath("test_get_archive_root_folder_name", "has-file")),
+                          (test_data_path.joinpath("test_get_archive_root_folder_name", "has-folders"),
+                           test_data_path.joinpath("test_get_archive_root_folder_name", "has-folders"))])
+def test_get_archive_root_path(archive_extract_path, expected_archive_root_path):
+    assert compilesketches.get_archive_root_path(archive_extract_path) == expected_archive_root_path
 
 
 @pytest.mark.parametrize("url, source_path, destination_name, expected_destination_name",

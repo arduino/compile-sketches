@@ -8,7 +8,6 @@ import shlex
 import shutil
 import subprocess
 import sys
-import tarfile
 import tempfile
 import urllib
 import urllib.request
@@ -195,26 +194,12 @@ class CompileSketches:
         arduino_cli_archive_download_url_prefix = "https://downloads.arduino.cc/arduino-cli/"
         arduino_cli_archive_file_name = "arduino-cli_" + self.cli_version + "_Linux_64bit.tar.gz"
 
-        # Create temporary folder
-        with tempfile.TemporaryDirectory(prefix="arduino-cli-" + self.cli_version + "-") as download_folder:
-            arduino_cli_archive_file_path = pathlib.PurePath(download_folder, arduino_cli_archive_file_name)
-
-            # https://stackoverflow.com/a/38358646
-            with open(file=str(arduino_cli_archive_file_path), mode="wb") as out_file:
-                with contextlib.closing(thing=urllib.request.urlopen(
-                    url=arduino_cli_archive_download_url_prefix
-                        + arduino_cli_archive_file_name)
-                ) as file_pointer:
-                    block_size = 1024 * 8
-                    while True:
-                        block = file_pointer.read(block_size)
-                        if not block:
-                            break
-                        out_file.write(block)
-
-            # Extract arduino-cli archive
-            with tarfile.open(name=arduino_cli_archive_file_path) as tar:
-                tar.extractall(path=self.arduino_cli_installation_path)
+        install_from_download(
+            url=arduino_cli_archive_download_url_prefix + arduino_cli_archive_file_name,
+            # The Arduino CLI has no root folder, so just install the arduino-cli executable from the archive root
+            source_path="arduino-cli",
+            destination_parent_path=self.arduino_cli_installation_path
+        )
 
         # Configure the location of the Arduino CLI user directory
         os.environ["ARDUINO_DIRECTORIES_USER"] = str(self.arduino_cli_user_directory_path)
@@ -988,6 +973,83 @@ def path_is_sketch(path):
 def list_to_string(list_input):
     """Cast the list items to string and join them, then return the resulting string"""
     return " ".join([str(item) for item in list_input])
+
+
+def install_from_download(url, source_path, destination_parent_path, destination_name=None):
+    """Download an archive, extract, and install.
+
+    Keyword arguments:
+    url -- URL to download the archive from
+    source_path -- path relative to the root folder of the archive to install.
+    destination_parent_path -- path under which to install
+    destination_name -- folder name to use for the installation. Set to None to take the name from source_path.
+                        (default None)
+    """
+    destination_parent_path = pathlib.Path(destination_parent_path)
+
+    # Create temporary folder for the download
+    with tempfile.TemporaryDirectory("-compilesketches-download_folder") as download_folder:
+        download_file_path = pathlib.PurePath(download_folder, url.rsplit(sep="/", maxsplit=1)[1])
+
+        # https://stackoverflow.com/a/38358646
+        with open(file=str(download_file_path), mode="wb") as out_file:
+            with contextlib.closing(thing=urllib.request.urlopen(url=url)) as file_pointer:
+                block_size = 1024 * 8
+                while True:
+                    block = file_pointer.read(block_size)
+                    if not block:
+                        break
+                    out_file.write(block)
+
+        # Create temporary folder for the extraction
+        with tempfile.TemporaryDirectory("-compilesketches-extract_folder") as extract_folder:
+            # Extract archive
+            shutil.unpack_archive(filename=str(download_file_path), extract_dir=extract_folder)
+
+            archive_root_path = get_archive_root_path(extract_folder)
+
+            absolute_source_path = pathlib.Path(archive_root_path, source_path).resolve()
+
+            if not absolute_source_path.exists():
+                print("::error::Archive source path:", source_path, "not found")
+                sys.exit(1)
+
+            if destination_name is None:
+                destination_name = absolute_source_path.name
+
+            # Create the parent path if it doesn't already exist
+            destination_parent_path.mkdir(parents=True, exist_ok=True)
+
+            # Install by moving the source folder
+            shutil.move(src=str(absolute_source_path),
+                        dst=str(destination_parent_path.joinpath(destination_name)))
+
+
+def get_archive_root_path(archive_extract_path):
+    """Return the path of the archive's root folder.
+
+    Keyword arguments:
+    archive_extract_path -- path the archive was extracted to
+    """
+    archive_root_folder_name = archive_extract_path
+    for extract_folder_content in pathlib.Path(archive_extract_path).glob("*"):
+        if extract_folder_content.is_dir():
+            # Path is a folder
+            # Ignore the __MACOSX folder
+            if extract_folder_content.name != "__MACOSX":
+                if archive_root_folder_name == archive_extract_path:
+                    # This is the first folder found
+                    archive_root_folder_name = extract_folder_content
+                else:
+                    # Multiple folders found
+                    archive_root_folder_name = archive_extract_path
+                    break
+        else:
+            # Path is a file
+            archive_root_folder_name = archive_extract_path
+            break
+
+    return archive_root_folder_name
 
 
 # Only execute the following code if the script is run directly, not imported
