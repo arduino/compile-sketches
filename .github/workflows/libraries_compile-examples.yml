@@ -34,8 +34,8 @@ jobs:
         run: |
           pip install --quiet flake8
           pip install --quiet pep8-naming
-          flake8 --show-source "$GITHUB_WORKSPACE/libraries/compile-examples/compilesketches"
-          flake8 --show-source "$GITHUB_WORKSPACE/libraries/compile-examples/reportsizetrends"
+          flake8 --config "$GITHUB_WORKSPACE/libraries/compile-examples/compilesketches/.flake8" --show-source "$GITHUB_WORKSPACE/libraries/compile-examples/compilesketches"
+          flake8 --config "$GITHUB_WORKSPACE/libraries/compile-examples/reportsizetrends/.flake8" --show-source "$GITHUB_WORKSPACE/libraries/compile-examples/reportsizetrends"
 
       - name: Run Python unit tests
         run: |
