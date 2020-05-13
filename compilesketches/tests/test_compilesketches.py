@@ -2,11 +2,11 @@ import filecmp
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 import tarfile
+import tempfile
 import unittest.mock
-import urllib
-import urllib.request
 
 import git
 import github
@@ -14,6 +14,8 @@ import pytest
 
 import compilesketches
 import reportsizetrends
+
+test_data_path = pathlib.PurePath(os.path.dirname(os.path.realpath(__file__)), "testdata")
 
 
 def get_compilesketches_object(
@@ -45,6 +47,35 @@ def get_compilesketches_object(
                                            size_trends_report_spreadsheet_id=size_trends_report_spreadsheet_id,
                                            size_trends_report_sheet_name=size_trends_report_sheet_name
                                            )
+
+
+def directories_are_same(left_directory, right_directory):
+    """Check recursively whether two directories contain the same files.
+    Based on https://stackoverflow.com/a/24860799
+    """
+    directory_comparison = filecmp.dircmp(a=left_directory, b=right_directory)
+    if (
+        directory_comparison.left_only
+        or directory_comparison.right_only
+        or directory_comparison.diff_files
+        or directory_comparison.funny_files
+    ):
+        return False
+    for subdirectory in directory_comparison.common_dirs:
+        if not directories_are_same(left_directory.joinpath(subdirectory), right_directory.joinpath(subdirectory)):
+            return False
+    return True
+
+
+def test_directories_are_same():
+    assert directories_are_same(left_directory=test_data_path, right_directory=test_data_path) is True
+    assert directories_are_same(
+        left_directory=test_data_path.joinpath("HasSketches"), right_directory=test_data_path.joinpath("NoSketches")
+    ) is False
+    assert directories_are_same(
+        left_directory=test_data_path.joinpath("HasSketches", "NoSketches"),
+        right_directory=test_data_path.joinpath("NoSketches")
+    ) is False
 
 
 def test_main(monkeypatch, mocker):
@@ -253,34 +284,23 @@ def test_compile_sketches(mocker, compilation_success_list, expected_success, do
         )
 
 
-def test_install_arduino_cli(tmpdir, mocker):
+def test_install_arduino_cli(mocker):
     cli_version = "1.2.3"
+    arduino_cli_installation_path = unittest.mock.sentinel.arduino_cli_installation_path
     arduino_cli_user_directory_path = pathlib.PurePath("/foo/arduino_cli_user_directory_path")
-    source_file_path = pathlib.PurePath(os.path.dirname(os.path.realpath(__file__)),
-                                        "testdata", "githubevent.json")
-    # Create temporary folder
-    arduino_cli_installation_path = pathlib.PurePath(tmpdir.mkdir("test_install_arduino_cli"))
-    output_archive_path = arduino_cli_installation_path.joinpath("foo_archive.tar.gz")
-
-    # Create an archive file
-    with tarfile.open(name=output_archive_path, mode="w:gz") as tar:
-        tar.add(name=source_file_path, arcname=source_file_path.name)
 
     compile_sketches = get_compilesketches_object(cli_version=cli_version)
     compile_sketches.arduino_cli_installation_path = arduino_cli_installation_path
     compile_sketches.arduino_cli_user_directory_path = arduino_cli_user_directory_path
 
-    # Patch urllib.request.urlopen so that the generated archive file is opened instead of the Arduino CLI download
-    mocker.patch("urllib.request.urlopen",
-                 return_value=urllib.request.urlopen(url="file:///" + str(output_archive_path)))
+    mocker.patch("compilesketches.install_from_download", autospec=True)
 
     compile_sketches.install_arduino_cli()
 
-    urllib.request.urlopen.assert_called_once_with(url="https://downloads.arduino.cc/arduino-cli/arduino-cli_"
-                                                       + cli_version + "_Linux_64bit.tar.gz")
-
-    # Verify that the installation matches the source file
-    assert filecmp.cmp(f1=source_file_path, f2=arduino_cli_installation_path.joinpath(source_file_path.name)) is True
+    compilesketches.install_from_download.assert_called_once_with(
+        url="https://downloads.arduino.cc/arduino-cli/arduino-cli_" + cli_version + "_Linux_64bit.tar.gz",
+        source_path="arduino-cli",
+        destination_parent_path=arduino_cli_installation_path)
 
     assert os.environ["ARDUINO_DIRECTORIES_USER"] == str(arduino_cli_user_directory_path)
 
@@ -303,6 +323,35 @@ def test_install_platforms(mocker, fqbn_arg, expected_platform, expected_additio
         platform_list=[expected_platform],
         additional_url_list=expected_additional_url_list
     )
+
+
+@pytest.mark.parametrize(
+    "dependency_list, expected_dependency_type_list",
+    [([None], []),
+     ([{compilesketches.CompileSketches.dependency_source_url_key: "https://example.com/foo/bar.git"}], ["repository"]),
+     (
+         [{compilesketches.CompileSketches.dependency_source_url_key: "https://example.com/foo/bar.git/"}],
+         ["repository"]),
+     ([{compilesketches.CompileSketches.dependency_source_url_key: "git://example.com/foo/bar"}], ["repository"]),
+     ([{compilesketches.CompileSketches.dependency_source_url_key: "https://example.com/foo/bar"}], ["download"]),
+     ([{compilesketches.CompileSketches.dependency_source_path_key: "foo/bar"}], ["path"]),
+     ([{compilesketches.CompileSketches.dependency_name_key: "FooBar"}], ["manager"]),
+     ([{compilesketches.CompileSketches.dependency_source_url_key: "git://example.com/foo/bar"},
+       {compilesketches.CompileSketches.dependency_source_url_key: "https://example.com/foo/bar"},
+       {compilesketches.CompileSketches.dependency_source_path_key: "foo/bar"},
+       {compilesketches.CompileSketches.dependency_name_key: "FooBar"}],
+      ["repository", "download", "path", "manager"]),
+     ([{compilesketches.CompileSketches.dependency_source_url_key: "git://example.com/foo/bar"}], ["repository"]),
+     ]
+)
+def test_sort_dependency_list(monkeypatch, dependency_list, expected_dependency_type_list):
+    monkeypatch.setenv("GITHUB_WORKSPACE", "/foo/GitHubWorkspace")
+
+    compile_sketches = get_compilesketches_object()
+
+    for dependency, expected_dependency_type in zip(dependency_list, expected_dependency_type_list):
+        assert dependency in getattr(compile_sketches.sort_dependency_list(dependency_list=[dependency]),
+                                     expected_dependency_type)
 
 
 @pytest.mark.parametrize("additional_url_list",
@@ -427,64 +476,232 @@ def test_run_command(capsys, mocker, enable_output, exit_on_failure, returncode,
     subprocess.run.assert_called_once_with(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
 
-@pytest.mark.parametrize("libraries", ['"foo" "bar"', ""])
-def test_install_libraries(monkeypatch, mocker, libraries):
-    monkeypatch.setenv("GITHUB_WORKSPACE", "/foo/bar")
+@pytest.mark.parametrize(
+    "dependency, expected_name",
+    [({compilesketches.CompileSketches.dependency_name_key: "Foo",
+       compilesketches.CompileSketches.dependency_version_key: "1.2.3"}, "Foo@1.2.3"),
+     ({compilesketches.CompileSketches.dependency_name_key: "Foo",
+       compilesketches.CompileSketches.dependency_version_key: "latest"}, "Foo"),
+     ({compilesketches.CompileSketches.dependency_name_key: "Foo@1.2.3"}, "Foo@1.2.3"),
+     ({compilesketches.CompileSketches.dependency_name_key: "Foo"}, "Foo")])
+def test_get_manager_dependency_name(dependency, expected_name):
+    compile_sketches = get_compilesketches_object()
+    assert compile_sketches.get_manager_dependency_name(dependency=dependency) == expected_name
+
+
+@pytest.mark.parametrize(
+    "dependency, expected_ref",
+    [({compilesketches.CompileSketches.dependency_version_key: "1.2.3"}, "1.2.3"),
+     ({}, None)]
+)
+def test_get_repository_dependency_ref(dependency, expected_ref):
+    compile_sketches = get_compilesketches_object()
+    assert compile_sketches.get_repository_dependency_ref(dependency=dependency) == expected_ref
+
+
+@pytest.mark.parametrize(
+    "libraries, expected_manager, expected_path, expected_repository, expected_download",
+    [("", [], [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.PurePath("/foo/GitHubWorkspace")}],
+      [], []),
+     ("foo bar", [{compilesketches.CompileSketches.dependency_name_key: "foo"},
+                  {compilesketches.CompileSketches.dependency_name_key: "bar"}],
+      [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.PurePath("/foo/GitHubWorkspace")}], [], []),
+     ("\"foo\" \"bar\"", [{compilesketches.CompileSketches.dependency_name_key: "foo"},
+                          {compilesketches.CompileSketches.dependency_name_key: "bar"}],
+      [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.PurePath("/foo/GitHubWorkspace")}], [], []),
+     ("-", [], [], [], []),
+     ("- " + compilesketches.CompileSketches.dependency_name_key + ": foo",
+      [{compilesketches.CompileSketches.dependency_name_key: "foo"}], [], [], []),
+     ("- " + compilesketches.CompileSketches.dependency_source_path_key + ": /foo/bar", [],
+      [{compilesketches.CompileSketches.dependency_source_path_key: "/foo/bar"}], [], []),
+     ("- " + compilesketches.CompileSketches.dependency_source_url_key + ": https://example.com/foo.git", [], [],
+      [{"source-url": "https://example.com/foo.git"}], []),
+     ("- " + compilesketches.CompileSketches.dependency_source_url_key + ": https://example.com/foo.zip", [], [], [],
+      [{"source-url": "https://example.com/foo.zip"}])]
+)
+def test_install_libraries(monkeypatch, mocker, libraries, expected_manager, expected_path, expected_repository,
+                           expected_download):
+    libraries_path = pathlib.Path("/foo/LibrariesPath")
+
+    monkeypatch.setenv("GITHUB_WORKSPACE", "/foo/GitHubWorkspace")
 
     compile_sketches = get_compilesketches_object(libraries=libraries)
+    compile_sketches.libraries_path = libraries_path
 
     mocker.patch.object(pathlib.Path, "mkdir", autospec=True)
     mocker.patch("compilesketches.CompileSketches.install_libraries_from_library_manager", autospec=True)
     mocker.patch("compilesketches.CompileSketches.install_libraries_from_path", autospec=True)
+    mocker.patch("compilesketches.CompileSketches.install_libraries_from_repository", autospec=True)
+    mocker.patch("compilesketches.CompileSketches.install_libraries_from_download", autospec=True)
 
     compile_sketches.install_libraries()
 
     # noinspection PyUnresolvedReferences
-    pathlib.Path.mkdir.assert_called()
+    pathlib.Path.mkdir.assert_called_with(libraries_path, parents=True, exist_ok=True)
 
-    if len(compile_sketches.libraries) > 0:
+    if len(expected_manager) > 0:
         compile_sketches.install_libraries_from_library_manager.assert_called_once_with(
             compile_sketches,
-            library_name_list=compilesketches.parse_list_input(compile_sketches.libraries)
-        )
+            library_list=expected_manager)
     else:
         compile_sketches.install_libraries_from_library_manager.assert_not_called()
 
-    compile_sketches.install_libraries_from_path.assert_called_once_with(
-        compile_sketches,
-        library_path_list=[pathlib.Path(os.environ["GITHUB_WORKSPACE"])]
-    )
+    if len(expected_path) > 0:
+        compile_sketches.install_libraries_from_path.assert_called_once_with(
+            compile_sketches,
+            library_list=expected_path)
+    else:
+        compile_sketches.install_libraries_from_path.assert_not_called()
+
+    if len(expected_repository) > 0:
+        compile_sketches.install_libraries_from_repository.assert_called_once_with(
+            compile_sketches,
+            library_list=expected_repository)
+    else:
+        compile_sketches.install_libraries_from_repository.assert_not_called()
+
+    if len(expected_download) > 0:
+        compile_sketches.install_libraries_from_download.assert_called_once_with(
+            compile_sketches,
+            library_list=expected_download)
+    else:
+        compile_sketches.install_libraries_from_download.assert_not_called()
 
 
 def test_install_libraries_from_library_manager(mocker):
     run_command_output_level = unittest.mock.sentinel.run_command_output_level
-    library_name_list = [unittest.mock.sentinel.library_name1, unittest.mock.sentinel.library_name2]
-
     compile_sketches = get_compilesketches_object()
+
+    library_list = [{compile_sketches.dependency_name_key: "foo"}, {compile_sketches.dependency_name_key: "bar"}]
 
     mocker.patch("compilesketches.CompileSketches.get_run_command_output_level", autospec=True,
                  return_value=run_command_output_level)
     mocker.patch("compilesketches.CompileSketches.run_arduino_cli_command", autospec=True)
 
-    compile_sketches.install_libraries_from_library_manager(library_name_list=library_name_list)
+    compile_sketches.install_libraries_from_library_manager(library_list=library_list)
 
-    lib_install_command = ["lib", "install"] + library_name_list
+    lib_install_command = ["lib", "install"] + [library["name"] for library in library_list]
     compile_sketches.run_arduino_cli_command.assert_called_once_with(compile_sketches,
                                                                      command=lib_install_command,
                                                                      enable_output=run_command_output_level)
 
 
-def test_install_libraries_from_path(mocker):
-    library_path_list = [pathlib.Path("FooLibrary"), pathlib.Path("bar/Barlibrary")]
+@pytest.mark.parametrize("path_exists, library_list, expected_destination_name_list",
+                         [(False, [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.Path(
+                             "/foo/GitHubWorkspace/Nonexistent")}], []),
+                          (True, [{compilesketches.CompileSketches.dependency_destination_name_key: "FooName",
+                                   compilesketches.CompileSketches.dependency_source_path_key: pathlib.Path(
+                                       "/foo/GitHubWorkspace/FooLibrary")}], ["FooName"]),
+                          (True, [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.Path(
+                              "/foo/GitHubWorkspace")}], ["FooRepoName"]),
+                          (True,
+                           [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.Path(
+                               "/foo/GitHubWorkspace/Bar")}], ["Bar"])])
+def test_install_libraries_from_path(capsys, monkeypatch, mocker, path_exists, library_list,
+                                     expected_destination_name_list):
+    libraries_path = pathlib.Path("/foo/LibrariesPath")
+    symlink_source_path = pathlib.Path("/foo/SymlinkSourcePath")
+
+    monkeypatch.setenv("GITHUB_WORKSPACE", "/foo/GitHubWorkspace")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "foo/FooRepoName")
+
+    compile_sketches = get_compilesketches_object()
+    compile_sketches.libraries_path = libraries_path
+
+    mocker.patch.object(pathlib.Path, "exists", autospec=True, return_value=path_exists)
+    mocker.patch.object(pathlib.Path, "joinpath", autospec=True, return_value=symlink_source_path)
+    mocker.patch.object(pathlib.Path, "symlink_to", autospec=True)
+
+    if not path_exists:
+        with pytest.raises(expected_exception=SystemExit, match="1"):
+            compile_sketches.install_libraries_from_path(library_list=library_list)
+        assert capsys.readouterr().out.strip() == (
+            "::error::Library source path: "
+            + str(compilesketches.path_relative_to_workspace(library_list[0]["source-path"]))
+            + " doesn't exist"
+        )
+
+    else:
+        compile_sketches.install_libraries_from_path(library_list=library_list)
+
+        joinpath_calls = []
+        symlink_to_calls = []
+        for library, expected_destination_name in zip(library_list, expected_destination_name_list):
+            joinpath_calls.append(unittest.mock.call(libraries_path, expected_destination_name))
+            symlink_to_calls.append(
+                unittest.mock.call(symlink_source_path,
+                                   target=library[compilesketches.CompileSketches.dependency_source_path_key],
+                                   target_is_directory=True))
+
+        # noinspection PyUnresolvedReferences
+        pathlib.Path.joinpath.assert_has_calls(calls=joinpath_calls)
+        pathlib.Path.symlink_to.assert_has_calls(calls=symlink_to_calls)
+
+
+def test_install_libraries_from_repository(mocker):
+    git_ref = unittest.mock.sentinel.git_ref
+    library_list = [
+        {compilesketches.CompileSketches.dependency_source_url_key: unittest.mock.sentinel.source_url,
+         compilesketches.CompileSketches.dependency_source_path_key: unittest.mock.sentinel.source_path,
+         compilesketches.CompileSketches.dependency_destination_name_key: unittest.mock.sentinel.destination_name},
+        {compilesketches.CompileSketches.dependency_source_url_key: unittest.mock.sentinel.source_url2}
+    ]
+    expected_source_path_list = [unittest.mock.sentinel.source_path, "."]
+    expected_destination_name_list = [unittest.mock.sentinel.destination_name, None]
 
     compile_sketches = get_compilesketches_object()
 
-    mocker.patch.object(pathlib.Path, "symlink_to", autospec=True)
+    mocker.patch("compilesketches.CompileSketches.get_repository_dependency_ref", autospec=True, return_value=git_ref)
+    mocker.patch("compilesketches.CompileSketches.install_from_repository", autospec=True, return_value=git_ref)
 
-    compile_sketches.install_libraries_from_path(library_path_list=library_path_list)
+    compile_sketches.install_libraries_from_repository(library_list=library_list)
 
-    # noinspection PyUnresolvedReferences
-    pathlib.Path.symlink_to.assert_called()
+    get_repository_dependency_ref_calls = []
+    install_from_repository_calls = []
+    for library, expected_source_path, expected_destination_name in zip(library_list,
+                                                                        expected_source_path_list,
+                                                                        expected_destination_name_list):
+        get_repository_dependency_ref_calls.append(unittest.mock.call(compile_sketches, dependency=library))
+        install_from_repository_calls.append(
+            unittest.mock.call(compile_sketches,
+                               url=library[compilesketches.CompileSketches.dependency_source_url_key],
+                               git_ref=git_ref,
+                               source_path=expected_source_path,
+                               destination_parent_path=compile_sketches.libraries_path,
+                               destination_name=expected_destination_name)
+        )
+
+    compile_sketches.get_repository_dependency_ref.assert_has_calls(calls=get_repository_dependency_ref_calls)
+    compile_sketches.install_from_repository.assert_has_calls(calls=install_from_repository_calls)
+
+
+def test_install_libraries_from_download(mocker):
+    library_list = [
+        {compilesketches.CompileSketches.dependency_source_url_key: unittest.mock.sentinel.source_url1,
+         compilesketches.CompileSketches.dependency_source_path_key: unittest.mock.sentinel.source_path,
+         compilesketches.CompileSketches.dependency_destination_name_key: unittest.mock.sentinel.destination_name},
+        {compilesketches.CompileSketches.dependency_source_url_key: unittest.mock.sentinel.source_url2}
+    ]
+
+    expected_source_path_list = [unittest.mock.sentinel.source_path, "."]
+    expected_destination_name_list = [unittest.mock.sentinel.destination_name, None]
+
+    compile_sketches = get_compilesketches_object()
+
+    mocker.patch("compilesketches.install_from_download", autospec=True)
+
+    compile_sketches.install_libraries_from_download(library_list=library_list)
+
+    install_libraries_from_download_calls = []
+    for library, expected_source_path, expected_destination_name in zip(library_list, expected_source_path_list,
+                                                                        expected_destination_name_list):
+        install_libraries_from_download_calls.append(
+            unittest.mock.call(url=library[compilesketches.CompileSketches.dependency_source_url_key],
+                               source_path=expected_source_path,
+                               destination_parent_path=compilesketches.CompileSketches.libraries_path,
+                               destination_name=expected_destination_name)
+        )
+    compilesketches.install_from_download.assert_has_calls(calls=install_libraries_from_download_calls)
 
 
 def test_find_sketches(capsys, monkeypatch):
@@ -494,8 +711,7 @@ def test_find_sketches(capsys, monkeypatch):
 
     # Test sketch path doesn't exist
     compile_sketches = get_compilesketches_object(
-        sketch_paths="\'\"" + os.path.dirname(os.path.realpath(__file__))
-                     + "/testdata/HasSketches\" \"" + nonexistent_sketch_path + "\"\'"
+        sketch_paths="\'\"" + nonexistent_sketch_path + "\"\'"
     )
     with pytest.raises(expected_exception=SystemExit, match="1"):
         compile_sketches.find_sketches()
@@ -504,76 +720,64 @@ def test_find_sketches(capsys, monkeypatch):
 
     # Test sketch path is a sketch file
     compile_sketches = get_compilesketches_object(
-        sketch_paths="\"" + os.path.dirname(os.path.realpath(__file__)) + "/testdata/HasSketches/Sketch1/Sketch1.ino\""
+        sketch_paths="\"" + str(test_data_path.joinpath("HasSketches", "Sketch1", "Sketch1.ino")) + "\""
     )
     assert compile_sketches.find_sketches() == [
-        pathlib.Path(os.path.dirname(os.path.realpath(__file__)), "testdata", "HasSketches", "Sketch1")
+        test_data_path.joinpath("HasSketches", "Sketch1")
     ]
 
     # Test sketch path is a non-sketch file
-    non_sketch_path = os.path.dirname(os.path.realpath(__file__)) + "/testdata/NoSketches/NotSketch/NotSketch.foo"
+    non_sketch_path = str(test_data_path.joinpath("NoSketches", "NotSketch", "NotSketch.foo"))
     compile_sketches = get_compilesketches_object(sketch_paths="\"" + non_sketch_path + "\"")
     with pytest.raises(expected_exception=SystemExit, match="1"):
         compile_sketches.find_sketches()
-    assert capsys.readouterr().out.strip() == ("::error::Sketch path: " + str(pathlib.PurePath(non_sketch_path))
-                                               + " is not a sketch")
+    assert capsys.readouterr().out.strip() == ("::error::Sketch path: " + non_sketch_path + " is not a sketch")
 
     # Test sketch path is a sketch folder
     compile_sketches = get_compilesketches_object(
-        sketch_paths="\"" + os.path.dirname(os.path.realpath(__file__)) + "/testdata/HasSketches/Sketch1\""
+        sketch_paths="\"" + str(test_data_path.joinpath("HasSketches", "Sketch1")) + "\""
     )
     assert compile_sketches.find_sketches() == [
-        pathlib.Path(os.path.dirname(os.path.realpath(__file__)), "testdata", "HasSketches", "Sketch1")
+        test_data_path.joinpath("HasSketches", "Sketch1")
     ]
 
     # Test sketch path does contain sketches
     compile_sketches = get_compilesketches_object(
-        sketch_paths="\"" + os.path.dirname(os.path.realpath(__file__)) + "/testdata/HasSketches\"")
+        sketch_paths="\"" + str(test_data_path.joinpath("HasSketches")) + "\"")
     assert compile_sketches.find_sketches() == [
-        pathlib.Path(os.path.dirname(os.path.realpath(__file__)), "testdata", "HasSketches", "Sketch1"),
-        pathlib.Path(os.path.dirname(os.path.realpath(__file__)), "testdata", "HasSketches", "Sketch2")
+        test_data_path.joinpath("HasSketches", "Sketch1"),
+        test_data_path.joinpath("HasSketches", "Sketch2")
     ]
 
     # Test sketch path doesn't contain any sketches
-    no_sketches_path = os.path.dirname(os.path.realpath(__file__)) + "/testdata/NoSketches"
+    no_sketches_path = str(test_data_path.joinpath("NoSketches"))
     compile_sketches = get_compilesketches_object(
         sketch_paths="\"" + no_sketches_path + "\"")
     with pytest.raises(expected_exception=SystemExit, match="1"):
         compile_sketches.find_sketches()
     assert capsys.readouterr().out.strip() == ("::error::No sketches were found in "
-                                               + str(pathlib.PurePath(no_sketches_path)))
+                                               + no_sketches_path)
 
 
 def test_path_is_sketch():
     # Sketch file
-    assert compilesketches.path_is_sketch(
-        path=pathlib.Path(os.path.dirname(os.path.realpath(__file__)),
-                          "testdata",
-                          "HasSketches",
-                          "Sketch1",
-                          "Sketch1.ino")
-    ) is True
+    assert compilesketches.path_is_sketch(path=test_data_path.joinpath("HasSketches", "Sketch1", "Sketch1.ino")) is True
 
     # Not a sketch file
     assert compilesketches.path_is_sketch(
-        path=pathlib.Path(os.path.dirname(os.path.realpath(__file__)),
-                          "testdata",
-                          "NoSketches",
-                          "NotSketch",
-                          "NotSketch.foo")
-    ) is False
+        path=test_data_path.joinpath("NoSketches", "NotSketch", "NotSketch.foo")) is False
 
     # Sketch folder
     assert compilesketches.path_is_sketch(
-        path=pathlib.Path(os.path.dirname(os.path.realpath(__file__)), "testdata", "HasSketches", "Sketch1")) is True
+        path=test_data_path.joinpath("HasSketches", "Sketch1")) is True
 
     # No files in path
     assert compilesketches.path_is_sketch(
-        path=pathlib.Path(os.path.dirname(os.path.realpath(__file__)), "testdata", "HasSketches")) is False
+        path=test_data_path.joinpath("HasSketches")) is False
 
     # Not a sketch folder
     assert compilesketches.path_is_sketch(
-        path=pathlib.Path(os.path.dirname(os.path.realpath(__file__)), "testdata", "NoSketches", "NotSketch")) is False
+        path=test_data_path.joinpath("NoSketches", "NotSketch")) is False
 
 
 @pytest.mark.parametrize("returncode, expected_success", [(1, False),
@@ -857,7 +1061,7 @@ def test_checkout_pull_request_base_ref(monkeypatch, mocker):
 
     monkeypatch.setenv("GITHUB_REPOSITORY", "fooRepository/fooOwner")
     monkeypatch.setenv("GITHUB_WORKSPACE", "/fooWorkspace")
-    monkeypatch.setenv("GITHUB_EVENT_PATH", os.path.dirname(os.path.realpath(__file__)) + "/testdata/githubevent.json")
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(test_data_path.joinpath("githubevent.json")))
 
     compile_sketches = get_compilesketches_object()
 
@@ -1064,6 +1268,7 @@ def test_verbose_print(capsys, verbose):
 @pytest.mark.parametrize("list_argument, expected_list",
                          [("", []),
                           ("foobar", ["foobar"]),
+                          ("foo bar", ["foo", "bar"]),
                           ("\"foo bar\"", ["foo bar"]),
                           ("\'foo bar\'", ["foo bar"]),
                           ("\'\"foo bar\" \"baz\"\'", ["foo bar", "baz"]),
@@ -1115,3 +1320,138 @@ def test_absolute_path(monkeypatch, path, expected_absolute_path):
 def test_list_to_string():
     path = pathlib.PurePath("/foo/bar")
     assert compilesketches.list_to_string([42, path]) == "42 " + str(path)
+
+
+@pytest.mark.parametrize("arcname, source_path, destination_name, expected_destination_name, expected_success",
+                         [("FooArcname", ".", None, "FooArcname", True),
+                          ("FooArcname", "./Sketch1", "FooDestinationName", "FooDestinationName", True),
+                          ("FooArcname", "Sketch1", None, "Sketch1", True),
+                          (".", "Sketch1", None, "Sketch1", True),
+                          ("FooArcname", "Nonexistent", None, "", False), ])
+def test_install_from_download(capsys,
+                               tmp_path,
+                               arcname,
+                               source_path,
+                               destination_name,
+                               expected_destination_name,
+                               expected_success):
+    url_source_path = test_data_path.joinpath("HasSketches")
+
+    # Create temporary folder
+    url_path = tmp_path.joinpath("url_path")
+    url_path.mkdir()
+    url_archive_path = url_path.joinpath("foo_archive.tar.gz")
+    url = url_archive_path.as_uri()
+
+    # Create an archive file
+    with tarfile.open(name=url_archive_path, mode="w:gz", format=tarfile.GNU_FORMAT) as tar:
+        tar.add(name=url_source_path, arcname=arcname)
+
+    destination_parent_path = tmp_path.joinpath("destination_parent_path")
+
+    if expected_success:
+        compilesketches.install_from_download(url=url,
+                                              source_path=source_path,
+                                              destination_parent_path=destination_parent_path,
+                                              destination_name=destination_name)
+
+        # Verify that the installation matches the source
+        assert directories_are_same(left_directory=url_source_path.joinpath(source_path),
+                                    right_directory=destination_parent_path.joinpath(expected_destination_name))
+    else:
+        with pytest.raises(expected_exception=SystemExit, match="1"):
+            compilesketches.install_from_download(url=url,
+                                                  source_path=source_path,
+                                                  destination_parent_path=destination_parent_path,
+                                                  destination_name=destination_name)
+        assert capsys.readouterr().out.strip() == ("::error::Archive source path: " + source_path + " not found")
+
+
+@pytest.mark.parametrize("archive_extract_path, expected_archive_root_path",
+                         [(test_data_path.joinpath("test_get_archive_root_folder_name", "has-root"),
+                           test_data_path.joinpath("test_get_archive_root_folder_name", "has-root", "root")),
+                          (test_data_path.joinpath("test_get_archive_root_folder_name", "has-file"),
+                           test_data_path.joinpath("test_get_archive_root_folder_name", "has-file")),
+                          (test_data_path.joinpath("test_get_archive_root_folder_name", "has-folders"),
+                           test_data_path.joinpath("test_get_archive_root_folder_name", "has-folders"))])
+def test_get_archive_root_path(archive_extract_path, expected_archive_root_path):
+    assert compilesketches.get_archive_root_path(archive_extract_path) == expected_archive_root_path
+
+
+@pytest.mark.parametrize("url, source_path, destination_name, expected_destination_name",
+                         [("https://example.com/foo/FooRepositoryName.git", ".", None, "FooRepositoryName"),
+                          ("https://example.com/foo/FooRepositoryName.git/", "./examples", "FooDestinationName",
+                           "FooDestinationName"),
+                          ("git://example.com/foo/FooRepositoryName", "examples", None, "examples")])
+def test_install_from_repository(mocker, url, source_path, destination_name, expected_destination_name):
+    git_ref = unittest.mock.sentinel.git_ref
+    destination_parent_path = pathlib.PurePath("/foo/DestinationParentPath")
+    clone_path = pathlib.PurePath("/foo/ClonePath")
+
+    # Stub
+    class TemporaryDirectory:
+        def __init__(self, temporary_directory):
+            self.temporary_directory = temporary_directory
+
+        def __enter__(self):
+            return self.temporary_directory
+
+        def __exit__(self, *exc):
+            pass
+
+    mocker.patch("tempfile.TemporaryDirectory", autospec=True,
+                 return_value=TemporaryDirectory(temporary_directory=clone_path))
+    mocker.patch("compilesketches.CompileSketches.clone_repository", autospec=True)
+    mocker.patch("shutil.move", autospec=True)
+
+    compile_sketches = get_compilesketches_object()
+
+    compile_sketches.install_from_repository(url=url,
+                                             git_ref=git_ref,
+                                             source_path=source_path,
+                                             destination_parent_path=destination_parent_path,
+                                             destination_name=destination_name)
+
+    if source_path.rstrip("/") == ".":
+        compile_sketches.clone_repository.assert_called_once_with(compile_sketches,
+                                                                  url=url,
+                                                                  git_ref=git_ref,
+                                                                  destination_path=destination_parent_path.joinpath(
+                                                                      expected_destination_name))
+    else:
+        tempfile.TemporaryDirectory.assert_called_once()
+        compile_sketches.clone_repository.assert_called_once_with(compile_sketches,
+                                                                  url=url,
+                                                                  git_ref=git_ref,
+                                                                  destination_path=clone_path)
+        # noinspection PyUnresolvedReferences
+        shutil.move.assert_called_once_with(src=str(clone_path.joinpath(source_path)),
+                                            dst=str(destination_parent_path.joinpath(expected_destination_name)))
+
+
+@pytest.mark.parametrize("git_ref", ["v1.0.2", "latest", None])
+def test_clone_repository(tmp_path, git_ref):
+    url = "https://github.com/arduino-libraries/LuckyShield"
+    destination_path = tmp_path.joinpath("destination_path")
+
+    compile_sketches = get_compilesketches_object()
+
+    compile_sketches.clone_repository(url=url, git_ref=git_ref, destination_path=destination_path)
+
+    # Make another clone of the repository to compare
+    test_clone_path = tmp_path.joinpath("test_clone_path")
+    test_clone_path.mkdir()
+    if git_ref is None:
+        git.Repo.clone_from(url=url, to_path=test_clone_path, depth=1)
+    else:
+        cloned_repository = git.Repo.clone_from(url=url, to_path=test_clone_path)
+
+        if git_ref == "latest":
+            # The repo is archived, so the latest tag will always be the same
+            git_ref = "v1.0.3"
+
+        cloned_repository.git.checkout(git_ref)
+
+    # Verify that the installation matches the test clone
+    assert directories_are_same(left_directory=destination_path,
+                                right_directory=test_clone_path)

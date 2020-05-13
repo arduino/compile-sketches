@@ -5,15 +5,18 @@ import os
 import pathlib
 import re
 import shlex
+import shutil
 import subprocess
 import sys
-import tarfile
 import tempfile
 import urllib
 import urllib.request
 
 import git
+import gitdb.exc
 import github
+import yaml
+import yaml.parser
 
 import reportsizetrends
 
@@ -83,6 +86,14 @@ class CompileSketches:
     report_ram_key = "ram"
     report_previous_ram_key = "previous_ram"
     report_ram_delta_key = "ram_delta"
+
+    dependency_name_key = "name"
+    dependency_version_key = "version"
+    dependency_source_path_key = "source-path"
+    dependency_source_url_key = "source-url"
+    dependency_destination_name_key = "destination-name"
+
+    latest_release_indicator = "latest"
 
     def __init__(self, cli_version, fqbn_arg, libraries, sketch_paths, verbose, github_token, report_sketch,
                  enable_size_deltas_report, sketches_report_path, enable_size_trends_report, google_key_file,
@@ -183,26 +194,12 @@ class CompileSketches:
         arduino_cli_archive_download_url_prefix = "https://downloads.arduino.cc/arduino-cli/"
         arduino_cli_archive_file_name = "arduino-cli_" + self.cli_version + "_Linux_64bit.tar.gz"
 
-        # Create temporary folder
-        with tempfile.TemporaryDirectory(prefix="arduino-cli-" + self.cli_version + "-") as download_folder:
-            arduino_cli_archive_file_path = pathlib.PurePath(download_folder, arduino_cli_archive_file_name)
-
-            # https://stackoverflow.com/a/38358646
-            with open(file=str(arduino_cli_archive_file_path), mode="wb") as out_file:
-                with contextlib.closing(thing=urllib.request.urlopen(
-                    url=arduino_cli_archive_download_url_prefix
-                        + arduino_cli_archive_file_name)
-                ) as file_pointer:
-                    block_size = 1024 * 8
-                    while True:
-                        block = file_pointer.read(block_size)
-                        if not block:
-                            break
-                        out_file.write(block)
-
-            # Extract arduino-cli archive
-            with tarfile.open(name=arduino_cli_archive_file_path) as tar:
-                tar.extractall(path=self.arduino_cli_installation_path)
+        install_from_download(
+            url=arduino_cli_archive_download_url_prefix + arduino_cli_archive_file_name,
+            # The Arduino CLI has no root folder, so just install the arduino-cli executable from the archive root
+            source_path="arduino-cli",
+            destination_parent_path=self.arduino_cli_installation_path
+        )
 
         # Configure the location of the Arduino CLI user directory
         os.environ["ARDUINO_DIRECTORIES_USER"] = str(self.arduino_cli_user_directory_path)
@@ -225,7 +222,50 @@ class CompileSketches:
         self.install_platforms_from_board_manager(platform_list=[fqbn_platform_name],
                                                   additional_url_list=additional_url_list)
 
+    def sort_dependency_list(self, dependency_list):
+        """Sort a list of sketch dependencies by source type
+
+        Keyword arguments:
+        dependency_list -- a list of dictionaries defining dependencies
+        """
+        sorted_dependencies = self.Dependencies()
+        for dependency in dependency_list:
+            if dependency is not None:
+                if self.dependency_source_url_key in dependency:
+                    # Repositories are identified by the URL starting with git:// or ending in .git
+                    if (
+                        dependency[self.dependency_source_url_key].rstrip("/").endswith(".git")
+                        or dependency[self.dependency_source_url_key].startswith("git://")
+                    ):
+                        sorted_dependencies.repository.append(dependency)
+                    else:
+                        # All other URLs are assumed to be downloads
+                        sorted_dependencies.download.append(dependency)
+                elif self.dependency_source_path_key in dependency:
+                    # Libraries with source-path and no source-url are assumed to be paths
+                    sorted_dependencies.path.append(dependency)
+                else:
+                    # All others are Library/Board Manager names
+                    sorted_dependencies.manager.append(dependency)
+
+        return sorted_dependencies
+
+    class Dependencies:
+        """Container for sorted sketch dependencies"""
+
+        def __init__(self):
+            self.manager = []
+            self.path = []
+            self.repository = []
+            self.download = []
+
     def install_platforms_from_board_manager(self, platform_list, additional_url_list):
+        """Install platform dependencies from the Arduino Board Manager
+
+        Keyword arguments:
+        platform_list -- a list of platform names
+        additional_url_list -- a list of additional Board Manager URLs for 3rd party platforms
+        """
         core_update_index_command = ["core", "update-index"]
 
         core_install_command = ["core", "install"]
@@ -244,7 +284,22 @@ class CompileSketches:
         # Install the platforms
         self.run_arduino_cli_command(command=core_install_command, enable_output=self.get_run_command_output_level())
 
+    def get_manager_dependency_name(self, dependency):
+        """Return the appropriate name value for a repository dependency
+
+        Keyword arguments:
+        dependency -- dictionary defining the Library/Board Manger dependency
+        """
+        name = dependency[self.dependency_name_key]
+        if self.dependency_version_key in dependency:
+            # If "latest" special version name is used, just don't add a version to cause LM to use the latest release
+            if dependency[self.dependency_version_key] != self.latest_release_indicator:
+                name = name + "@" + dependency[self.dependency_version_key]
+
+        return name
+
     def get_run_command_output_level(self):
+        """Determine and return the appropriate output setting for the run_command function."""
         if self.verbose:
             enable_stdout = self.RunCommandOutput.ALWAYS
         else:
@@ -305,41 +360,207 @@ class CompileSketches:
 
         return command_data
 
+    def get_repository_dependency_ref(self, dependency):
+        """Return the appropriate git ref value for a repository dependency
+
+        Keyword arguments:
+        dependency -- dictionary defining the repository dependency
+        """
+        if self.dependency_version_key in dependency:
+            git_ref = dependency[self.dependency_version_key]
+        else:
+            git_ref = None
+
+        return git_ref
+
+    def install_from_repository(self, url, git_ref, source_path, destination_parent_path, destination_name=None):
+        """Install by cloning a repository
+
+        Keyword arguments:
+        url -- URL to download the archive from
+        git_ref -- the Git ref (e.g., branch, tag, commit) to checkout after cloning
+        source_path -- path relative to the root of the repository to install from
+        destination_parent_path -- path under which to install
+        destination_name -- folder name to use for the installation. Set to None to use the repository name.
+                            (default None)
+        """
+        if destination_name is None:
+            if source_path.rstrip("/") == ".":
+                # Use the repository name
+                destination_name = url.rstrip("/").rsplit(sep="/", maxsplit=1)[1].rsplit(sep=".", maxsplit=1)[0]
+            else:
+                # Use the source path folder name
+                destination_name = pathlib.PurePath(source_path).name
+
+        if source_path.rstrip("/") == ".":
+            # Clone directly to the target path
+            self.clone_repository(url=url, git_ref=git_ref,
+                                  destination_path=pathlib.PurePath(destination_parent_path, destination_name))
+        else:
+            # Clone to a temporary folder
+            with tempfile.TemporaryDirectory() as clone_folder:
+                self.clone_repository(url=url, git_ref=git_ref, destination_path=clone_folder)
+                # Install by moving the source folder
+                shutil.move(src=str(pathlib.PurePath(clone_folder, source_path)),
+                            dst=str(pathlib.PurePath(destination_parent_path, destination_name)))
+
+    def clone_repository(self, url, git_ref, destination_path):
+        """Clone a Git repository to a specified location and check out the specified ref
+
+        Keyword arguments:
+        git_ref -- Git ref to check out. Set to None to leave repository checked out at the tip of the default branch.
+        destination_path -- destination for the cloned repository. This is the full path of the repository, not the
+                            parent path.
+        """
+        if git_ref is None:
+            # Shallow clone is only possible if using the tip of the branch
+            clone_arguments = {"depth": 1}
+        else:
+            clone_arguments = {}
+        cloned_repository = git.Repo.clone_from(url=url, to_path=destination_path, **clone_arguments)
+        if git_ref is not None:
+            if git_ref == self.latest_release_indicator:
+                # "latest" may be used in place of a ref to cause a checkout of the latest tag
+                try:
+                    # Check if there is a real ref named "latest", in which case it will be used
+                    cloned_repository.rev_parse(git_ref)
+                except gitdb.exc.BadName:
+                    # There is no real ref named "latest", so checkout latest (associated with most recent commit) tag
+                    git_ref = sorted(cloned_repository.tags, key=lambda tag: tag.commit.committed_date)[-1]
+
+            # checkout ref
+            cloned_repository.git.checkout(git_ref)
+
     def install_libraries(self):
         """Install Arduino libraries."""
         self.libraries_path.mkdir(parents=True, exist_ok=True)
 
-        libraries_list = parse_list_input(self.libraries)
-        if len(libraries_list) > 0:
-            self.install_libraries_from_library_manager(library_name_list=libraries_list)
+        libraries = yaml.load(stream="", Loader=yaml.SafeLoader)
+        try:
+            libraries = yaml.load(stream=self.libraries, Loader=yaml.SafeLoader)
+        except yaml.parser.ParserError:
+            # This exception occurs when the space separated list items are individually quoted (e.g., '"Foo" "Bar"')
+            pass
 
-        # TODO: this is in anticipation of allowing arbitrary paths to be specified by the user, rather than assuming
-        #       there is a library in the root of the repo (not the case when testing platforms and sketches)
-        # Install the repository as a library by creating a symlink in the sketchbook
-        self.install_libraries_from_path(library_path_list=[pathlib.Path(os.environ["GITHUB_WORKSPACE"])])
+        library_list = self.Dependencies()
+        if type(libraries) is list:
+            # libraries input is YAML
+            library_list = self.sort_dependency_list(libraries)
+        else:
+            # libraries input uses the old space-separated list syntax
+            library_list.manager = [{self.dependency_name_key: library_name}
+                                    for library_name in parse_list_input(self.libraries)]
 
-    def install_libraries_from_library_manager(self, library_name_list):
+            # The original behavior of the action was to assume the root of the repo is a library to be installed, so
+            # that behavior is retained when using the old input syntax
+            library_list.path = [{self.dependency_source_path_key: pathlib.Path(os.environ["GITHUB_WORKSPACE"])}]
+
+        if len(library_list.manager) > 0:
+            self.install_libraries_from_library_manager(library_list=library_list.manager)
+
+        if len(library_list.path) > 0:
+            self.install_libraries_from_path(library_list=library_list.path)
+
+        if len(library_list.repository) > 0:
+            self.install_libraries_from_repository(library_list=library_list.repository)
+
+        if len(library_list.download) > 0:
+            self.install_libraries_from_download(library_list=library_list.download)
+
+    def install_libraries_from_library_manager(self, library_list):
         """Install libraries using the Arduino Library Manager
 
         Keyword arguments:
-        library_name_list -- list of library names
+        library_list -- list of dictionaries defining the dependencies
         """
         lib_install_command = ["lib", "install"]
-        lib_install_command.extend(library_name_list)
+        lib_install_command.extend([self.get_manager_dependency_name(library) for library in library_list])
         self.run_arduino_cli_command(command=lib_install_command, enable_output=self.get_run_command_output_level())
 
-    def install_libraries_from_path(self, library_path_list):
+    def install_libraries_from_path(self, library_list):
         """Install libraries from local paths
 
         Keyword arguments:
-        library_path_list -- list of paths to install libraries from. Relative paths are assumed to be relative to the
-                             Docker container workspace (root of the repository)
+        library_list -- list of dictionaries defining the dependencies
         """
-        self.verbose_print("Installing libraries from paths:", list_to_string(library_path_list))
-        for library_path in library_path_list:
-            # Install the repository as a library by creating a symlink in the sketchbook
-            library_symlink_path = self.libraries_path.joinpath(library_path.name)
-            library_symlink_path.symlink_to(target=library_path, target_is_directory=True)
+        for library in library_list:
+            source_path = absolute_path(library[self.dependency_source_path_key])
+            self.verbose_print("Installing library from path:", path_relative_to_workspace(source_path))
+
+            if not source_path.exists():
+                print("::error::Library source path:", path_relative_to_workspace(source_path), "doesn't exist")
+                sys.exit(1)
+
+            # Determine library folder name (important because it is a factor in dependency resolution)
+            if self.dependency_destination_name_key in library:
+                # If a name was specified, use it
+                destination_name = library[self.dependency_destination_name_key]
+            elif (
+                source_path == pathlib.Path(os.environ["GITHUB_WORKSPACE"])
+            ):
+                # If source_path is the root of the workspace (i.e., repository root), name the folder according to the
+                # repository name, otherwise it will unexpectedly be "workspace"
+                destination_name = os.environ["GITHUB_REPOSITORY"].split(sep="/")[1]
+            else:
+                # Use the existing folder name
+                destination_name = source_path.name
+
+            # Install the library by creating a symlink in the sketchbook
+            library_symlink_path = self.libraries_path.joinpath(destination_name)
+            library_symlink_path.symlink_to(target=source_path, target_is_directory=True)
+
+    def install_libraries_from_repository(self, library_list):
+        """Install libraries by cloning Git repositories
+
+        Keyword arguments:
+        library_list -- list of dictionaries defining the dependencies
+        """
+        for library in library_list:
+            self.verbose_print("Installing library from repository:", library[self.dependency_source_url_key])
+
+            # Determine library folder name (important because it is a factor in dependency resolution)
+            if self.dependency_destination_name_key in library:
+                # If a folder name was specified, use it
+                destination_name = library[self.dependency_destination_name_key]
+            else:
+                # None will cause the repository name to be used by install_from_repository()
+                destination_name = None
+
+            git_ref = self.get_repository_dependency_ref(dependency=library)
+
+            if self.dependency_source_path_key in library:
+                source_path = library[self.dependency_source_path_key]
+            else:
+                source_path = "."
+
+            self.install_from_repository(url=library[self.dependency_source_url_key],
+                                         git_ref=git_ref,
+                                         source_path=source_path,
+                                         destination_parent_path=self.libraries_path,
+                                         destination_name=destination_name)
+
+    def install_libraries_from_download(self, library_list):
+        """Install libraries by downloading them
+
+        Keyword arguments:
+        library_list -- list of dictionaries defining the dependencies
+        """
+        for library in library_list:
+            self.verbose_print("Installing library from download URL:", library[self.dependency_source_url_key])
+            if self.dependency_source_path_key in library:
+                source_path = library[self.dependency_source_path_key]
+            else:
+                source_path = "."
+
+            if self.dependency_destination_name_key in library:
+                destination_name = library[self.dependency_destination_name_key]
+            else:
+                destination_name = None
+
+            install_from_download(url=library[self.dependency_source_url_key],
+                                  source_path=source_path,
+                                  destination_parent_path=self.libraries_path,
+                                  destination_name=destination_name)
 
     def find_sketches(self):
         """Return a list of all sketches under the paths specified in the sketch paths list recursively."""
@@ -782,6 +1003,83 @@ def path_is_sketch(path):
 def list_to_string(list_input):
     """Cast the list items to string and join them, then return the resulting string"""
     return " ".join([str(item) for item in list_input])
+
+
+def install_from_download(url, source_path, destination_parent_path, destination_name=None):
+    """Download an archive, extract, and install.
+
+    Keyword arguments:
+    url -- URL to download the archive from
+    source_path -- path relative to the root folder of the archive to install.
+    destination_parent_path -- path under which to install
+    destination_name -- folder name to use for the installation. Set to None to take the name from source_path.
+                        (default None)
+    """
+    destination_parent_path = pathlib.Path(destination_parent_path)
+
+    # Create temporary folder for the download
+    with tempfile.TemporaryDirectory("-compilesketches-download_folder") as download_folder:
+        download_file_path = pathlib.PurePath(download_folder, url.rsplit(sep="/", maxsplit=1)[1])
+
+        # https://stackoverflow.com/a/38358646
+        with open(file=str(download_file_path), mode="wb") as out_file:
+            with contextlib.closing(thing=urllib.request.urlopen(url=url)) as file_pointer:
+                block_size = 1024 * 8
+                while True:
+                    block = file_pointer.read(block_size)
+                    if not block:
+                        break
+                    out_file.write(block)
+
+        # Create temporary folder for the extraction
+        with tempfile.TemporaryDirectory("-compilesketches-extract_folder") as extract_folder:
+            # Extract archive
+            shutil.unpack_archive(filename=str(download_file_path), extract_dir=extract_folder)
+
+            archive_root_path = get_archive_root_path(extract_folder)
+
+            absolute_source_path = pathlib.Path(archive_root_path, source_path).resolve()
+
+            if not absolute_source_path.exists():
+                print("::error::Archive source path:", source_path, "not found")
+                sys.exit(1)
+
+            if destination_name is None:
+                destination_name = absolute_source_path.name
+
+            # Create the parent path if it doesn't already exist
+            destination_parent_path.mkdir(parents=True, exist_ok=True)
+
+            # Install by moving the source folder
+            shutil.move(src=str(absolute_source_path),
+                        dst=str(destination_parent_path.joinpath(destination_name)))
+
+
+def get_archive_root_path(archive_extract_path):
+    """Return the path of the archive's root folder.
+
+    Keyword arguments:
+    archive_extract_path -- path the archive was extracted to
+    """
+    archive_root_folder_name = archive_extract_path
+    for extract_folder_content in pathlib.Path(archive_extract_path).glob("*"):
+        if extract_folder_content.is_dir():
+            # Path is a folder
+            # Ignore the __MACOSX folder
+            if extract_folder_content.name != "__MACOSX":
+                if archive_root_folder_name == archive_extract_path:
+                    # This is the first folder found
+                    archive_root_folder_name = extract_folder_content
+                else:
+                    # Multiple folders found
+                    archive_root_folder_name = archive_extract_path
+                    break
+        else:
+            # Path is a file
+            archive_root_folder_name = archive_extract_path
+            break
+
+    return archive_root_folder_name
 
 
 # Only execute the following code if the script is run directly, not imported
