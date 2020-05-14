@@ -767,6 +767,47 @@ def test_get_repository_dependency_ref(dependency, expected_ref):
     assert compile_sketches.get_repository_dependency_ref(dependency=dependency) == expected_ref
 
 
+def test_install_platforms_from_download(mocker):
+    platform_list = [
+        {compilesketches.CompileSketches.dependency_source_url_key: unittest.mock.sentinel.source_url1,
+         compilesketches.CompileSketches.dependency_source_path_key: unittest.mock.sentinel.source_path,
+         compilesketches.CompileSketches.dependency_destination_name_key: unittest.mock.sentinel.destination_name},
+        {compilesketches.CompileSketches.dependency_source_url_key: unittest.mock.sentinel.source_url2}
+    ]
+
+    class PlatformInstallationPath:
+        def __init__(self):
+            self.base = pathlib.PurePath()
+            self.platform = pathlib.PurePath()
+
+    platform_installation_path = PlatformInstallationPath()
+    platform_installation_path.parent = pathlib.Path("/foo/PlatformInstallationPathParent")
+    platform_installation_path.name = pathlib.Path("PlatformInstallationPathName")
+
+    expected_source_path_list = [unittest.mock.sentinel.source_path, "."]
+
+    compile_sketches = get_compilesketches_object()
+
+    mocker.patch("compilesketches.CompileSketches.get_platform_installation_path",
+                 autospec=True,
+                 return_value=platform_installation_path)
+    mocker.patch("compilesketches.install_from_download", autospec=True)
+
+    compile_sketches.install_platforms_from_download(platform_list=platform_list)
+
+    get_platform_installation_path_calls = []
+    install_platforms_from_download_calls = []
+    for platform, expected_source_path, in zip(platform_list, expected_source_path_list):
+        get_platform_installation_path_calls.append(unittest.mock.call(compile_sketches, platform=platform))
+        install_platforms_from_download_calls.append(
+            unittest.mock.call(url=platform[compilesketches.CompileSketches.dependency_source_url_key],
+                               source_path=expected_source_path,
+                               destination_parent_path=platform_installation_path.base,
+                               destination_name=platform_installation_path.platform)
+        )
+    compilesketches.install_from_download.assert_has_calls(calls=install_platforms_from_download_calls)
+
+
 @pytest.mark.parametrize(
     "libraries, expected_manager, expected_path, expected_repository, expected_download",
     [("", [], [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.PurePath("/foo/GitHubWorkspace")}],

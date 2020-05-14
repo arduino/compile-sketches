@@ -237,6 +237,9 @@ class CompileSketches:
         if len(platform_list.repository) > 0:
             self.install_platforms_from_repository(platform_list=platform_list.repository)
 
+        if len(platform_list.download) > 0:
+            self.install_platforms_from_download(platform_list=platform_list.download)
+
     def get_fqbn_platform_dependency(self):
         """Return the platform dependency definition automatically generated from the FQBN."""
         # Extract the platform name from the FQBN (e.g., arduino:avr:uno => arduino:avr)
@@ -563,6 +566,26 @@ class CompileSketches:
 
             # checkout ref
             cloned_repository.git.checkout(git_ref)
+
+    def install_platforms_from_download(self, platform_list):
+        """Install libraries by downloading them
+
+        Keyword arguments:
+        platform_list -- list of dictionaries defining the dependencies
+        """
+        for platform in platform_list:
+            self.verbose_print("Installing platform from download URL:", platform[self.dependency_source_url_key])
+            if self.dependency_source_path_key in platform:
+                source_path = platform[self.dependency_source_path_key]
+            else:
+                source_path = "."
+
+            destination_path = self.get_platform_installation_path(platform=platform)
+
+            install_from_download(url=platform[self.dependency_source_url_key],
+                                  source_path=source_path,
+                                  destination_parent_path=destination_path.base,
+                                  destination_name=destination_path.platform)
 
     def install_libraries(self):
         """Install Arduino libraries."""

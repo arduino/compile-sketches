@@ -55,6 +55,13 @@ Keys:
 - `source-path` - path to install as a library. Paths are relative to the root of the repository. The default is to install from the root of the repository.
 - `name` - platform name in the form of `VENDOR:ARCHITECTURE`.
 
+##### Archive download
+
+Keys:
+- `source-url` - download URL for the archive (e.g., `https://github.com/arduino/ArduinoCore-avr/archive/master.zip`).
+- `source-path` - path to install as a library. Paths are relative to the root folder of the archive, or the root of the archive if it has no root folder. The default is to install from the root folder of the archive.
+- `name` - platform name in the form of `VENDOR:ARCHITECTURE`.
+
 ### `libraries`
 
 YAML-format list of library dependencies to install.
