@@ -25,6 +25,7 @@ def main():
     compile_sketches = CompileSketches(
         cli_version=os.environ["INPUT_CLI-VERSION"],
         fqbn_arg=os.environ["INPUT_FQBN"],
+        platforms=os.environ["INPUT_PLATFORMS"],
         libraries=os.environ["INPUT_LIBRARIES"],
         sketch_paths=os.environ["INPUT_SKETCH-PATHS"],
         verbose=os.environ["INPUT_VERBOSE"],
@@ -48,6 +49,7 @@ class CompileSketches:
     cli_version -- version of the Arduino CLI to use
     fqbn_arg -- fully qualified board name of the board to compile for. Space separated list with Boards Manager URL if
                 needed
+    platforms -- YAML-format list of platforms to install
     libraries -- YAML-format or space-separated list of libraries to install
     sketch_paths -- space-separated list of paths containing sketches to compile. These paths will be searched
                     recursively for sketches.
@@ -95,7 +97,7 @@ class CompileSketches:
 
     latest_release_indicator = "latest"
 
-    def __init__(self, cli_version, fqbn_arg, libraries, sketch_paths, verbose, github_token, report_sketch,
+    def __init__(self, cli_version, fqbn_arg, platforms, libraries, sketch_paths, verbose, github_token, report_sketch,
                  enable_size_deltas_report, sketches_report_path, enable_size_trends_report, google_key_file,
                  size_trends_report_spreadsheet_id, size_trends_report_sheet_name):
         """Process, store, and validate the action's inputs."""
@@ -104,6 +106,7 @@ class CompileSketches:
         parsed_fqbn_arg = parse_fqbn_arg_input(fqbn_arg=fqbn_arg)
         self.fqbn = parsed_fqbn_arg["fqbn"]
         self.additional_url = parsed_fqbn_arg["additional_url"]
+        self.platforms = platforms
         self.libraries = libraries
 
         # Save the space-separated list of paths as a Python list
@@ -211,16 +214,26 @@ class CompileSketches:
 
     def install_platforms(self):
         """Install Arduino boards platforms."""
+        platform_list = self.Dependencies()
+        if self.platforms == "":
+            # When no platforms input is provided, automatically determine the board's platform dependency from the FQBN
+            platform_list.manager.append(self.get_fqbn_platform_dependency())
+        else:
+            platform_list = self.sort_dependency_list(yaml.load(stream=self.platforms, Loader=yaml.SafeLoader))
+
+        if len(platform_list.manager) > 0:
+            # This should always be called before the functions to install platforms from other sources so that the
+            # override system will work
+            self.install_platforms_from_board_manager(platform_list=platform_list.manager)
+
+    def get_fqbn_platform_dependency(self):
+        """Return the platform dependency definition automatically generated from the FQBN."""
         # Extract the platform name from the FQBN (e.g., arduino:avr:uno => arduino:avr)
-        fqbn_platform_name = self.fqbn.rsplit(sep=":", maxsplit=1)[0]
-
-        # TODO: this is in anticipation of permitting installation of arbitrary core dependencies from various sources
-        additional_url_list = []
+        fqbn_platform_dependency = {self.dependency_name_key: self.fqbn.rsplit(sep=":", maxsplit=1)[0]}
         if self.additional_url is not None:
-            additional_url_list.append(self.additional_url)
+            fqbn_platform_dependency[self.dependency_source_url_key] = self.additional_url
 
-        self.install_platforms_from_board_manager(platform_list=[fqbn_platform_name],
-                                                  additional_url_list=additional_url_list)
+        return fqbn_platform_dependency
 
     def sort_dependency_list(self, dependency_list):
         """Sort a list of sketch dependencies by source type
@@ -238,6 +251,12 @@ class CompileSketches:
                         or dependency[self.dependency_source_url_key].startswith("git://")
                     ):
                         sorted_dependencies.repository.append(dependency)
+                    elif re.match(
+                        pattern=".*/package_.*index.json", string=dependency[self.dependency_source_url_key]
+                    ) is not None:
+                        # URLs that match the filename requirements of the package_index.json specification are assumed
+                        # to be additional Board Manager URLs (platform index)
+                        sorted_dependencies.manager.append(dependency)
                     else:
                         # All other URLs are assumed to be downloads
                         sorted_dependencies.download.append(dependency)
@@ -259,30 +278,33 @@ class CompileSketches:
             self.repository = []
             self.download = []
 
-    def install_platforms_from_board_manager(self, platform_list, additional_url_list):
+    def install_platforms_from_board_manager(self, platform_list):
         """Install platform dependencies from the Arduino Board Manager
 
         Keyword arguments:
-        platform_list -- a list of platform names
-        additional_url_list -- a list of additional Board Manager URLs for 3rd party platforms
+        platform_list -- list of dictionaries defining the Board Manager platform dependencies
         """
-        core_update_index_command = ["core", "update-index"]
+        # Although Arduino CLI supports doing this all in one command, it may assist troubleshooting to install one
+        # platform at a time, and most users will only do a single Board Manager platform installation anyway
+        for platform in platform_list:
+            core_update_index_command = ["core", "update-index"]
+            core_install_command = ["core", "install"]
 
-        core_install_command = ["core", "install"]
-        core_install_command.extend(platform_list)
+            # Append additional Boards Manager URLs to the commands, if required
+            if self.dependency_source_url_key in platform:
+                additional_urls_option = ["--additional-urls", platform[self.dependency_source_url_key]]
+                core_update_index_command.extend(additional_urls_option)
+                core_install_command.extend(additional_urls_option)
 
-        # Append additional Boards Manager URLs to the commands, if required
-        if len(additional_url_list) > 0:
-            additional_urls_option = ["--additional-urls", ",".join(additional_url_list)]
-            core_update_index_command.extend(additional_urls_option)
-            core_install_command.extend(additional_urls_option)
+            core_install_command.append(self.get_manager_dependency_name(platform))
 
-        # Download the platform indexes for the platforms
-        self.run_arduino_cli_command(command=core_update_index_command,
-                                     enable_output=self.get_run_command_output_level())
+            # Download the platform index for the platform
+            self.run_arduino_cli_command(command=core_update_index_command,
+                                         enable_output=self.get_run_command_output_level())
 
-        # Install the platforms
-        self.run_arduino_cli_command(command=core_install_command, enable_output=self.get_run_command_output_level())
+            # Install the platform
+            self.run_arduino_cli_command(command=core_install_command,
+                                         enable_output=self.get_run_command_output_level())
 
     def get_manager_dependency_name(self, dependency):
         """Return the appropriate name value for a manager dependency. This allows the NAME@VERSION syntax to be used

@@ -16,6 +16,20 @@ For 3rd party boards, also specify the Boards Manager URL:
   fqbn: '"sandeepmistry:nRF5:Generic_nRF52832" "https://sandeepmistry.github.io/arduino-nRF5/package_nRF5_boards_index.json"'
 ```
 
+### `platforms`
+
+YAML-format list of platform dependencies to install.
+
+Default `""`. If no `platforms` input is provided, the board's dependency will be automatically determined from the `fqbn` input and the latest version of that platform will be installed via Board Manager.
+
+#### Sources:
+
+##### Board Manager
+
+Keys:
+- `name` - platform name in the form of `VENDOR:ARCHITECTURE`.
+- `version` - version of the platform to install. Default is the latest version.
+
 ### `libraries`
 
 YAML-format list of library dependencies to install.
