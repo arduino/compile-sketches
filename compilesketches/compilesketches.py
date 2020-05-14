@@ -539,8 +539,6 @@ class CompileSketches:
 
     def install_libraries(self):
         """Install Arduino libraries."""
-        self.libraries_path.mkdir(parents=True, exist_ok=True)
-
         libraries = yaml.load(stream="", Loader=yaml.SafeLoader)
         try:
             libraries = yaml.load(stream=self.libraries, Loader=yaml.SafeLoader)
@@ -610,6 +608,9 @@ class CompileSketches:
             else:
                 # Use the existing folder name
                 destination_name = source_path.name
+
+            # Create the parent path if it doesn't exist already
+            self.libraries_path.mkdir(parents=True, exist_ok=True)
 
             # Install the library by creating a symlink in the sketchbook
             library_symlink_path = self.libraries_path.joinpath(destination_name)

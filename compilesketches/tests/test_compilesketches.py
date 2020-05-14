@@ -743,16 +743,12 @@ def test_install_libraries(monkeypatch, mocker, libraries, expected_manager, exp
     compile_sketches = get_compilesketches_object(libraries=libraries)
     compile_sketches.libraries_path = libraries_path
 
-    mocker.patch.object(pathlib.Path, "mkdir", autospec=True)
     mocker.patch("compilesketches.CompileSketches.install_libraries_from_library_manager", autospec=True)
     mocker.patch("compilesketches.CompileSketches.install_libraries_from_path", autospec=True)
     mocker.patch("compilesketches.CompileSketches.install_libraries_from_repository", autospec=True)
     mocker.patch("compilesketches.CompileSketches.install_libraries_from_download", autospec=True)
 
     compile_sketches.install_libraries()
-
-    # noinspection PyUnresolvedReferences
-    pathlib.Path.mkdir.assert_called_with(libraries_path, parents=True, exist_ok=True)
 
     if len(expected_manager) > 0:
         compile_sketches.install_libraries_from_library_manager.assert_called_once_with(
@@ -824,6 +820,7 @@ def test_install_libraries_from_path(capsys, monkeypatch, mocker, path_exists, l
     compile_sketches.libraries_path = libraries_path
 
     mocker.patch.object(pathlib.Path, "exists", autospec=True, return_value=path_exists)
+    mocker.patch.object(pathlib.Path, "mkdir", autospec=True)
     mocker.patch.object(pathlib.Path, "joinpath", autospec=True, return_value=symlink_source_path)
     mocker.patch.object(pathlib.Path, "symlink_to", autospec=True)
 
@@ -839,15 +836,19 @@ def test_install_libraries_from_path(capsys, monkeypatch, mocker, path_exists, l
     else:
         compile_sketches.install_libraries_from_path(library_list=library_list)
 
+        mkdir_calls = []
         joinpath_calls = []
         symlink_to_calls = []
         for library, expected_destination_name in zip(library_list, expected_destination_name_list):
+            mkdir_calls.append(unittest.mock.call(libraries_path, parents=True, exist_ok=True))
             joinpath_calls.append(unittest.mock.call(libraries_path, expected_destination_name))
             symlink_to_calls.append(
                 unittest.mock.call(symlink_source_path,
                                    target=library[compilesketches.CompileSketches.dependency_source_path_key],
                                    target_is_directory=True))
 
+        # noinspection PyUnresolvedReferences
+        pathlib.Path.mkdir.assert_has_calls(calls=mkdir_calls)
         # noinspection PyUnresolvedReferences
         pathlib.Path.joinpath.assert_has_calls(calls=joinpath_calls)
         pathlib.Path.symlink_to.assert_has_calls(calls=symlink_to_calls)
