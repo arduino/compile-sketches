@@ -48,7 +48,7 @@ class CompileSketches:
     cli_version -- version of the Arduino CLI to use
     fqbn_arg -- fully qualified board name of the board to compile for. Space separated list with Boards Manager URL if
                 needed
-    libraries -- space-separated list of libraries to install
+    libraries -- YAML-format or space-separated list of libraries to install
     sketch_paths -- space-separated list of paths containing sketches to compile. These paths will be searched
                     recursively for sketches.
     verbose -- set to "true" for verbose output ("true", "false")
@@ -242,7 +242,7 @@ class CompileSketches:
                         # All other URLs are assumed to be downloads
                         sorted_dependencies.download.append(dependency)
                 elif self.dependency_source_path_key in dependency:
-                    # Libraries with source-path and no source-url are assumed to be paths
+                    # Dependencies with source-path and no source-url are assumed to be paths
                     sorted_dependencies.path.append(dependency)
                 else:
                     # All others are Library/Board Manager names
@@ -285,7 +285,9 @@ class CompileSketches:
         self.run_arduino_cli_command(command=core_install_command, enable_output=self.get_run_command_output_level())
 
     def get_manager_dependency_name(self, dependency):
-        """Return the appropriate name value for a repository dependency
+        """Return the appropriate name value for a manager dependency. This allows the NAME@VERSION syntax to be used
+        with the special "latest" ref for the sake of consistency (though the documented approach is to use the version
+        key to specify version.
 
         Keyword arguments:
         dependency -- dictionary defining the Library/Board Manger dependency
