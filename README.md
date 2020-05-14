@@ -47,6 +47,14 @@ Keys:
 - `source-path` - path to install as a platform. Relative paths are assumed to be relative to the root of the repository.
 - `name` - platform name in the form of `VENDOR:ARCHITECTURE`.
 
+##### Repository
+
+Keys:
+- `source-url` - URL to clone the repository from. It must start with `git://` or end with `.git`.
+- `version` - [Git ref](https://git-scm.com/book/en/v2/Git-Internals-Git-References) of the repository to checkout. The special version name `latest` will cause the latest tag to be used. By default, the repository will be checked out to the tip of the default branch.
+- `source-path` - path to install as a library. Paths are relative to the root of the repository. The default is to install from the root of the repository.
+- `name` - platform name in the form of `VENDOR:ARCHITECTURE`.
+
 ### `libraries`
 
 YAML-format list of library dependencies to install.

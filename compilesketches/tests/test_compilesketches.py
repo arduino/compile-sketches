@@ -704,6 +704,59 @@ def test_get_platform_installation_path(mocker,
         shutil.rmtree.assert_not_called()
 
 
+def test_install_platforms_from_repository(mocker):
+    platform_list = [
+        {compilesketches.CompileSketches.dependency_source_url_key: unittest.mock.sentinel.source_url,
+         compilesketches.CompileSketches.dependency_source_path_key: unittest.mock.sentinel.source_path,
+         compilesketches.CompileSketches.dependency_destination_name_key: unittest.mock.sentinel.destination_name},
+        {compilesketches.CompileSketches.dependency_source_url_key: unittest.mock.sentinel.source_url2}
+    ]
+
+    git_ref = unittest.mock.sentinel.git_ref
+
+    class PlatformInstallationPath:
+        def __init__(self):
+            self.base = pathlib.PurePath()
+            self.platform = pathlib.PurePath()
+
+    platform_installation_path = PlatformInstallationPath()
+    platform_installation_path.base = pathlib.Path("/foo/PlatformInstallationPathParent")
+    platform_installation_path.platform = pathlib.Path("PlatformInstallationPathName")
+
+    expected_source_path_list = [unittest.mock.sentinel.source_path, "."]
+    expected_destination_name_list = [unittest.mock.sentinel.destination_name, None]
+
+    compile_sketches = get_compilesketches_object()
+
+    mocker.patch("compilesketches.CompileSketches.get_repository_dependency_ref", autospec=True, return_value=git_ref)
+    mocker.patch("compilesketches.CompileSketches.get_platform_installation_path",
+                 autospec=True,
+                 return_value=platform_installation_path)
+    mocker.patch("compilesketches.CompileSketches.install_from_repository", autospec=True, return_value=git_ref)
+
+    compile_sketches.install_platforms_from_repository(platform_list=platform_list)
+
+    get_repository_dependency_ref_calls = []
+    get_platform_installation_path_calls = []
+    install_from_repository_calls = []
+    for platform, expected_source_path, expected_destination_name in zip(platform_list,
+                                                                         expected_source_path_list,
+                                                                         expected_destination_name_list):
+        get_repository_dependency_ref_calls.append(unittest.mock.call(compile_sketches, dependency=platform))
+        get_platform_installation_path_calls.append(unittest.mock.call(compile_sketches, platform=platform))
+        install_from_repository_calls.append(
+            unittest.mock.call(compile_sketches,
+                               url=platform[compilesketches.CompileSketches.dependency_source_url_key],
+                               git_ref=git_ref,
+                               source_path=expected_source_path,
+                               destination_parent_path=platform_installation_path.base,
+                               destination_name=platform_installation_path.platform)
+        )
+
+    compile_sketches.get_repository_dependency_ref.assert_has_calls(calls=get_repository_dependency_ref_calls)
+    compile_sketches.install_from_repository.assert_has_calls(calls=install_from_repository_calls)
+
+
 @pytest.mark.parametrize(
     "dependency, expected_ref",
     [({compilesketches.CompileSketches.dependency_version_key: "1.2.3"}, "1.2.3"),

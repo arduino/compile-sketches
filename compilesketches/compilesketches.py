@@ -234,6 +234,9 @@ class CompileSketches:
         if len(platform_list.path) > 0:
             self.install_platforms_from_path(platform_list=platform_list.path)
 
+        if len(platform_list.repository) > 0:
+            self.install_platforms_from_repository(platform_list=platform_list.repository)
+
     def get_fqbn_platform_dependency(self):
         """Return the platform dependency definition automatically generated from the FQBN."""
         # Extract the platform name from the FQBN (e.g., arduino:avr:uno => arduino:avr)
@@ -465,6 +468,30 @@ class CompileSketches:
                 break
 
         return platform_installation_path
+
+    def install_platforms_from_repository(self, platform_list):
+        """Install libraries by cloning Git repositories
+
+        Keyword arguments:
+        platform_list -- list of dictionaries defining the dependencies
+        """
+        for platform in platform_list:
+            self.verbose_print("Installing platform from repository:", platform[self.dependency_source_url_key])
+
+            git_ref = self.get_repository_dependency_ref(dependency=platform)
+
+            if self.dependency_source_path_key in platform:
+                source_path = platform[self.dependency_source_path_key]
+            else:
+                source_path = "."
+
+            destination_path = self.get_platform_installation_path(platform=platform)
+
+            self.install_from_repository(url=platform[self.dependency_source_url_key],
+                                         git_ref=git_ref,
+                                         source_path=source_path,
+                                         destination_parent_path=destination_path.base,
+                                         destination_name=destination_path.platform)
 
     def get_repository_dependency_ref(self, dependency):
         """Return the appropriate git ref value for a repository dependency
