@@ -77,7 +77,10 @@ class CompileSketches:
 
     arduino_cli_installation_path = pathlib.Path.home().joinpath("bin")
     arduino_cli_user_directory_path = pathlib.Path.home().joinpath("Arduino")
+    arduino_cli_data_directory_path = pathlib.Path.home().joinpath(".arduino15")
     libraries_path = arduino_cli_user_directory_path.joinpath("libraries")
+    user_platforms_path = arduino_cli_user_directory_path.joinpath("hardware")
+    board_manager_platforms_path = arduino_cli_data_directory_path.joinpath("packages")
 
     report_fqbn_key = "fqbn"
     report_sketch_key = "sketch"
@@ -206,6 +209,8 @@ class CompileSketches:
 
         # Configure the location of the Arduino CLI user directory
         os.environ["ARDUINO_DIRECTORIES_USER"] = str(self.arduino_cli_user_directory_path)
+        # Configure the location of the Arduino CLI data directory
+        os.environ["ARDUINO_DIRECTORIES_DATA"] = str(self.arduino_cli_data_directory_path)
 
     def verbose_print(self, *print_arguments):
         """Print log output when in verbose mode"""
@@ -225,6 +230,9 @@ class CompileSketches:
             # This should always be called before the functions to install platforms from other sources so that the
             # override system will work
             self.install_platforms_from_board_manager(platform_list=platform_list.manager)
+
+        if len(platform_list.path) > 0:
+            self.install_platforms_from_path(platform_list=platform_list.path)
 
     def get_fqbn_platform_dependency(self):
         """Return the platform dependency definition automatically generated from the FQBN."""
@@ -383,6 +391,80 @@ class CompileSketches:
             sys.exit(command_data.returncode)
 
         return command_data
+
+    def install_platforms_from_path(self, platform_list):
+        """Install libraries from local paths
+
+        Keyword arguments:
+        platform_list -- Dependencies object containing lists of dictionaries defining platform dependencies of each
+                         source type
+        """
+        for platform in platform_list:
+            source_path = absolute_path(platform[self.dependency_source_path_key])
+            self.verbose_print("Installing platform from path:", platform[self.dependency_source_path_key])
+
+            if not source_path.exists():
+                print("::error::Platform source path:", platform[self.dependency_source_path_key], "doesn't exist")
+                sys.exit(1)
+
+            platform_installation_path = self.get_platform_installation_path(platform=platform)
+
+            # Create the parent path if it doesn't exist already. This must be the immediate parent, whereas
+            # get_platform_installation_path().platform will be multiple nested folders under the base path
+            platform_installation_path_parent = (
+                pathlib.Path(platform_installation_path.base, platform_installation_path.platform).parent
+            )
+            platform_installation_path_parent.mkdir(parents=True, exist_ok=True)
+
+            # Install the platform by creating a symlink
+            destination_path = platform_installation_path.base.joinpath(platform_installation_path.platform)
+            destination_path.symlink_to(target=source_path, target_is_directory=True)
+
+    def get_platform_installation_path(self, platform):
+        """Return the correct installation path for the given platform
+
+        Keyword arguments:
+        platform -- dictionary defining the platform dependency
+        """
+
+        class PlatformInstallationPath:
+            def __init__(self):
+                self.base = pathlib.PurePath()
+                self.platform = pathlib.PurePath()
+
+        platform_installation_path = PlatformInstallationPath()
+
+        platform_vendor = platform[self.dependency_name_key].split(sep=":")[0]
+        platform_architecture = platform[self.dependency_name_key].rsplit(sep=":", maxsplit=1)[1]
+
+        # Default to installing to the sketchbook
+        platform_installation_path.base = self.user_platforms_path
+        platform_installation_path.platform = pathlib.PurePath(platform_vendor, platform_architecture)
+
+        # I have no clue why this is needed, but arduino-cli core list fails if this isn't done first. The 3rd party
+        # platforms are still shown in the list even if their index URLs are not specified to the command via the
+        # --additional-urls option
+        self.run_arduino_cli_command(command=["core", "update-index"])
+        # Use Arduino CLI to get the list of installed platforms
+        command_data = self.run_arduino_cli_command(command=["core", "list", "--format", "json"])
+        installed_platform_list = json.loads(command_data.stdout)
+        for installed_platform in installed_platform_list:
+            if installed_platform["ID"] == platform[self.dependency_name_key]:
+                # The platform has been installed via Board Manager, so do an overwrite
+                platform_installation_path.base = self.board_manager_platforms_path
+                platform_installation_path.platform = (
+                    pathlib.PurePath(platform_vendor,
+                                     "hardware",
+                                     platform_architecture,
+                                     installed_platform["Installed"])
+                )
+
+                # Remove the existing installation so it can be replaced by the installation function
+                shutil.rmtree(path=platform_installation_path.base.joinpath(platform_installation_path.platform))
+
+                break
+
+        return platform_installation_path
 
     def get_repository_dependency_ref(self, dependency):
         """Return the appropriate git ref value for a repository dependency
