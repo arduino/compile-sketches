@@ -279,10 +279,7 @@ def test_compile_sketches(mocker, compilation_success_list, expected_success, do
         compile_sketches.do_size_trends_report.assert_called_once()
 
         if do_size_trends_report:
-            compile_sketches.make_size_trends_report.assert_called_once_with(
-                compile_sketches,
-                sketch_report=sketch_report_from_sketches_report
-            )
+            compile_sketches.make_size_trends_report.assert_called_once_with(compile_sketches)
         else:
             compile_sketches.make_size_trends_report.assert_not_called()
 
@@ -1485,10 +1482,31 @@ def test_get_sketch_report_from_sketches_report(report_sketch, expected_success)
 
 
 def test_make_size_trends_report(monkeypatch, mocker):
+    # Stub
+    class ReportSizeTrends:
+        def report_size_trends(self):
+            pass
+
+    sketches_report_path = "foo/sketches_report_path"
+
+    compile_sketches = get_compilesketches_object(sketches_report_path=sketches_report_path)
+
+    mocker.patch("reportsizetrends.ReportSizeTrends", autospec=True, return_value=ReportSizeTrends())
+    mocker.patch.object(ReportSizeTrends, "report_size_trends")
+
+    compile_sketches.make_size_trends_report()
+
+    reportsizetrends.ReportSizeTrends.assert_called_once_with(
+        sketches_report_path=str(pathlib.PurePath(sketches_report_path)),
+        google_key_file=compile_sketches.google_key_file,
+        spreadsheet_id=compile_sketches.size_trends_report_spreadsheet_id,
+        sheet_name=compile_sketches.size_trends_report_sheet_name
+    )
+    ReportSizeTrends.report_size_trends.assert_called_once()
+
+
+def test_create_sketches_report_file(monkeypatch, tmp_path, mocker):
     current_git_ref = "fooref"
-    sketch_report = {compilesketches.CompileSketches.report_sketch_key: unittest.mock.sentinel.sketch_report_sketch,
-                     compilesketches.CompileSketches.report_flash_key: unittest.mock.sentinel.sketch_report_flash,
-                     compilesketches.CompileSketches.report_ram_key: unittest.mock.sentinel.sketch_report_ram}
 
     # Stub
     class Repo:
@@ -1498,42 +1516,9 @@ def test_make_size_trends_report(monkeypatch, mocker):
         def rev_parse(self):
             pass
 
-    class ReportSizeTrends:
-        def report_size_trends(self):
-            pass
-
     monkeypatch.setenv("GITHUB_REPOSITORY", "fooRepository/fooOwner")
     monkeypatch.setenv("GITHUB_WORKSPACE", "/fooWorkspace")
 
-    compile_sketches = get_compilesketches_object()
-
-    mocker.patch("git.Repo", autospec=True, return_value=Repo())
-    mocker.patch.object(Repo, "rev_parse", return_value=current_git_ref)
-    mocker.patch("reportsizetrends.ReportSizeTrends", autospec=True, return_value=ReportSizeTrends())
-    mocker.patch.object(ReportSizeTrends, "report_size_trends")
-
-    compile_sketches.make_size_trends_report(sketch_report)
-
-    git.Repo.assert_called_once_with(path=os.environ["GITHUB_WORKSPACE"])
-    Repo.rev_parse.assert_called_once_with("HEAD", short=True)
-    reportsizetrends.ReportSizeTrends.assert_called_once_with(
-        google_key_file=compile_sketches.google_key_file,
-        spreadsheet_id=compile_sketches.size_trends_report_spreadsheet_id,
-        sheet_name=compile_sketches.size_trends_report_sheet_name,
-        sketch_name=sketch_report[compilesketches.CompileSketches.report_sketch_key],
-        commit_hash=current_git_ref,
-        commit_url=("https://github.com/"
-                    + os.environ["GITHUB_REPOSITORY"]
-                    + "/commit/"
-                    + current_git_ref),
-        fqbn=compile_sketches.fqbn,
-        flash=str(sketch_report[compilesketches.CompileSketches.report_flash_key]),
-        ram=str(sketch_report[compilesketches.CompileSketches.report_ram_key])
-    )
-    ReportSizeTrends.report_size_trends.assert_called_once()
-
-
-def test_create_sketches_report_file(tmp_path):
     sketches_report_path = tmp_path
     fqbn_arg = "arduino:avr:uno"
     sketches_report = {
@@ -1548,6 +1533,9 @@ def test_create_sketches_report_file(tmp_path):
         "fqbn": "arduino:avr:uno"
     }
 
+    mocker.patch("git.Repo", autospec=True, return_value=Repo())
+    mocker.patch.object(Repo, "rev_parse", return_value=current_git_ref)
+
     compile_sketches = get_compilesketches_object(sketches_report_path=str(sketches_report_path),
                                                   fqbn_arg=fqbn_arg)
 
@@ -1555,6 +1543,9 @@ def test_create_sketches_report_file(tmp_path):
 
     with open(file=str(sketches_report_path.joinpath("arduino-avr-uno.json"))) as sketch_report_file:
         assert json.load(sketch_report_file) == sketches_report
+
+    git.Repo.assert_called_once_with(path=os.environ["GITHUB_WORKSPACE"])
+    Repo.rev_parse.assert_called_once_with("HEAD", short=True)
 
 
 @pytest.mark.parametrize("verbose", ["true", "false"])

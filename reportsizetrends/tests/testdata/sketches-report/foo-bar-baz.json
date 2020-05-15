@@ -1,0 +1,8 @@
+{
+  "fqbn": "foo:bar:baz",
+  "commit_hash": "foohash",
+  "commit_url": "https://example.com/foo",
+  "sketch": "FooSketch",
+  "flash": 123,
+  "ram": 42
+}

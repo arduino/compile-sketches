@@ -83,6 +83,8 @@ class CompileSketches:
     board_manager_platforms_path = arduino_cli_data_directory_path.joinpath("packages")
 
     report_fqbn_key = "fqbn"
+    report_commit_hash_key = "commit_hash"
+    report_commit_url_key = "commit_url"
     report_sketch_key = "sketch"
     report_compilation_success_key = "compilation_success"
     report_flash_key = "flash"
@@ -183,12 +185,12 @@ class CompileSketches:
         if self.report_sketch != "":
             # Make sketch reports
             sketch_report = self.get_sketch_report_from_sketches_report(sketches_report=sketches_report)
-            # Make the memory usage trends report
-            if self.do_size_trends_report():
-                self.make_size_trends_report(sketch_report=sketch_report)
             # TODO: The current behavior is to only write the report for the report sketch, but the plan is to change to
             #       reporting data for all sketches, thus the passing of sketch_report to the function
             self.create_sketches_report_file(sketches_report=sketch_report)
+            # Make the memory usage trends report
+            if self.do_size_trends_report():
+                self.make_size_trends_report()
 
         if not all_compilations_successful:
             print("::error::One or more compilations failed")
@@ -1009,30 +1011,19 @@ class CompileSketches:
         print("::error::size-report-sketch:", self.report_sketch, "was not found")
         sys.exit(1)
 
-    def make_size_trends_report(self, sketch_report):
+    def make_size_trends_report(self):
         """Publish the size data for the report sketch to a Google Sheets spreadsheet.
 
         Keyword arguments:
         sketch_report -- report for the sketch report
         """
-        # Get the short hash of the pull request head ref
         self.verbose_print("Making size trends report")
-        repository = git.Repo(path=os.environ["GITHUB_WORKSPACE"])
-        current_git_ref = repository.git.rev_parse("HEAD", short=True)
 
         report_size_trends = reportsizetrends.ReportSizeTrends(
+            sketches_report_path=str(self.sketches_report_path),
             google_key_file=self.google_key_file,
             spreadsheet_id=self.size_trends_report_spreadsheet_id,
-            sheet_name=self.size_trends_report_sheet_name,
-            sketch_name=sketch_report[self.report_sketch_key],
-            commit_hash=current_git_ref,
-            commit_url=("https://github.com/"
-                        + os.environ["GITHUB_REPOSITORY"]
-                        + "/commit/"
-                        + current_git_ref),
-            fqbn=self.fqbn,
-            flash=str(sketch_report[self.report_flash_key]),
-            ram=str(sketch_report[self.report_ram_key])
+            sheet_name=self.size_trends_report_sheet_name
         )
 
         report_size_trends.report_size_trends()
@@ -1044,10 +1035,21 @@ class CompileSketches:
         sketch_report -- report for the sketch report
         """
         self.verbose_print("Creating sketch report file")
-        # Add the FQBN to the report
+        # Add the shared data to the report
         # TODO: doing this here is in anticipation of the planned switch to reporting for all sketches, when it will
-        #       make sense to only add a single fqbn key to the report
+        #       make sense to only add a single copy of the data that's universal to all sketches to the report
         sketches_report[self.report_fqbn_key] = self.fqbn
+
+        # Get the short hash of the pull request head ref
+        repository = git.Repo(path=os.environ["GITHUB_WORKSPACE"])
+        current_git_ref = repository.git.rev_parse("HEAD", short=True)
+        sketches_report[self.report_commit_hash_key] = current_git_ref
+
+        sketches_report[self.report_commit_url_key] = ("https://github.com/"
+                                                       + os.environ["GITHUB_REPOSITORY"]
+                                                       + "/commit/"
+                                                       + current_git_ref)
+
         sketches_report_path = absolute_path(path=self.sketches_report_path)
 
         # Create the report folder

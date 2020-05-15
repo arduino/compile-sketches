@@ -121,7 +121,6 @@ Set to `true` to cause the action to determine the change in memory usage for th
 
 ### `size-deltas-report-folder-name`
 
-Folder to save the JSON formatted memory usage change reports to. Should be used only to store reports. It will be created under [`GITHUB_WORKSPACE`](https://help.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables). The folder will be created if it doesn't already exist. Default `"size-deltas-reports"`.
 
 ### `enable-size-trends-report`
 
@@ -177,6 +176,7 @@ The ID of the Google Sheets spreadsheet to write the memory usage trends data to
 ### `size-trends-report-sheet-name`
 
 The sheet name in the Google Sheets spreadsheet used for the memory usage trends report. Default `"Sheet1"`.
+Path in which to save a JSON formatted file containing data from the sketch compilations. Should be used only to store reports. Relative paths are relative to [`GITHUB_WORKSPACE`](https://help.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables). The folder will be created if it doesn't already exist. Default `"size-deltas-reports"`.
 
 ## Example usage
 
