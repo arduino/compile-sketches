@@ -21,6 +21,7 @@ test_data_path = pathlib.PurePath(os.path.dirname(os.path.realpath(__file__)), "
 def get_compilesketches_object(
     cli_version=unittest.mock.sentinel.cli_version,
     fqbn_arg="foo fqbn_arg",
+    platforms="- name: FooVendor:BarArchitecture",
     libraries="foo libraries",
     sketch_paths="foo sketch_paths",
     verbose="false",
@@ -35,6 +36,7 @@ def get_compilesketches_object(
 ):
     return compilesketches.CompileSketches(cli_version=cli_version,
                                            fqbn_arg=fqbn_arg,
+                                           platforms=platforms,
                                            libraries=libraries,
                                            sketch_paths=sketch_paths,
                                            verbose=verbose,
@@ -81,6 +83,7 @@ def test_directories_are_same():
 def test_main(monkeypatch, mocker):
     cli_version = "1.0.0"
     fqbn_arg = "foo:bar:baz"
+    platforms = "- name: FooVendor:BarArchitecture"
     libraries = "foo libraries"
     sketch_paths = "foo/Sketch bar/OtherSketch"
     verbose = "true"
@@ -99,6 +102,7 @@ def test_main(monkeypatch, mocker):
 
     monkeypatch.setenv("INPUT_CLI-VERSION", cli_version)
     monkeypatch.setenv("INPUT_FQBN", fqbn_arg)
+    monkeypatch.setenv("INPUT_PLATFORMS", platforms)
     monkeypatch.setenv("INPUT_LIBRARIES", libraries)
     monkeypatch.setenv("INPUT_SKETCH-PATHS", sketch_paths)
     monkeypatch.setenv("INPUT_GITHUB-TOKEN", github_token)
@@ -119,6 +123,7 @@ def test_main(monkeypatch, mocker):
     compilesketches.CompileSketches.assert_called_once_with(
         cli_version=cli_version,
         fqbn_arg=fqbn_arg,
+        platforms=platforms,
         libraries=libraries,
         sketch_paths=sketch_paths,
         verbose=verbose,
@@ -138,6 +143,7 @@ def test_compilesketches():
     expected_fqbn = "foo:bar:baz"
     expected_additional_url = "https://example.com/package_foo_index.json"
     cli_version = unittest.mock.sentinel.cli_version
+    platforms = unittest.mock.sentinel.platforms
     libraries = unittest.mock.sentinel.libraries
     sketch_paths = "examples/FooSketchPath examples/BarSketchPath"
     expected_sketch_paths_list = [pathlib.PurePath("examples/FooSketchPath"),
@@ -155,6 +161,7 @@ def test_compilesketches():
     compile_sketches = compilesketches.CompileSketches(
         cli_version=cli_version,
         fqbn_arg="\'\"" + expected_fqbn + "\" \"" + expected_additional_url + "\"\'",
+        platforms=platforms,
         libraries=libraries,
         sketch_paths=sketch_paths,
         verbose=verbose,
@@ -171,6 +178,7 @@ def test_compilesketches():
     assert compile_sketches.cli_version == cli_version
     assert compile_sketches.fqbn == expected_fqbn
     assert compile_sketches.additional_url == expected_additional_url
+    assert compile_sketches.platforms == platforms
     assert compile_sketches.libraries == libraries
     assert compile_sketches.sketch_paths == expected_sketch_paths_list
     assert compile_sketches.verbose is False
@@ -287,11 +295,13 @@ def test_compile_sketches(mocker, compilation_success_list, expected_success, do
 def test_install_arduino_cli(mocker):
     cli_version = "1.2.3"
     arduino_cli_installation_path = unittest.mock.sentinel.arduino_cli_installation_path
+    arduino_cli_data_directory_path = pathlib.PurePath("/foo/arduino_cli_data_directory_path")
     arduino_cli_user_directory_path = pathlib.PurePath("/foo/arduino_cli_user_directory_path")
 
     compile_sketches = get_compilesketches_object(cli_version=cli_version)
     compile_sketches.arduino_cli_installation_path = arduino_cli_installation_path
     compile_sketches.arduino_cli_user_directory_path = arduino_cli_user_directory_path
+    compile_sketches.arduino_cli_data_directory_path = arduino_cli_data_directory_path
 
     mocker.patch("compilesketches.install_from_download", autospec=True)
 
@@ -303,26 +313,84 @@ def test_install_arduino_cli(mocker):
         destination_parent_path=arduino_cli_installation_path)
 
     assert os.environ["ARDUINO_DIRECTORIES_USER"] == str(arduino_cli_user_directory_path)
+    assert os.environ["ARDUINO_DIRECTORIES_DATA"] == str(arduino_cli_data_directory_path)
+    del os.environ["ARDUINO_DIRECTORIES_USER"]
+    del os.environ["ARDUINO_DIRECTORIES_DATA"]
 
 
-@pytest.mark.parametrize(
-    "fqbn_arg, expected_platform, expected_additional_url_list",
-    [("arduino:avr:uno", "arduino:avr", []),
-     ('\'"foo bar:baz:asdf" "https://example.com/platform_foo_index.json"\'', "foo bar:baz",
-      ["https://example.com/platform_foo_index.json"])]
-)
-def test_install_platforms(mocker, fqbn_arg, expected_platform, expected_additional_url_list):
-    compile_sketches = get_compilesketches_object(fqbn_arg=fqbn_arg)
+@pytest.mark.parametrize("platforms", ["", "foo"])
+def test_install_platforms(mocker, platforms):
+    fqbn_platform_dependency = unittest.mock.sentinel.fqbn_platform_dependency
+    dependency_list_manager = [unittest.mock.sentinel.manager]
+    dependency_list_path = [unittest.mock.sentinel.path]
+    dependency_list_repository = [unittest.mock.sentinel.repository]
+    dependency_list_download = [unittest.mock.sentinel.download]
 
+    dependency_list = compilesketches.CompileSketches.Dependencies()
+    dependency_list.manager = dependency_list_manager
+    dependency_list.path = dependency_list_path
+    dependency_list.repository = dependency_list_repository
+    dependency_list.download = dependency_list_download
+
+    compile_sketches = get_compilesketches_object(platforms=platforms)
+
+    mocker.patch("compilesketches.CompileSketches.get_fqbn_platform_dependency",
+                 autospec=True,
+                 return_value=fqbn_platform_dependency)
+    mocker.patch("compilesketches.CompileSketches.sort_dependency_list",
+                 autospec=True,
+                 return_value=dependency_list)
     mocker.patch("compilesketches.CompileSketches.install_platforms_from_board_manager", autospec=True)
+    mocker.patch("compilesketches.CompileSketches.install_platforms_from_path", autospec=True)
+    mocker.patch("compilesketches.CompileSketches.install_platforms_from_repository", autospec=True)
+    mocker.patch("compilesketches.CompileSketches.install_platforms_from_download", autospec=True)
 
     compile_sketches.install_platforms()
 
-    compile_sketches.install_platforms_from_board_manager.assert_called_once_with(
-        compile_sketches,
-        platform_list=[expected_platform],
-        additional_url_list=expected_additional_url_list
-    )
+    if platforms == "":
+        compile_sketches.install_platforms_from_board_manager.assert_called_once_with(
+            compile_sketches,
+            platform_list=[fqbn_platform_dependency]
+        )
+        compile_sketches.install_platforms_from_path.assert_not_called()
+        compile_sketches.install_platforms_from_repository.assert_not_called()
+        compile_sketches.install_platforms_from_download.assert_not_called()
+    else:
+        compile_sketches.install_platforms_from_board_manager.assert_called_once_with(
+            compile_sketches,
+            platform_list=dependency_list_manager
+        )
+        compile_sketches.install_platforms_from_path.assert_called_once_with(
+            compile_sketches,
+            platform_list=dependency_list_path
+        )
+        compile_sketches.install_platforms_from_repository.assert_called_once_with(
+            compile_sketches,
+            platform_list=dependency_list_repository
+        )
+        compile_sketches.install_platforms_from_download.assert_called_once_with(
+            compile_sketches,
+            platform_list=dependency_list_download
+        )
+
+
+@pytest.mark.parametrize(
+    "fqbn_arg, expected_platform, expected_additional_url",
+    [("arduino:avr:uno", "arduino:avr", None),
+     # FQBN with space, additional Board Manager URL
+     ('\'"foo bar:baz:asdf" "https://example.com/platform_foo_index.json"\'', "foo bar:baz",
+      "https://example.com/platform_foo_index.json")]
+)
+def test_get_fqbn_platform_dependency(fqbn_arg, expected_platform, expected_additional_url):
+    compile_sketches = get_compilesketches_object(fqbn_arg=fqbn_arg)
+
+    fqbn_platform_dependency = compile_sketches.get_fqbn_platform_dependency()
+
+    assert fqbn_platform_dependency[compilesketches.CompileSketches.dependency_name_key] == expected_platform
+    if expected_additional_url is not None:
+        assert fqbn_platform_dependency[compilesketches.CompileSketches.dependency_source_url_key] == (
+            expected_additional_url
+        )
 
 
 @pytest.mark.parametrize(
@@ -336,6 +404,9 @@ def test_install_platforms(mocker, fqbn_arg, expected_platform, expected_additio
      ([{compilesketches.CompileSketches.dependency_source_url_key: "https://example.com/foo/bar"}], ["download"]),
      ([{compilesketches.CompileSketches.dependency_source_path_key: "foo/bar"}], ["path"]),
      ([{compilesketches.CompileSketches.dependency_name_key: "FooBar"}], ["manager"]),
+     ([{compilesketches.CompileSketches.dependency_name_key: "FooBar",
+        compilesketches.CompileSketches.dependency_source_url_key: "https://example.com/package_foo_index.json"}],
+      ["manager"]),
      ([{compilesketches.CompileSketches.dependency_source_url_key: "git://example.com/foo/bar"},
        {compilesketches.CompileSketches.dependency_source_url_key: "https://example.com/foo/bar"},
        {compilesketches.CompileSketches.dependency_source_path_key: "foo/bar"},
@@ -354,12 +425,29 @@ def test_sort_dependency_list(monkeypatch, dependency_list, expected_dependency_
                                      expected_dependency_type)
 
 
-@pytest.mark.parametrize("additional_url_list",
-                         [["https://example.com/package_foo_index.json", "https://example.com/package_bar_index.json"],
-                          []])
-def test_install_platforms_from_board_manager(mocker, additional_url_list):
+@pytest.mark.parametrize(
+    "platform_list, expected_core_update_index_command_list, expected_core_install_command_list",
+    [(
+        [{compilesketches.CompileSketches.dependency_name_key: "Foo"},
+         {compilesketches.CompileSketches.dependency_name_key: "Bar"}],
+        [["core", "update-index"], ["core", "update-index"]],
+        [["core", "install", "Foo"], ["core", "install", "Bar"]]
+    ), (
+        # Additional Board Manager URL
+        [{compilesketches.CompileSketches.dependency_name_key: "Foo",
+          compilesketches.CompileSketches.dependency_source_url_key: "https://example.com/package_foo_index.json"},
+         {compilesketches.CompileSketches.dependency_name_key: "Bar",
+          compilesketches.CompileSketches.dependency_source_url_key: "https://example.com/package_bar_index.json"}],
+        [["core", "update-index", "--additional-urls", "https://example.com/package_foo_index.json"],
+         ["core", "update-index", "--additional-urls", "https://example.com/package_bar_index.json"]],
+        [["core", "install", "--additional-urls", "https://example.com/package_foo_index.json", "Foo"],
+         ["core", "install", "--additional-urls", "https://example.com/package_bar_index.json", "Bar"]]
+    )])
+def test_install_platforms_from_board_manager(mocker,
+                                              platform_list,
+                                              expected_core_update_index_command_list,
+                                              expected_core_install_command_list):
     run_command_output_level = unittest.mock.sentinel.run_command_output_level
-    platform_list = [unittest.mock.sentinel.platform1, unittest.mock.sentinel.platform2]
 
     compile_sketches = get_compilesketches_object()
 
@@ -367,19 +455,22 @@ def test_install_platforms_from_board_manager(mocker, additional_url_list):
                  return_value=run_command_output_level)
     mocker.patch("compilesketches.CompileSketches.run_arduino_cli_command", autospec=True)
 
-    compile_sketches.install_platforms_from_board_manager(platform_list=platform_list,
-                                                          additional_url_list=additional_url_list)
+    compile_sketches.install_platforms_from_board_manager(platform_list=platform_list)
 
-    core_update_command = ["core", "update-index"]
-    core_install_command = ["core", "install"]
-    core_install_command.extend(platform_list)
-    if len(additional_url_list) > 0:
-        additional_urls_option = ["--additional-urls", ",".join(additional_url_list)]
-        core_update_command.extend(additional_urls_option)
-        core_install_command.extend(additional_urls_option)
-    run_arduino_cli_command_calls = [
-        unittest.mock.call(compile_sketches, command=core_update_command, enable_output=run_command_output_level),
-        unittest.mock.call(compile_sketches, command=core_install_command, enable_output=run_command_output_level)]
+    run_arduino_cli_command_calls = []
+    for expected_core_update_index_command, expected_core_install_command in zip(
+        expected_core_update_index_command_list,
+        expected_core_install_command_list
+    ):
+        run_arduino_cli_command_calls.extend([
+            unittest.mock.call(compile_sketches,
+                               command=expected_core_update_index_command,
+                               enable_output=run_command_output_level),
+            unittest.mock.call(compile_sketches,
+                               command=expected_core_install_command,
+                               enable_output=run_command_output_level)
+        ])
+
     compile_sketches.run_arduino_cli_command.assert_has_calls(calls=run_arduino_cli_command_calls)
 
 
@@ -490,6 +581,183 @@ def test_get_manager_dependency_name(dependency, expected_name):
 
 
 @pytest.mark.parametrize(
+    "path_exists, platform_list",
+    [(False, [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.Path("Foo")}]),
+     (True, [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.Path("Foo")}])]
+)
+def test_install_platforms_from_path(capsys, monkeypatch, mocker, path_exists, platform_list):
+    class PlatformInstallationPath:
+        def __init__(self):
+            self.parent = pathlib.PurePath()
+            self.name = pathlib.PurePath()
+
+    platform_installation_path = PlatformInstallationPath()
+    platform_installation_path.base = pathlib.Path("/foo/PlatformInstallationPathParent")
+    platform_installation_path.platform = pathlib.Path("PlatformInstallationPathName")
+    symlink_source_path = pathlib.Path("/foo/SymlinkSourcePath")
+
+    monkeypatch.setenv("GITHUB_WORKSPACE", "/foo/GitHubWorkspace")
+
+    compile_sketches = get_compilesketches_object()
+
+    mocker.patch.object(pathlib.Path, "exists", autospec=True, return_value=path_exists)
+    mocker.patch("compilesketches.CompileSketches.get_platform_installation_path",
+                 autospec=True,
+                 return_value=platform_installation_path)
+    mocker.patch.object(pathlib.Path, "mkdir", autospec=True)
+    mocker.patch.object(pathlib.Path, "joinpath", autospec=True, return_value=symlink_source_path)
+    mocker.patch.object(pathlib.Path, "symlink_to", autospec=True)
+
+    if not path_exists:
+        with pytest.raises(expected_exception=SystemExit, match="1"):
+            compile_sketches.install_platforms_from_path(platform_list=platform_list)
+
+        assert capsys.readouterr().out.strip() == (
+            "::error::Platform source path: "
+            + str(platform_list[0][compilesketches.CompileSketches.dependency_source_path_key])
+            + " doesn't exist"
+        )
+
+    else:
+        compile_sketches.install_platforms_from_path(platform_list=platform_list)
+
+        get_platform_installation_path_calls = []
+        joinpath_calls = []
+        mkdir_calls = []
+        symlink_to_calls = []
+        for platform in platform_list:
+            get_platform_installation_path_calls.append(unittest.mock.call(compile_sketches, platform=platform))
+            mkdir_calls.append(unittest.mock.call(platform_installation_path.base, parents=True, exist_ok=True))
+            joinpath_calls.append(unittest.mock.call(platform_installation_path.base,
+                                                     platform_installation_path.platform))
+            symlink_to_calls.append(
+                unittest.mock.call(
+                    symlink_source_path,
+                    target=compilesketches.absolute_path(
+                        platform[compilesketches.CompileSketches.dependency_source_path_key]
+                    ),
+                    target_is_directory=True
+                )
+            )
+
+        # noinspection PyUnresolvedReferences
+        pathlib.Path.mkdir.assert_has_calls(calls=mkdir_calls)
+        # noinspection PyUnresolvedReferences
+        pathlib.Path.joinpath.assert_has_calls(calls=joinpath_calls)
+        pathlib.Path.symlink_to.assert_has_calls(calls=symlink_to_calls)
+
+
+@pytest.mark.parametrize(
+    "platform,"
+    "command_data_stdout,"
+    "expected_installation_path_base,"
+    "expected_installation_path_platform,"
+    "expected_rmtree",
+    # No match to previously installed platforms
+    [({compilesketches.CompileSketches.dependency_name_key: "foo:bar"},
+      "[{\"ID\": \"asdf:zxcv\"}]",
+      pathlib.PurePath("/foo/UserPlatformsPath"),
+      pathlib.PurePath("foo/bar"),
+      False),
+     # Match with previously installed platform
+     ({compilesketches.CompileSketches.dependency_name_key: "foo:bar"},
+      "[{\"ID\": \"foo:bar\", \"Installed\": \"1.2.3\"}]",
+      pathlib.PurePath("/foo/BoardManagerPlatformsPath"),
+      pathlib.PurePath("foo/hardware/bar/1.2.3"),
+      True)]
+)
+def test_get_platform_installation_path(mocker,
+                                        platform,
+                                        command_data_stdout,
+                                        expected_installation_path_base,
+                                        expected_installation_path_platform,
+                                        expected_rmtree):
+    class CommandData:
+        def __init__(self, stdout):
+            self.stdout = stdout
+
+    command_data = CommandData(stdout=command_data_stdout)
+
+    mocker.patch("compilesketches.CompileSketches.run_arduino_cli_command", autospec=True, return_value=command_data)
+    mocker.patch("shutil.rmtree", autospec=True)
+
+    compile_sketches = get_compilesketches_object()
+    compile_sketches.user_platforms_path = pathlib.PurePath("/foo/UserPlatformsPath")
+    compile_sketches.board_manager_platforms_path = pathlib.PurePath("/foo/BoardManagerPlatformsPath")
+
+    platform_installation_path = compile_sketches.get_platform_installation_path(platform=platform)
+    assert platform_installation_path.base == expected_installation_path_base
+    assert platform_installation_path.platform == expected_installation_path_platform
+
+    run_arduino_cli_command_calls = [unittest.mock.call(compile_sketches, command=["core", "update-index"]),
+                                     unittest.mock.call(compile_sketches, command=["core", "list", "--format", "json"])]
+    compilesketches.CompileSketches.run_arduino_cli_command.assert_has_calls(calls=run_arduino_cli_command_calls)
+
+    # noinspection PyUnresolvedReferences
+    if expected_rmtree is True:
+        # noinspection PyUnresolvedReferences
+        shutil.rmtree.assert_called_once_with(
+            path=platform_installation_path.base.joinpath(platform_installation_path.platform)
+        )
+    else:
+        # noinspection PyUnresolvedReferences
+        shutil.rmtree.assert_not_called()
+
+
+def test_install_platforms_from_repository(mocker):
+    platform_list = [
+        {compilesketches.CompileSketches.dependency_source_url_key: unittest.mock.sentinel.source_url,
+         compilesketches.CompileSketches.dependency_source_path_key: unittest.mock.sentinel.source_path,
+         compilesketches.CompileSketches.dependency_destination_name_key: unittest.mock.sentinel.destination_name},
+        {compilesketches.CompileSketches.dependency_source_url_key: unittest.mock.sentinel.source_url2}
+    ]
+
+    git_ref = unittest.mock.sentinel.git_ref
+
+    class PlatformInstallationPath:
+        def __init__(self):
+            self.base = pathlib.PurePath()
+            self.platform = pathlib.PurePath()
+
+    platform_installation_path = PlatformInstallationPath()
+    platform_installation_path.base = pathlib.Path("/foo/PlatformInstallationPathParent")
+    platform_installation_path.platform = pathlib.Path("PlatformInstallationPathName")
+
+    expected_source_path_list = [unittest.mock.sentinel.source_path, "."]
+    expected_destination_name_list = [unittest.mock.sentinel.destination_name, None]
+
+    compile_sketches = get_compilesketches_object()
+
+    mocker.patch("compilesketches.CompileSketches.get_repository_dependency_ref", autospec=True, return_value=git_ref)
+    mocker.patch("compilesketches.CompileSketches.get_platform_installation_path",
+                 autospec=True,
+                 return_value=platform_installation_path)
+    mocker.patch("compilesketches.CompileSketches.install_from_repository", autospec=True, return_value=git_ref)
+
+    compile_sketches.install_platforms_from_repository(platform_list=platform_list)
+
+    get_repository_dependency_ref_calls = []
+    get_platform_installation_path_calls = []
+    install_from_repository_calls = []
+    for platform, expected_source_path, expected_destination_name in zip(platform_list,
+                                                                         expected_source_path_list,
+                                                                         expected_destination_name_list):
+        get_repository_dependency_ref_calls.append(unittest.mock.call(compile_sketches, dependency=platform))
+        get_platform_installation_path_calls.append(unittest.mock.call(compile_sketches, platform=platform))
+        install_from_repository_calls.append(
+            unittest.mock.call(compile_sketches,
+                               url=platform[compilesketches.CompileSketches.dependency_source_url_key],
+                               git_ref=git_ref,
+                               source_path=expected_source_path,
+                               destination_parent_path=platform_installation_path.base,
+                               destination_name=platform_installation_path.platform)
+        )
+
+    compile_sketches.get_repository_dependency_ref.assert_has_calls(calls=get_repository_dependency_ref_calls)
+    compile_sketches.install_from_repository.assert_has_calls(calls=install_from_repository_calls)
+
+
+@pytest.mark.parametrize(
     "dependency, expected_ref",
     [({compilesketches.CompileSketches.dependency_version_key: "1.2.3"}, "1.2.3"),
      ({}, None)]
@@ -497,6 +765,47 @@ def test_get_manager_dependency_name(dependency, expected_name):
 def test_get_repository_dependency_ref(dependency, expected_ref):
     compile_sketches = get_compilesketches_object()
     assert compile_sketches.get_repository_dependency_ref(dependency=dependency) == expected_ref
+
+
+def test_install_platforms_from_download(mocker):
+    platform_list = [
+        {compilesketches.CompileSketches.dependency_source_url_key: unittest.mock.sentinel.source_url1,
+         compilesketches.CompileSketches.dependency_source_path_key: unittest.mock.sentinel.source_path,
+         compilesketches.CompileSketches.dependency_destination_name_key: unittest.mock.sentinel.destination_name},
+        {compilesketches.CompileSketches.dependency_source_url_key: unittest.mock.sentinel.source_url2}
+    ]
+
+    class PlatformInstallationPath:
+        def __init__(self):
+            self.base = pathlib.PurePath()
+            self.platform = pathlib.PurePath()
+
+    platform_installation_path = PlatformInstallationPath()
+    platform_installation_path.parent = pathlib.Path("/foo/PlatformInstallationPathParent")
+    platform_installation_path.name = pathlib.Path("PlatformInstallationPathName")
+
+    expected_source_path_list = [unittest.mock.sentinel.source_path, "."]
+
+    compile_sketches = get_compilesketches_object()
+
+    mocker.patch("compilesketches.CompileSketches.get_platform_installation_path",
+                 autospec=True,
+                 return_value=platform_installation_path)
+    mocker.patch("compilesketches.install_from_download", autospec=True)
+
+    compile_sketches.install_platforms_from_download(platform_list=platform_list)
+
+    get_platform_installation_path_calls = []
+    install_platforms_from_download_calls = []
+    for platform, expected_source_path, in zip(platform_list, expected_source_path_list):
+        get_platform_installation_path_calls.append(unittest.mock.call(compile_sketches, platform=platform))
+        install_platforms_from_download_calls.append(
+            unittest.mock.call(url=platform[compilesketches.CompileSketches.dependency_source_url_key],
+                               source_path=expected_source_path,
+                               destination_parent_path=platform_installation_path.base,
+                               destination_name=platform_installation_path.platform)
+        )
+    compilesketches.install_from_download.assert_has_calls(calls=install_platforms_from_download_calls)
 
 
 @pytest.mark.parametrize(
@@ -528,16 +837,12 @@ def test_install_libraries(monkeypatch, mocker, libraries, expected_manager, exp
     compile_sketches = get_compilesketches_object(libraries=libraries)
     compile_sketches.libraries_path = libraries_path
 
-    mocker.patch.object(pathlib.Path, "mkdir", autospec=True)
     mocker.patch("compilesketches.CompileSketches.install_libraries_from_library_manager", autospec=True)
     mocker.patch("compilesketches.CompileSketches.install_libraries_from_path", autospec=True)
     mocker.patch("compilesketches.CompileSketches.install_libraries_from_repository", autospec=True)
     mocker.patch("compilesketches.CompileSketches.install_libraries_from_download", autospec=True)
 
     compile_sketches.install_libraries()
-
-    # noinspection PyUnresolvedReferences
-    pathlib.Path.mkdir.assert_called_with(libraries_path, parents=True, exist_ok=True)
 
     if len(expected_manager) > 0:
         compile_sketches.install_libraries_from_library_manager.assert_called_once_with(
@@ -609,6 +914,7 @@ def test_install_libraries_from_path(capsys, monkeypatch, mocker, path_exists, l
     compile_sketches.libraries_path = libraries_path
 
     mocker.patch.object(pathlib.Path, "exists", autospec=True, return_value=path_exists)
+    mocker.patch.object(pathlib.Path, "mkdir", autospec=True)
     mocker.patch.object(pathlib.Path, "joinpath", autospec=True, return_value=symlink_source_path)
     mocker.patch.object(pathlib.Path, "symlink_to", autospec=True)
 
@@ -624,15 +930,19 @@ def test_install_libraries_from_path(capsys, monkeypatch, mocker, path_exists, l
     else:
         compile_sketches.install_libraries_from_path(library_list=library_list)
 
+        mkdir_calls = []
         joinpath_calls = []
         symlink_to_calls = []
         for library, expected_destination_name in zip(library_list, expected_destination_name_list):
+            mkdir_calls.append(unittest.mock.call(libraries_path, parents=True, exist_ok=True))
             joinpath_calls.append(unittest.mock.call(libraries_path, expected_destination_name))
             symlink_to_calls.append(
                 unittest.mock.call(symlink_source_path,
                                    target=library[compilesketches.CompileSketches.dependency_source_path_key],
                                    target_is_directory=True))
 
+        # noinspection PyUnresolvedReferences
+        pathlib.Path.mkdir.assert_has_calls(calls=mkdir_calls)
         # noinspection PyUnresolvedReferences
         pathlib.Path.joinpath.assert_has_calls(calls=joinpath_calls)
         pathlib.Path.symlink_to.assert_has_calls(calls=symlink_to_calls)

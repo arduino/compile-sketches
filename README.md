@@ -16,6 +16,52 @@ For 3rd party boards, also specify the Boards Manager URL:
   fqbn: '"sandeepmistry:nRF5:Generic_nRF52832" "https://sandeepmistry.github.io/arduino-nRF5/package_nRF5_boards_index.json"'
 ```
 
+### `platforms`
+
+YAML-format list of platform dependencies to install.
+
+Default `""`. If no `platforms` input is provided, the board's dependency will be automatically determined from the `fqbn` input and the latest version of that platform will be installed via Board Manager.
+
+If a platform dependency from a non-Board Manager source of the same name as another Board Manager source platform dependency is defined, they will both be installed, with the non-Board Manager dependency overwriting the Board Manager platform installation. This permits testing against a non-release version of a platform while using Board Manager to install the platform's tools dependencies. 
+Example:
+```yaml
+platforms: |
+  # Install the latest release of Arduino SAMD Boards and its toolchain via Board Manager
+  - name: "arduino:samd"
+  # Install the platform from the root of the repository, replacing the BM installed platform
+  - source-path: "."
+    name: "arduino:samd"
+```
+
+#### Sources:
+
+##### Board Manager
+
+Keys:
+- `name` - platform name in the form of `VENDOR:ARCHITECTURE`.
+- `version` - version of the platform to install. Default is the latest version.
+
+##### Local path
+
+Keys:
+- `source-path` - path to install as a platform. Relative paths are assumed to be relative to the root of the repository.
+- `name` - platform name in the form of `VENDOR:ARCHITECTURE`.
+
+##### Repository
+
+Keys:
+- `source-url` - URL to clone the repository from. It must start with `git://` or end with `.git`.
+- `version` - [Git ref](https://git-scm.com/book/en/v2/Git-Internals-Git-References) of the repository to checkout. The special version name `latest` will cause the latest tag to be used. By default, the repository will be checked out to the tip of the default branch.
+- `source-path` - path to install as a library. Paths are relative to the root of the repository. The default is to install from the root of the repository.
+- `name` - platform name in the form of `VENDOR:ARCHITECTURE`.
+
+##### Archive download
+
+Keys:
+- `source-url` - download URL for the archive (e.g., `https://github.com/arduino/ArduinoCore-avr/archive/master.zip`).
+- `source-path` - path to install as a library. Paths are relative to the root folder of the archive, or the root of the archive if it has no root folder. The default is to install from the root folder of the archive.
+- `name` - platform name in the form of `VENDOR:ARCHITECTURE`.
+
 ### `libraries`
 
 YAML-format list of library dependencies to install.
@@ -50,7 +96,7 @@ Keys:
 
 Keys:
 - `source-url` - download URL for the archive (e.g., `https://github.com/arduino-libraries/Servo/archive/master.zip`).
-- `source-path` - path to install as a library. Paths are relative to the root folder of the archive. If the archive doesn't have a root folder, use `..` as `source-path` to install from the archive root. The default is to install from the root folder of the archive.
+- `source-path` - path to install as a library. Paths are relative to the root folder of the archive, or the root of the archive if it has no root folder. The default is to install from the root folder of the archive.
 - `destination-name` - folder name to install the library to. By default, the folder will be named according to the source archive or subfolder name.
 
 ### `sketch-paths`

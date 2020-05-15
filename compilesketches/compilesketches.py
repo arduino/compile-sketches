@@ -25,6 +25,7 @@ def main():
     compile_sketches = CompileSketches(
         cli_version=os.environ["INPUT_CLI-VERSION"],
         fqbn_arg=os.environ["INPUT_FQBN"],
+        platforms=os.environ["INPUT_PLATFORMS"],
         libraries=os.environ["INPUT_LIBRARIES"],
         sketch_paths=os.environ["INPUT_SKETCH-PATHS"],
         verbose=os.environ["INPUT_VERBOSE"],
@@ -48,7 +49,8 @@ class CompileSketches:
     cli_version -- version of the Arduino CLI to use
     fqbn_arg -- fully qualified board name of the board to compile for. Space separated list with Boards Manager URL if
                 needed
-    libraries -- space-separated list of libraries to install
+    platforms -- YAML-format list of platforms to install
+    libraries -- YAML-format or space-separated list of libraries to install
     sketch_paths -- space-separated list of paths containing sketches to compile. These paths will be searched
                     recursively for sketches.
     verbose -- set to "true" for verbose output ("true", "false")
@@ -75,7 +77,10 @@ class CompileSketches:
 
     arduino_cli_installation_path = pathlib.Path.home().joinpath("bin")
     arduino_cli_user_directory_path = pathlib.Path.home().joinpath("Arduino")
+    arduino_cli_data_directory_path = pathlib.Path.home().joinpath(".arduino15")
     libraries_path = arduino_cli_user_directory_path.joinpath("libraries")
+    user_platforms_path = arduino_cli_user_directory_path.joinpath("hardware")
+    board_manager_platforms_path = arduino_cli_data_directory_path.joinpath("packages")
 
     report_fqbn_key = "fqbn"
     report_sketch_key = "sketch"
@@ -95,7 +100,7 @@ class CompileSketches:
 
     latest_release_indicator = "latest"
 
-    def __init__(self, cli_version, fqbn_arg, libraries, sketch_paths, verbose, github_token, report_sketch,
+    def __init__(self, cli_version, fqbn_arg, platforms, libraries, sketch_paths, verbose, github_token, report_sketch,
                  enable_size_deltas_report, sketches_report_path, enable_size_trends_report, google_key_file,
                  size_trends_report_spreadsheet_id, size_trends_report_sheet_name):
         """Process, store, and validate the action's inputs."""
@@ -104,6 +109,7 @@ class CompileSketches:
         parsed_fqbn_arg = parse_fqbn_arg_input(fqbn_arg=fqbn_arg)
         self.fqbn = parsed_fqbn_arg["fqbn"]
         self.additional_url = parsed_fqbn_arg["additional_url"]
+        self.platforms = platforms
         self.libraries = libraries
 
         # Save the space-separated list of paths as a Python list
@@ -203,6 +209,8 @@ class CompileSketches:
 
         # Configure the location of the Arduino CLI user directory
         os.environ["ARDUINO_DIRECTORIES_USER"] = str(self.arduino_cli_user_directory_path)
+        # Configure the location of the Arduino CLI data directory
+        os.environ["ARDUINO_DIRECTORIES_DATA"] = str(self.arduino_cli_data_directory_path)
 
     def verbose_print(self, *print_arguments):
         """Print log output when in verbose mode"""
@@ -211,16 +219,35 @@ class CompileSketches:
 
     def install_platforms(self):
         """Install Arduino boards platforms."""
+        platform_list = self.Dependencies()
+        if self.platforms == "":
+            # When no platforms input is provided, automatically determine the board's platform dependency from the FQBN
+            platform_list.manager.append(self.get_fqbn_platform_dependency())
+        else:
+            platform_list = self.sort_dependency_list(yaml.load(stream=self.platforms, Loader=yaml.SafeLoader))
+
+        if len(platform_list.manager) > 0:
+            # This should always be called before the functions to install platforms from other sources so that the
+            # override system will work
+            self.install_platforms_from_board_manager(platform_list=platform_list.manager)
+
+        if len(platform_list.path) > 0:
+            self.install_platforms_from_path(platform_list=platform_list.path)
+
+        if len(platform_list.repository) > 0:
+            self.install_platforms_from_repository(platform_list=platform_list.repository)
+
+        if len(platform_list.download) > 0:
+            self.install_platforms_from_download(platform_list=platform_list.download)
+
+    def get_fqbn_platform_dependency(self):
+        """Return the platform dependency definition automatically generated from the FQBN."""
         # Extract the platform name from the FQBN (e.g., arduino:avr:uno => arduino:avr)
-        fqbn_platform_name = self.fqbn.rsplit(sep=":", maxsplit=1)[0]
-
-        # TODO: this is in anticipation of permitting installation of arbitrary core dependencies from various sources
-        additional_url_list = []
+        fqbn_platform_dependency = {self.dependency_name_key: self.fqbn.rsplit(sep=":", maxsplit=1)[0]}
         if self.additional_url is not None:
-            additional_url_list.append(self.additional_url)
+            fqbn_platform_dependency[self.dependency_source_url_key] = self.additional_url
 
-        self.install_platforms_from_board_manager(platform_list=[fqbn_platform_name],
-                                                  additional_url_list=additional_url_list)
+        return fqbn_platform_dependency
 
     def sort_dependency_list(self, dependency_list):
         """Sort a list of sketch dependencies by source type
@@ -238,11 +265,17 @@ class CompileSketches:
                         or dependency[self.dependency_source_url_key].startswith("git://")
                     ):
                         sorted_dependencies.repository.append(dependency)
+                    elif re.match(
+                        pattern=".*/package_.*index.json", string=dependency[self.dependency_source_url_key]
+                    ) is not None:
+                        # URLs that match the filename requirements of the package_index.json specification are assumed
+                        # to be additional Board Manager URLs (platform index)
+                        sorted_dependencies.manager.append(dependency)
                     else:
                         # All other URLs are assumed to be downloads
                         sorted_dependencies.download.append(dependency)
                 elif self.dependency_source_path_key in dependency:
-                    # Libraries with source-path and no source-url are assumed to be paths
+                    # Dependencies with source-path and no source-url are assumed to be paths
                     sorted_dependencies.path.append(dependency)
                 else:
                     # All others are Library/Board Manager names
@@ -259,33 +292,38 @@ class CompileSketches:
             self.repository = []
             self.download = []
 
-    def install_platforms_from_board_manager(self, platform_list, additional_url_list):
+    def install_platforms_from_board_manager(self, platform_list):
         """Install platform dependencies from the Arduino Board Manager
 
         Keyword arguments:
-        platform_list -- a list of platform names
-        additional_url_list -- a list of additional Board Manager URLs for 3rd party platforms
+        platform_list -- list of dictionaries defining the Board Manager platform dependencies
         """
-        core_update_index_command = ["core", "update-index"]
+        # Although Arduino CLI supports doing this all in one command, it may assist troubleshooting to install one
+        # platform at a time, and most users will only do a single Board Manager platform installation anyway
+        for platform in platform_list:
+            core_update_index_command = ["core", "update-index"]
+            core_install_command = ["core", "install"]
 
-        core_install_command = ["core", "install"]
-        core_install_command.extend(platform_list)
+            # Append additional Boards Manager URLs to the commands, if required
+            if self.dependency_source_url_key in platform:
+                additional_urls_option = ["--additional-urls", platform[self.dependency_source_url_key]]
+                core_update_index_command.extend(additional_urls_option)
+                core_install_command.extend(additional_urls_option)
 
-        # Append additional Boards Manager URLs to the commands, if required
-        if len(additional_url_list) > 0:
-            additional_urls_option = ["--additional-urls", ",".join(additional_url_list)]
-            core_update_index_command.extend(additional_urls_option)
-            core_install_command.extend(additional_urls_option)
+            core_install_command.append(self.get_manager_dependency_name(platform))
 
-        # Download the platform indexes for the platforms
-        self.run_arduino_cli_command(command=core_update_index_command,
-                                     enable_output=self.get_run_command_output_level())
+            # Download the platform index for the platform
+            self.run_arduino_cli_command(command=core_update_index_command,
+                                         enable_output=self.get_run_command_output_level())
 
-        # Install the platforms
-        self.run_arduino_cli_command(command=core_install_command, enable_output=self.get_run_command_output_level())
+            # Install the platform
+            self.run_arduino_cli_command(command=core_install_command,
+                                         enable_output=self.get_run_command_output_level())
 
     def get_manager_dependency_name(self, dependency):
-        """Return the appropriate name value for a repository dependency
+        """Return the appropriate name value for a manager dependency. This allows the NAME@VERSION syntax to be used
+        with the special "latest" ref for the sake of consistency (though the documented approach is to use the version
+        key to specify version.
 
         Keyword arguments:
         dependency -- dictionary defining the Library/Board Manager dependency
@@ -360,6 +398,104 @@ class CompileSketches:
 
         return command_data
 
+    def install_platforms_from_path(self, platform_list):
+        """Install libraries from local paths
+
+        Keyword arguments:
+        platform_list -- Dependencies object containing lists of dictionaries defining platform dependencies of each
+                         source type
+        """
+        for platform in platform_list:
+            source_path = absolute_path(platform[self.dependency_source_path_key])
+            self.verbose_print("Installing platform from path:", platform[self.dependency_source_path_key])
+
+            if not source_path.exists():
+                print("::error::Platform source path:", platform[self.dependency_source_path_key], "doesn't exist")
+                sys.exit(1)
+
+            platform_installation_path = self.get_platform_installation_path(platform=platform)
+
+            # Create the parent path if it doesn't exist already. This must be the immediate parent, whereas
+            # get_platform_installation_path().platform will be multiple nested folders under the base path
+            platform_installation_path_parent = (
+                pathlib.Path(platform_installation_path.base, platform_installation_path.platform).parent
+            )
+            platform_installation_path_parent.mkdir(parents=True, exist_ok=True)
+
+            # Install the platform by creating a symlink
+            destination_path = platform_installation_path.base.joinpath(platform_installation_path.platform)
+            destination_path.symlink_to(target=source_path, target_is_directory=True)
+
+    def get_platform_installation_path(self, platform):
+        """Return the correct installation path for the given platform
+
+        Keyword arguments:
+        platform -- dictionary defining the platform dependency
+        """
+
+        class PlatformInstallationPath:
+            def __init__(self):
+                self.base = pathlib.PurePath()
+                self.platform = pathlib.PurePath()
+
+        platform_installation_path = PlatformInstallationPath()
+
+        platform_vendor = platform[self.dependency_name_key].split(sep=":")[0]
+        platform_architecture = platform[self.dependency_name_key].rsplit(sep=":", maxsplit=1)[1]
+
+        # Default to installing to the sketchbook
+        platform_installation_path.base = self.user_platforms_path
+        platform_installation_path.platform = pathlib.PurePath(platform_vendor, platform_architecture)
+
+        # I have no clue why this is needed, but arduino-cli core list fails if this isn't done first. The 3rd party
+        # platforms are still shown in the list even if their index URLs are not specified to the command via the
+        # --additional-urls option
+        self.run_arduino_cli_command(command=["core", "update-index"])
+        # Use Arduino CLI to get the list of installed platforms
+        command_data = self.run_arduino_cli_command(command=["core", "list", "--format", "json"])
+        installed_platform_list = json.loads(command_data.stdout)
+        for installed_platform in installed_platform_list:
+            if installed_platform["ID"] == platform[self.dependency_name_key]:
+                # The platform has been installed via Board Manager, so do an overwrite
+                platform_installation_path.base = self.board_manager_platforms_path
+                platform_installation_path.platform = (
+                    pathlib.PurePath(platform_vendor,
+                                     "hardware",
+                                     platform_architecture,
+                                     installed_platform["Installed"])
+                )
+
+                # Remove the existing installation so it can be replaced by the installation function
+                shutil.rmtree(path=platform_installation_path.base.joinpath(platform_installation_path.platform))
+
+                break
+
+        return platform_installation_path
+
+    def install_platforms_from_repository(self, platform_list):
+        """Install libraries by cloning Git repositories
+
+        Keyword arguments:
+        platform_list -- list of dictionaries defining the dependencies
+        """
+        for platform in platform_list:
+            self.verbose_print("Installing platform from repository:", platform[self.dependency_source_url_key])
+
+            git_ref = self.get_repository_dependency_ref(dependency=platform)
+
+            if self.dependency_source_path_key in platform:
+                source_path = platform[self.dependency_source_path_key]
+            else:
+                source_path = "."
+
+            destination_path = self.get_platform_installation_path(platform=platform)
+
+            self.install_from_repository(url=platform[self.dependency_source_url_key],
+                                         git_ref=git_ref,
+                                         source_path=source_path,
+                                         destination_parent_path=destination_path.base,
+                                         destination_name=destination_path.platform)
+
     def get_repository_dependency_ref(self, dependency):
         """Return the appropriate git ref value for a repository dependency
 
@@ -431,10 +567,28 @@ class CompileSketches:
             # checkout ref
             cloned_repository.git.checkout(git_ref)
 
+    def install_platforms_from_download(self, platform_list):
+        """Install libraries by downloading them
+
+        Keyword arguments:
+        platform_list -- list of dictionaries defining the dependencies
+        """
+        for platform in platform_list:
+            self.verbose_print("Installing platform from download URL:", platform[self.dependency_source_url_key])
+            if self.dependency_source_path_key in platform:
+                source_path = platform[self.dependency_source_path_key]
+            else:
+                source_path = "."
+
+            destination_path = self.get_platform_installation_path(platform=platform)
+
+            install_from_download(url=platform[self.dependency_source_url_key],
+                                  source_path=source_path,
+                                  destination_parent_path=destination_path.base,
+                                  destination_name=destination_path.platform)
+
     def install_libraries(self):
         """Install Arduino libraries."""
-        self.libraries_path.mkdir(parents=True, exist_ok=True)
-
         libraries = yaml.load(stream="", Loader=yaml.SafeLoader)
         try:
             libraries = yaml.load(stream=self.libraries, Loader=yaml.SafeLoader)
@@ -504,6 +658,9 @@ class CompileSketches:
             else:
                 # Use the existing folder name
                 destination_name = source_path.name
+
+            # Create the parent path if it doesn't exist already
+            self.libraries_path.mkdir(parents=True, exist_ok=True)
 
             # Install the library by creating a symlink in the sketchbook
             library_symlink_path = self.libraries_path.joinpath(destination_name)

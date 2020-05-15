@@ -10,6 +10,9 @@ inputs:
   libraries:
     description: 'YAML-format list of library dependencies to install'
     default: '- source-path: ./'
+  platforms:
+    description: 'YAML-format list of platform dependencies to install'
+    default: ''
   sketch-paths:
     description: 'List of paths containing sketches to compile.'
     default: 'examples'
