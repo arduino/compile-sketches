@@ -288,7 +288,7 @@ class CompileSketches:
         """Return the appropriate name value for a repository dependency
 
         Keyword arguments:
-        dependency -- dictionary defining the Library/Board Manger dependency
+        dependency -- dictionary defining the Library/Board Manager dependency
         """
         name = dependency[self.dependency_name_key]
         if self.dependency_version_key in dependency:
