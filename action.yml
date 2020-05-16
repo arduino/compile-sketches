@@ -25,12 +25,12 @@ inputs:
   size-report-sketch:
     description: 'Name of the sketch used to compare memory usage change'
     default: ''
+  sketches-report-path:
+    description: 'Path in which to save a JSON formatted file containing data from the sketch compilations'
+    default: 'size-deltas-reports'
   enable-size-deltas-report:
     description: 'Set to true to cause the action to determine the change in memory usage for the size-reports-sketch'
     default: false
-  size-deltas-report-folder-name:
-    description: 'Folder to save the memory usage change report to'
-    default: 'size-deltas-reports'
   enable-size-trends-report:
     description: 'Set to true to cause the action to record the memory usage of size-reports-sketch'
     default: false

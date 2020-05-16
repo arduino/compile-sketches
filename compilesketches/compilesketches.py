@@ -22,6 +22,11 @@ import reportsizetrends
 
 
 def main():
+    if "INPUT_SIZE-DELTAS-REPORT-FOLDER-NAME" in os.environ:
+        print("::warning::The size-deltas-report-folder-name input is deprecated. Use the equivalent input: "
+              "sketches-report-path instead.")
+        os.environ["INPUT_SKETCHES-REPORT-PATH"] = os.environ["INPUT_SIZE-DELTAS-REPORT-FOLDER-NAME"]
+
     compile_sketches = CompileSketches(
         cli_version=os.environ["INPUT_CLI-VERSION"],
         fqbn_arg=os.environ["INPUT_FQBN"],
@@ -32,7 +37,7 @@ def main():
         github_token=os.environ["INPUT_GITHUB-TOKEN"],
         report_sketch=os.environ["INPUT_SIZE-REPORT-SKETCH"],
         enable_size_deltas_report=os.environ["INPUT_ENABLE-SIZE-DELTAS-REPORT"],
-        sketches_report_path=os.environ["INPUT_SIZE-DELTAS-REPORT-FOLDER-NAME"],
+        sketches_report_path=os.environ["INPUT_SKETCHES-REPORT-PATH"],
         enable_size_trends_report=os.environ["INPUT_ENABLE-SIZE-TRENDS-REPORT"],
         google_key_file=os.environ["INPUT_KEYFILE"],
         size_trends_report_spreadsheet_id=os.environ["INPUT_SIZE-TRENDS-REPORT-SPREADSHEET-ID"],

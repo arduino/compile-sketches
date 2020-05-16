@@ -80,7 +80,10 @@ def test_directories_are_same():
     ) is False
 
 
-def test_main(monkeypatch, mocker):
+@pytest.mark.parametrize("use_size_deltas_report_folder_name, expected_sketches_report_path",
+                         [(True, "FooSizeDeltasReportFolderName"),
+                          (False, "FooSketchesReportPath")])
+def test_main(monkeypatch, mocker, use_size_deltas_report_folder_name, expected_sketches_report_path):
     cli_version = "1.0.0"
     fqbn_arg = "foo:bar:baz"
     platforms = "- name: FooVendor:BarArchitecture"
@@ -90,7 +93,8 @@ def test_main(monkeypatch, mocker):
     github_token = "FooGitHubToken"
     report_sketch = "FooReportSketch"
     enable_size_deltas_report = "true"
-    sketches_report_path = "FooSizeDeltasReportFolderName"
+    sketches_report_path = "FooSketchesReportPath"
+    size_deltas_report_folder_name = "FooSizeDeltasReportFolderName"
     enable_size_trends_report = "true"
     google_key_file = "FooKeyfile"
     size_trends_report_spreadsheet_id = "FooSpreadsheetID"
@@ -109,7 +113,9 @@ def test_main(monkeypatch, mocker):
     monkeypatch.setenv("INPUT_VERBOSE", verbose)
     monkeypatch.setenv("INPUT_SIZE-REPORT-SKETCH", report_sketch)
     monkeypatch.setenv("INPUT_ENABLE-SIZE-DELTAS-REPORT", enable_size_deltas_report)
-    monkeypatch.setenv("INPUT_SIZE-DELTAS-REPORT-FOLDER-NAME", sketches_report_path)
+    monkeypatch.setenv("INPUT_SKETCHES-REPORT-PATH", sketches_report_path)
+    if use_size_deltas_report_folder_name:
+        monkeypatch.setenv("INPUT_SIZE-DELTAS-REPORT-FOLDER-NAME", size_deltas_report_folder_name)
     monkeypatch.setenv("INPUT_ENABLE-SIZE-TRENDS-REPORT", enable_size_trends_report)
     monkeypatch.setenv("INPUT_KEYFILE", google_key_file)
     monkeypatch.setenv("INPUT_SIZE-TRENDS-REPORT-SPREADSHEET-ID", size_trends_report_spreadsheet_id)
@@ -130,7 +136,7 @@ def test_main(monkeypatch, mocker):
         github_token=github_token,
         report_sketch=report_sketch,
         enable_size_deltas_report=enable_size_deltas_report,
-        sketches_report_path=sketches_report_path,
+        sketches_report_path=expected_sketches_report_path,
         enable_size_trends_report=enable_size_trends_report,
         google_key_file=google_key_file,
         size_trends_report_spreadsheet_id=size_trends_report_spreadsheet_id,
