@@ -19,30 +19,18 @@ inputs:
   verbose:
     description: 'Set to true to show verbose output in the log'
     default: false
-  github-token:
-    description: 'GitHub access token used to get information from the GitHub API. Only needed if you are using the size report features with private repositories.'
-    default: ''
   size-report-sketch:
     description: 'Name of the sketch used to compare memory usage change'
     default: ''
   sketches-report-path:
     description: 'Path in which to save a JSON formatted file containing data from the sketch compilations'
     default: 'size-deltas-reports'
+  github-token:
+    description: 'GitHub access token used to get information from the GitHub API. Only needed if you are using the size deltas report feature with a private repository.'
+    default: ''
   enable-size-deltas-report:
     description: 'Set to true to cause the action to determine the change in memory usage for the size-reports-sketch'
     default: false
-  enable-size-trends-report:
-    description: 'Set to true to cause the action to record the memory usage of size-reports-sketch'
-    default: false
-  keyfile:
-    description: 'Google key file used to update the size trends report Google Sheets spreadsheet.'
-    default: ''
-  size-trends-report-spreadsheet-id:
-    description: 'The ID of the Google Sheets spreadsheet to write the memory usage trends data to'
-    default: ''
-  size-trends-report-sheet-name:
-    description: 'The sheet name in the Google Sheets spreadsheet used for the memory usage trends report'
-    default: 'Sheet1'
 runs:
   using: 'docker'
   image: 'Dockerfile'

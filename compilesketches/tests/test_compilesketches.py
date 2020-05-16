@@ -13,7 +13,6 @@ import github
 import pytest
 
 import compilesketches
-import reportsizetrends
 
 test_data_path = pathlib.PurePath(os.path.dirname(os.path.realpath(__file__)), "testdata")
 
@@ -28,11 +27,7 @@ def get_compilesketches_object(
     github_token="",
     report_sketch=unittest.mock.sentinel.report_sketch,
     enable_size_deltas_report="false",
-    sketches_report_path="foo report_folder_name",
-    enable_size_trends_report="false",
-    google_key_file=unittest.mock.sentinel.google_key_file,
-    size_trends_report_spreadsheet_id=unittest.mock.sentinel.size_trends_report_spreadsheet_id,
-    size_trends_report_sheet_name=unittest.mock.sentinel.size_trends_report_sheet_name
+    sketches_report_path="foo report_folder_name"
 ):
     return compilesketches.CompileSketches(cli_version=cli_version,
                                            fqbn_arg=fqbn_arg,
@@ -43,12 +38,7 @@ def get_compilesketches_object(
                                            github_token=github_token,
                                            report_sketch=report_sketch,
                                            enable_size_deltas_report=enable_size_deltas_report,
-                                           sketches_report_path=sketches_report_path,
-                                           enable_size_trends_report=enable_size_trends_report,
-                                           google_key_file=google_key_file,
-                                           size_trends_report_spreadsheet_id=size_trends_report_spreadsheet_id,
-                                           size_trends_report_sheet_name=size_trends_report_sheet_name
-                                           )
+                                           sketches_report_path=sketches_report_path)
 
 
 def directories_are_same(left_directory, right_directory):
@@ -83,7 +73,9 @@ def test_directories_are_same():
 @pytest.mark.parametrize("use_size_deltas_report_folder_name, expected_sketches_report_path",
                          [(True, "FooSizeDeltasReportFolderName"),
                           (False, "FooSketchesReportPath")])
-def test_main(monkeypatch, mocker, use_size_deltas_report_folder_name, expected_sketches_report_path):
+@pytest.mark.parametrize("use_enable_size_trends_report", [True, False])
+def test_main(capsys, monkeypatch, mocker, use_size_deltas_report_folder_name, expected_sketches_report_path,
+              use_enable_size_trends_report):
     cli_version = "1.0.0"
     fqbn_arg = "foo:bar:baz"
     platforms = "- name: FooVendor:BarArchitecture"
@@ -95,10 +87,6 @@ def test_main(monkeypatch, mocker, use_size_deltas_report_folder_name, expected_
     enable_size_deltas_report = "true"
     sketches_report_path = "FooSketchesReportPath"
     size_deltas_report_folder_name = "FooSizeDeltasReportFolderName"
-    enable_size_trends_report = "true"
-    google_key_file = "FooKeyfile"
-    size_trends_report_spreadsheet_id = "FooSpreadsheetID"
-    size_trends_report_sheet_name = "FooSheetName"
 
     class CompileSketches:
         def compile_sketches(self):
@@ -116,15 +104,30 @@ def test_main(monkeypatch, mocker, use_size_deltas_report_folder_name, expected_
     monkeypatch.setenv("INPUT_SKETCHES-REPORT-PATH", sketches_report_path)
     if use_size_deltas_report_folder_name:
         monkeypatch.setenv("INPUT_SIZE-DELTAS-REPORT-FOLDER-NAME", size_deltas_report_folder_name)
-    monkeypatch.setenv("INPUT_ENABLE-SIZE-TRENDS-REPORT", enable_size_trends_report)
-    monkeypatch.setenv("INPUT_KEYFILE", google_key_file)
-    monkeypatch.setenv("INPUT_SIZE-TRENDS-REPORT-SPREADSHEET-ID", size_trends_report_spreadsheet_id)
-    monkeypatch.setenv("INPUT_SIZE-TRENDS-REPORT-SHEET-NAME", size_trends_report_sheet_name)
+    if use_enable_size_trends_report:
+        monkeypatch.setenv("INPUT_ENABLE-SIZE-TRENDS-REPORT", "true")
 
     mocker.patch("compilesketches.CompileSketches", autospec=True, return_value=CompileSketches())
     mocker.patch.object(CompileSketches, "compile_sketches")
 
     compilesketches.main()
+
+    expected_output = ""
+    if use_size_deltas_report_folder_name:
+        expected_output = (
+            "::warning::The size-deltas-report-folder-name input is deprecated. Use the equivalent input: "
+            "sketches-report-path instead."
+        )
+    if use_size_deltas_report_folder_name and use_enable_size_trends_report:
+        expected_output = expected_output + "\n"
+    if use_enable_size_trends_report:
+        expected_output = (
+            expected_output
+            + "::warning::The size trends report feature has been moved to a dedicated action. See the "
+              "documentation at "
+              "https://github.com/arduino/actions/tree/report-size-trends-action/libraries/report-size-trends"
+        )
+    assert capsys.readouterr().out.strip() == expected_output
 
     compilesketches.CompileSketches.assert_called_once_with(
         cli_version=cli_version,
@@ -136,11 +139,7 @@ def test_main(monkeypatch, mocker, use_size_deltas_report_folder_name, expected_
         github_token=github_token,
         report_sketch=report_sketch,
         enable_size_deltas_report=enable_size_deltas_report,
-        sketches_report_path=expected_sketches_report_path,
-        enable_size_trends_report=enable_size_trends_report,
-        google_key_file=google_key_file,
-        size_trends_report_spreadsheet_id=size_trends_report_spreadsheet_id,
-        size_trends_report_sheet_name=size_trends_report_sheet_name
+        sketches_report_path=expected_sketches_report_path
     )
     CompileSketches.compile_sketches.assert_called_once()
 
@@ -159,10 +158,6 @@ def test_compilesketches():
     report_sketch = unittest.mock.sentinel.report_sketch
     enable_size_deltas_report = "true"
     sketches_report_path = "FooSketchesReportFolder"
-    enable_size_trends_report = "false"
-    google_key_file = unittest.mock.sentinel.google_key_file
-    size_trends_report_spreadsheet_id = unittest.mock.sentinel.size_trends_report_spreadsheet_id
-    size_trends_report_sheet_name = unittest.mock.sentinel.size_trends_report_sheet_name
 
     compile_sketches = compilesketches.CompileSketches(
         cli_version=cli_version,
@@ -174,11 +169,7 @@ def test_compilesketches():
         github_token=github_token,
         report_sketch=report_sketch,
         enable_size_deltas_report=enable_size_deltas_report,
-        sketches_report_path=sketches_report_path,
-        enable_size_trends_report=enable_size_trends_report,
-        google_key_file=google_key_file,
-        size_trends_report_spreadsheet_id=size_trends_report_spreadsheet_id,
-        size_trends_report_sheet_name=size_trends_report_sheet_name
+        sketches_report_path=sketches_report_path
     )
 
     assert compile_sketches.cli_version == cli_version
@@ -191,34 +182,14 @@ def test_compilesketches():
     assert compile_sketches.report_sketch == report_sketch
     assert compile_sketches.enable_size_deltas_report is True
     assert compile_sketches.sketches_report_path == pathlib.PurePath(sketches_report_path)
-    assert compile_sketches.enable_size_trends_report is False
-    assert compile_sketches.google_key_file == google_key_file
-    assert compile_sketches.size_trends_report_spreadsheet_id == size_trends_report_spreadsheet_id
-    assert compile_sketches.size_trends_report_sheet_name == size_trends_report_sheet_name
 
     # Test invalid enable_size_deltas_report value
     with pytest.raises(expected_exception=SystemExit, match="1"):
         get_compilesketches_object(enable_size_deltas_report="fooInvalidEnableSizeDeltasBoolean")
 
-    # Test invalid enable_size_trends_report value
-    with pytest.raises(expected_exception=SystemExit, match="1"):
-        get_compilesketches_object(enable_size_trends_report="fooInvalidEnableSizeTrendsBoolean")
-
-    # Test undefined google_key_file
-    with pytest.raises(expected_exception=SystemExit, match="1"):
-        get_compilesketches_object(enable_size_trends_report="true", google_key_file="")
-
-    # Test undefined size_trends_report_spreadsheet_id
-    with pytest.raises(expected_exception=SystemExit, match="1"):
-        get_compilesketches_object(enable_size_trends_report="true", size_trends_report_spreadsheet_id="")
-
     # Test undefined report_sketch
     with pytest.raises(expected_exception=SystemExit, match="1"):
         get_compilesketches_object(enable_size_deltas_report="true", report_sketch="")
-
-    # Test undefined report_sketch
-    with pytest.raises(expected_exception=SystemExit, match="1"):
-        get_compilesketches_object(enable_size_trends_report="true", report_sketch="")
 
 
 @pytest.mark.parametrize("compilation_success_list, expected_success",
@@ -226,10 +197,8 @@ def test_compilesketches():
                           ([False, True, True], False),
                           ([True, False, True], False),
                           ([True, True, False], False)])
-@pytest.mark.parametrize("do_size_trends_report", [True, False])
 @pytest.mark.parametrize("report_sketch", [unittest.mock.sentinel.report_sketch, ""])
-def test_compile_sketches(mocker, compilation_success_list, expected_success, do_size_trends_report,
-                          report_sketch):
+def test_compile_sketches(mocker, compilation_success_list, expected_success, report_sketch):
     sketch_list = [unittest.mock.sentinel.sketch1, unittest.mock.sentinel.sketch2, unittest.mock.sentinel.sketch3]
 
     compilation_result_list = []
@@ -248,9 +217,6 @@ def test_compile_sketches(mocker, compilation_success_list, expected_success, do
     mocker.patch("compilesketches.CompileSketches.get_sketch_report", autospec=True, return_value=sketch_report)
     mocker.patch("compilesketches.CompileSketches.get_sketch_report_from_sketches_report", autospec=True,
                  return_value=sketch_report_from_sketches_report)
-    mocker.patch("compilesketches.CompileSketches.do_size_trends_report", autospec=True,
-                 return_value=do_size_trends_report)
-    mocker.patch("compilesketches.CompileSketches.make_size_trends_report", autospec=True)
     mocker.patch("compilesketches.CompileSketches.create_sketches_report_file", autospec=True)
 
     if expected_success:
@@ -276,18 +242,10 @@ def test_compile_sketches(mocker, compilation_success_list, expected_success, do
 
     if report_sketch == "":
         compile_sketches.get_sketch_report_from_sketches_report.assert_not_called()
-        compile_sketches.do_size_trends_report.assert_not_called()
-        compile_sketches.make_size_trends_report.assert_not_called()
         compile_sketches.create_sketches_report_file.assert_not_called()
     else:
         compile_sketches.get_sketch_report_from_sketches_report.assert_called_once_with(compile_sketches,
                                                                                         sketches_report=sketch_sizes)
-        compile_sketches.do_size_trends_report.assert_called_once()
-
-        if do_size_trends_report:
-            compile_sketches.make_size_trends_report.assert_called_once_with(compile_sketches)
-        else:
-            compile_sketches.make_size_trends_report.assert_not_called()
 
         compile_sketches.create_sketches_report_file.assert_called_once_with(
             compile_sketches,
@@ -1431,48 +1389,6 @@ def test_get_size_deltas(capsys, flash, ram, previous_flash, previous_ram, expec
     assert sketch_size[compile_sketches.report_ram_delta_key] == expected_ram_delta
 
 
-@pytest.mark.parametrize("enable_size_trends_report, github_event_name, is_default_branch, expected",
-                         [("true", "push", True, True),
-                          ("false", "push", True, False),
-                          ("true", "pull_request", True, False),
-                          ("true", "push", False, False)])
-def test_do_size_trends_report(monkeypatch, mocker, enable_size_trends_report, github_event_name, is_default_branch,
-                               expected):
-    monkeypatch.setenv("GITHUB_EVENT_NAME", github_event_name)
-
-    compile_sketches = get_compilesketches_object(enable_size_trends_report=enable_size_trends_report)
-
-    mocker.patch("compilesketches.CompileSketches.is_default_branch", autospec=True, return_value=is_default_branch)
-
-    assert compile_sketches.do_size_trends_report() == expected
-
-
-@pytest.mark.parametrize("current_branch, default_branch, is_default",
-                         [("foo-default-branch", "foo-default-branch", True),
-                          ("foo-not-default-branch", "foo-default-branch", False)])
-def test_is_default_branch(monkeypatch, mocker, current_branch, default_branch, is_default):
-    # Stub
-    class Github:
-        def get_repo(self):
-            pass
-
-    Github.default_branch = default_branch
-
-    monkeypatch.setenv("GITHUB_REPOSITORY", "fooRepository/fooOwner")
-    monkeypatch.setenv("GITHUB_REF", "refs/heads/" + current_branch)
-
-    compile_sketches = get_compilesketches_object()
-
-    compile_sketches.github_api = Github()
-    mocker.patch.object(Github, "get_repo", return_value=Github())
-
-    assert compile_sketches.is_default_branch() == is_default
-
-    mocker.patch.object(Github, "get_repo", side_effect=github.UnknownObjectException(status=42, data="foo"))
-    with pytest.raises(expected_exception=SystemExit, match="1"):
-        compile_sketches.is_default_branch()
-
-
 @pytest.mark.parametrize("report_sketch, expected_success", [("FooSketch", True), ("NonexistentSketch", False)])
 def test_get_sketch_report_from_sketches_report(report_sketch, expected_success):
     report_sketch_report = {compilesketches.CompileSketches.report_sketch_key: "FooSketch"}
@@ -1485,30 +1401,6 @@ def test_get_sketch_report_from_sketches_report(report_sketch, expected_success)
     else:
         with pytest.raises(expected_exception=SystemExit, match="1"):
             compile_sketches.get_sketch_report_from_sketches_report(sketch_sizes)
-
-
-def test_make_size_trends_report(monkeypatch, mocker):
-    # Stub
-    class ReportSizeTrends:
-        def report_size_trends(self):
-            pass
-
-    sketches_report_path = "foo/sketches_report_path"
-
-    compile_sketches = get_compilesketches_object(sketches_report_path=sketches_report_path)
-
-    mocker.patch("reportsizetrends.ReportSizeTrends", autospec=True, return_value=ReportSizeTrends())
-    mocker.patch.object(ReportSizeTrends, "report_size_trends")
-
-    compile_sketches.make_size_trends_report()
-
-    reportsizetrends.ReportSizeTrends.assert_called_once_with(
-        sketches_report_path=str(pathlib.PurePath(sketches_report_path)),
-        google_key_file=compile_sketches.google_key_file,
-        spreadsheet_id=compile_sketches.size_trends_report_spreadsheet_id,
-        sheet_name=compile_sketches.size_trends_report_sheet_name
-    )
-    ReportSizeTrends.report_size_trends.assert_called_once()
 
 
 def test_create_sketches_report_file(monkeypatch, tmp_path, mocker):
