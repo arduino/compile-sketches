@@ -899,7 +899,9 @@ def test_install_libraries_from_path(capsys, monkeypatch, mocker, path_exists, l
             joinpath_calls.append(unittest.mock.call(libraries_path, expected_destination_name))
             symlink_to_calls.append(
                 unittest.mock.call(symlink_source_path,
-                                   target=library[compilesketches.CompileSketches.dependency_source_path_key],
+                                   target=compilesketches.absolute_path(
+                                       library[compilesketches.CompileSketches.dependency_source_path_key]
+                                   ),
                                    target_is_directory=True))
 
         # noinspection PyUnresolvedReferences
@@ -1500,22 +1502,47 @@ def test_parse_boolean_input(boolean_input, expected_output):
     assert compilesketches.parse_boolean_input(boolean_input=boolean_input) == expected_output
 
 
-def test_path_relative_to_workspace(monkeypatch):
+@pytest.mark.parametrize("path, expected_relative_path",
+                         # Path under workspace
+                         [("/fooWorkspace/baz", pathlib.PurePath("baz")),
+                          # Path outside workspace
+                          ("/bar/foo", pathlib.Path("/").resolve().joinpath("bar", "foo"))])
+def test_path_relative_to_workspace(monkeypatch, path, expected_relative_path):
     monkeypatch.setenv("GITHUB_WORKSPACE", "/fooWorkspace")
 
-    assert compilesketches.path_relative_to_workspace(path=pathlib.PurePath("/fooWorkspace", "baz")
-                                                      ) == pathlib.PurePath("baz")
-    assert compilesketches.path_relative_to_workspace(path="/fooWorkspace/baz") == pathlib.PurePath("baz")
-    # Test path outside workspace
-    assert compilesketches.path_relative_to_workspace(path="/bar/foo") == pathlib.PurePath("/bar/foo")
+    assert compilesketches.path_relative_to_workspace(path=path) == expected_relative_path
+    assert compilesketches.path_relative_to_workspace(path=pathlib.PurePath(path)) == expected_relative_path
 
 
-@pytest.mark.parametrize("path, expected_absolute_path", [("/asdf", "/asdf"), ("asdf", "/fooWorkspace/asdf")])
+@pytest.mark.parametrize("path, expected_absolute_path",
+                         # Absolute path
+                         [("/asdf", pathlib.Path("/").resolve().joinpath("asdf")),
+                          # Relative path
+                          ("asdf", pathlib.Path("/").resolve().joinpath("fooWorkspace", "asdf")),
+                          # Use of ~
+                          ("~/foo", pathlib.Path.home().joinpath("foo")),
+                          # Use of ..
+                          ("/foo/bar/../baz", pathlib.Path("/").resolve().joinpath("foo", "baz"))
+                          ])
 def test_absolute_path(monkeypatch, path, expected_absolute_path):
     monkeypatch.setenv("GITHUB_WORKSPACE", "/fooWorkspace")
 
-    assert compilesketches.absolute_path(path=path) == pathlib.PurePath(expected_absolute_path)
-    assert compilesketches.absolute_path(path=pathlib.PurePath(path)) == pathlib.PurePath(expected_absolute_path)
+    assert compilesketches.absolute_path(path=path) == expected_absolute_path
+    assert compilesketches.absolute_path(path=pathlib.PurePath(path)) == expected_absolute_path
+
+
+@pytest.mark.parametrize(
+    "path, expected_path",
+    [("foo/bar-relative-path", pathlib.PurePath("foo/bar-relative-path")),
+     ("/foo/bar-absolute-path", pathlib.Path("/").resolve().joinpath("foo", "bar-absolute-path"))]
+)
+def test_absolute_relative_path_conversion(monkeypatch, path, expected_path):
+    monkeypatch.setenv("GITHUB_WORKSPACE", "/fooWorkspace")
+    assert compilesketches.path_relative_to_workspace(
+        path=compilesketches.absolute_path(
+            path=path
+        )
+    ) == expected_path
 
 
 def test_list_to_string():

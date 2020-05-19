@@ -626,7 +626,7 @@ class CompileSketches:
                 # If a name was specified, use it
                 destination_name = library[self.dependency_destination_name_key]
             elif (
-                source_path == pathlib.Path(os.environ["GITHUB_WORKSPACE"])
+                source_path == absolute_path(os.environ["GITHUB_WORKSPACE"])
             ):
                 # If source_path is the root of the workspace (i.e., repository root), name the folder according to the
                 # repository name, otherwise it will unexpectedly be "workspace"
@@ -1047,9 +1047,9 @@ def path_relative_to_workspace(path):
     Keyword arguments:
     path -- the path to make relative
     """
-    path = pathlib.Path(path)
+    path = absolute_path(path=path)
     try:
-        relative_path = path.relative_to(os.environ["GITHUB_WORKSPACE"])
+        relative_path = path.relative_to(absolute_path(path=os.environ["GITHUB_WORKSPACE"]))
     except ValueError:
         # Path is outside workspace, so just use the given path
         relative_path = path
@@ -1064,10 +1064,14 @@ def absolute_path(path):
     Keyword arguments:
     path -- the path to make absolute
     """
-    path = pathlib.Path(path)
+    # Make path into a pathlib.Path object, with ~ expanded
+    path = pathlib.Path(path).expanduser()
     if not path.is_absolute():
         # path is relative
         path = pathlib.Path(os.environ["GITHUB_WORKSPACE"], path)
+
+    # Resolve .. and symlinks to get a true absolute path
+    path = path.resolve()
 
     return path
 
