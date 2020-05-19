@@ -153,8 +153,8 @@ def test_compilesketches():
     platforms = unittest.mock.sentinel.platforms
     libraries = unittest.mock.sentinel.libraries
     sketch_paths = "examples/FooSketchPath examples/BarSketchPath"
-    expected_sketch_paths_list = [pathlib.PurePath("examples/FooSketchPath"),
-                                  pathlib.PurePath("examples/BarSketchPath")]
+    expected_sketch_paths_list = [compilesketches.absolute_path(path="examples/FooSketchPath"),
+                                  compilesketches.absolute_path(path="examples/BarSketchPath")]
     verbose = "false"
     github_token = "fooGitHubToken"
     report_sketch = unittest.mock.sentinel.report_sketch
@@ -771,19 +771,19 @@ def test_install_platforms_from_download(mocker):
     "libraries, expected_manager, expected_path, expected_repository, expected_download",
     [("",
       [],
-      [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.PurePath(os.environ["GITHUB_WORKSPACE"])}],
+      [{compilesketches.CompileSketches.dependency_source_path_key: os.environ["GITHUB_WORKSPACE"]}],
       [],
       []),
      ("foo bar",
       [{compilesketches.CompileSketches.dependency_name_key: "foo"},
        {compilesketches.CompileSketches.dependency_name_key: "bar"}],
-      [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.PurePath(os.environ["GITHUB_WORKSPACE"])}],
+      [{compilesketches.CompileSketches.dependency_source_path_key: os.environ["GITHUB_WORKSPACE"]}],
       [],
       []),
      ("\"foo\" \"bar\"",
       [{compilesketches.CompileSketches.dependency_name_key: "foo"},
        {compilesketches.CompileSketches.dependency_name_key: "bar"}],
-      [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.PurePath(os.environ["GITHUB_WORKSPACE"])}],
+      [{compilesketches.CompileSketches.dependency_source_path_key: os.environ["GITHUB_WORKSPACE"]}],
       [],
       []),
      ("-",
@@ -925,8 +925,7 @@ def test_install_libraries_from_path(capsys, monkeypatch, mocker, path_exists, l
             symlink_to_calls.append(
                 unittest.mock.call(symlink_source_path,
                                    target=compilesketches.absolute_path(
-                                       library[compilesketches.CompileSketches.dependency_source_path_key]
-                                   ),
+                                       library[compilesketches.CompileSketches.dependency_source_path_key]),
                                    target_is_directory=True))
 
         # noinspection PyUnresolvedReferences
@@ -1011,8 +1010,11 @@ def test_find_sketches(capsys):
     )
     with pytest.raises(expected_exception=SystemExit, match="1"):
         compile_sketches.find_sketches()
-    assert capsys.readouterr().out.strip() == ("::error::Sketch path: " + str(pathlib.PurePath(nonexistent_sketch_path))
-                                               + " doesn't exist")
+    assert capsys.readouterr().out.strip() == (
+        "::error::Sketch path: "
+        + str(compilesketches.path_relative_to_workspace(path=nonexistent_sketch_path))
+        + " doesn't exist"
+    )
 
     # Test sketch path is a sketch file
     compile_sketches = get_compilesketches_object(
@@ -1080,7 +1082,7 @@ def test_path_is_sketch():
                                                           (0, True)])
 def test_compile_sketch(capsys, mocker, returncode, expected_success):
     stdout = unittest.mock.sentinel.stdout
-    relative_sketch_path = pathlib.PurePath("FooSketch", "FooSketch.ino")
+    sketch_path = pathlib.Path("FooSketch", "FooSketch.ino").resolve()
 
     # Stub
     class CompilationData:
@@ -1095,11 +1097,11 @@ def test_compile_sketch(capsys, mocker, returncode, expected_success):
                  return_value=CompilationData())
 
     compilation_result = compile_sketches.compile_sketch(
-        sketch_path=pathlib.PurePath(os.environ["GITHUB_WORKSPACE"]).joinpath(relative_sketch_path)
+        sketch_path=sketch_path
     )
 
     expected_stdout = (
-        "::group::Compiling sketch: " + str(relative_sketch_path) + "\n"
+        "::group::Compiling sketch: " + str(compilesketches.path_relative_to_workspace(path=sketch_path)) + "\n"
         + str(stdout) + "\n"
         + "::endgroup::"
     )
@@ -1107,7 +1109,7 @@ def test_compile_sketch(capsys, mocker, returncode, expected_success):
         expected_stdout += "\n::error::Compilation failed"
     assert capsys.readouterr().out.strip() == expected_stdout
 
-    assert compilation_result.sketch == relative_sketch_path
+    assert compilation_result.sketch == sketch_path
     assert compilation_result.success == expected_success
     assert compilation_result.output == stdout
 
@@ -1124,7 +1126,6 @@ def test_get_sketch_report(mocker, do_size_deltas_report):
 
     compilation_result = CompilationResult(sketch_input=sketch)
 
-    sketch_absolute_path = unittest.mock.sentinel.sketch_absolute_path
     previous_compilation_result = unittest.mock.sentinel.previous_compilation_result
     sketch_size = unittest.mock.sentinel.sketch_size
 
@@ -1148,7 +1149,6 @@ def test_get_sketch_report(mocker, do_size_deltas_report):
                  return_value=do_size_deltas_report)
     mocker.patch("git.Repo", autospec=True, return_value=Repo())
     mocker.patch("compilesketches.CompileSketches.checkout_pull_request_base_ref", autospec=True)
-    mocker.patch("compilesketches.absolute_path", autospec=True, return_value=sketch_absolute_path)
     mocker.patch("compilesketches.CompileSketches.compile_sketch", autospec=True,
                  return_value=previous_compilation_result)
     mocker.patch.object(Repo, "checkout")
@@ -1162,8 +1162,7 @@ def test_get_sketch_report(mocker, do_size_deltas_report):
     if do_size_deltas_report:
         git.Repo.assert_called_once_with(path=os.environ["GITHUB_WORKSPACE"])
         compile_sketches.checkout_pull_request_base_ref.assert_called_once()
-        compilesketches.absolute_path.assert_called_once_with(path=compilation_result.sketch)
-        compile_sketches.compile_sketch.assert_called_once_with(compile_sketches, sketch_path=sketch_absolute_path)
+        compile_sketches.compile_sketch.assert_called_once_with(compile_sketches, sketch_path=compilation_result.sketch)
         Repo.checkout.assert_called_once_with(original_git_ref)
         get_sketch_size_from_output_calls.append(
             unittest.mock.call(compile_sketches, compilation_result=previous_compilation_result))
@@ -1269,11 +1268,11 @@ def test_get_sketch_report(mocker, do_size_deltas_report):
       get_compilesketches_object().not_applicable_indicator)]
 )
 def test_get_sketch_report_from_output(compilation_success, compilation_output, flash, ram):
-    sketch_path = unittest.mock.sentinel.sketch
+    sketch_path = pathlib.PurePath("foo/bar")
     compilation_output = compilation_output.format(flash=str(flash), ram=str(ram))
     compile_sketches = get_compilesketches_object()
     compilation_result = type("CompilationResult", (),
-                              {compile_sketches.report_sketch_key: sketch_path,
+                              {"sketch": sketch_path,
                                "success": compilation_success,
                                "output": compilation_output})
 

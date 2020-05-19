@@ -111,8 +111,8 @@ class CompileSketches:
 
         # Save the space-separated list of paths as a Python list
         sketch_paths = parse_list_input(sketch_paths)
-        sketch_paths = [pathlib.Path(sketch_path) for sketch_path in sketch_paths]
-        self.sketch_paths = sketch_paths
+        absolute_sketch_paths = [absolute_path(path=sketch_path) for sketch_path in sketch_paths]
+        self.sketch_paths = absolute_sketch_paths
 
         self.verbose = parse_boolean_input(boolean_input=verbose)
 
@@ -383,10 +383,10 @@ class CompileSketches:
         """
         for platform in platform_list:
             source_path = absolute_path(platform[self.dependency_source_path_key])
-            self.verbose_print("Installing platform from path:", platform[self.dependency_source_path_key])
+            self.verbose_print("Installing platform from path:", path_relative_to_workspace(path=source_path))
 
             if not source_path.exists():
-                print("::error::Platform source path:", platform[self.dependency_source_path_key], "doesn't exist")
+                print("::error::Platform source path:", path_relative_to_workspace(path=source_path), "doesn't exist")
                 sys.exit(1)
 
             platform_installation_path = self.get_platform_installation_path(platform=platform)
@@ -583,7 +583,7 @@ class CompileSketches:
 
             # The original behavior of the action was to assume the root of the repo is a library to be installed, so
             # that behavior is retained when using the old input syntax
-            library_list.path = [{self.dependency_source_path_key: pathlib.Path(os.environ["GITHUB_WORKSPACE"])}]
+            library_list.path = [{self.dependency_source_path_key: os.environ["GITHUB_WORKSPACE"]}]
 
         if len(library_list.manager) > 0:
             self.install_libraries_from_library_manager(library_list=library_list.manager)
@@ -700,36 +700,34 @@ class CompileSketches:
         sketch_list = []
         self.verbose_print("Finding sketches under paths:", list_to_string(self.sketch_paths))
         for sketch_path in self.sketch_paths:
-            # The absolute path is used in the code, the sketch path provided by the user is used in the log output
-            absolute_sketch_path = absolute_path(sketch_path)
             sketch_path_sketch_list = []
-            if not absolute_sketch_path.exists():
-                print("::error::Sketch path:", sketch_path, "doesn't exist")
+            if not sketch_path.exists():
+                print("::error::Sketch path:", path_relative_to_workspace(path=sketch_path), "doesn't exist")
                 sys.exit(1)
 
             # Check if the specified path is a sketch (as opposed to containing sketches in subfolders)
-            if absolute_sketch_path.is_file():
-                if path_is_sketch(path=absolute_sketch_path):
+            if sketch_path.is_file():
+                if path_is_sketch(path=sketch_path):
                     # The path directly to a sketch file was provided, so don't search recursively
-                    sketch_list.append(absolute_sketch_path.parent)
+                    sketch_list.append(sketch_path.parent)
                     continue
                 else:
-                    print("::error::Sketch path:", sketch_path, "is not a sketch")
+                    print("::error::Sketch path:", path_relative_to_workspace(path=sketch_path), "is not a sketch")
                     sys.exit(1)
             else:
                 # Path is a directory
-                if path_is_sketch(path=absolute_sketch_path):
+                if path_is_sketch(path=sketch_path):
                     # Add sketch to list, but also search the path recursively for more sketches
-                    sketch_path_sketch_list.append(absolute_sketch_path)
+                    sketch_path_sketch_list.append(sketch_path)
 
             # Search the sketch path recursively for sketches
-            for sketch in sorted(absolute_sketch_path.rglob("*")):
+            for sketch in sorted(sketch_path.rglob("*")):
                 if sketch.is_dir() and path_is_sketch(path=sketch):
                     sketch_path_sketch_list.append(sketch)
 
             if len(sketch_path_sketch_list) == 0:
                 # If a path provided via the sketch-paths input doesn't contain sketches, that indicates user error
-                print("::error::No sketches were found in", sketch_path)
+                print("::error::No sketches were found in", path_relative_to_workspace(path=sketch_path))
                 sys.exit(1)
 
             sketch_list.extend(sketch_path_sketch_list)
@@ -751,12 +749,12 @@ class CompileSketches:
             command=compilation_command, enable_output=self.RunCommandOutput.NONE, exit_on_failure=False)
         # Group compilation output to make the log easy to read
         # https://github.com/actions/toolkit/blob/master/docs/commands.md#group-and-ungroup-log-lines
-        print("::group::Compiling sketch:", path_relative_to_workspace(sketch_path))
+        print("::group::Compiling sketch:", path_relative_to_workspace(path=sketch_path))
         print(compilation_data.stdout)
         print("::endgroup::")
 
         class CompilationResult:
-            sketch = path_relative_to_workspace(sketch_path)
+            sketch = sketch_path
             success = compilation_data.returncode == 0
             output = compilation_data.stdout
 
@@ -795,7 +793,7 @@ class CompileSketches:
 
             # Compile the sketch again
             print("Compiling previous version of sketch to determine memory usage change")
-            previous_compilation_result = self.compile_sketch(sketch_path=absolute_path(path=compilation_result.sketch))
+            previous_compilation_result = self.compile_sketch(sketch_path=compilation_result.sketch)
 
             # git checkout the PR's head ref to return the repository to its previous state
             repository.git.checkout(original_git_ref)
@@ -824,7 +822,7 @@ class CompileSketches:
         ram_regex = r"Global variables use [0-9]+ bytes .*of dynamic memory"
 
         # Set default report values
-        sketch_report = {self.report_sketch_key: str(compilation_result.sketch),
+        sketch_report = {self.report_sketch_key: str(path_relative_to_workspace(path=compilation_result.sketch)),
                          self.report_compilation_success_key: compilation_result.success,
                          self.report_flash_key: self.not_applicable_indicator,
                          self.report_ram_key: self.not_applicable_indicator}
