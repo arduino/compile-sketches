@@ -1506,6 +1506,8 @@ def test_path_relative_to_workspace(monkeypatch):
     assert compilesketches.path_relative_to_workspace(path=pathlib.PurePath("/fooWorkspace", "baz")
                                                       ) == pathlib.PurePath("baz")
     assert compilesketches.path_relative_to_workspace(path="/fooWorkspace/baz") == pathlib.PurePath("baz")
+    # Test path outside workspace
+    assert compilesketches.path_relative_to_workspace(path="/bar/foo") == pathlib.PurePath("/bar/foo")
 
 
 @pytest.mark.parametrize("path, expected_absolute_path", [("/asdf", "/asdf"), ("asdf", "/fooWorkspace/asdf")])

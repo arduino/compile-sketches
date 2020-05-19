@@ -1047,8 +1047,14 @@ def path_relative_to_workspace(path):
     Keyword arguments:
     path -- the path to make relative
     """
-    path = pathlib.PurePath(path)
-    return path.relative_to(os.environ["GITHUB_WORKSPACE"])
+    path = pathlib.Path(path)
+    try:
+        relative_path = path.relative_to(os.environ["GITHUB_WORKSPACE"])
+    except ValueError:
+        # Path is outside workspace, so just use the given path
+        relative_path = path
+
+    return relative_path
 
 
 def absolute_path(path):
