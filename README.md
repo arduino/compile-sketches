@@ -22,7 +22,7 @@ YAML-format list of platform dependencies to install.
 
 Default `""`. If no `platforms` input is provided, the board's dependency will be automatically determined from the `fqbn` input and the latest version of that platform will be installed via Board Manager.
 
-If a platform dependency from a non-Board Manager source of the same name as another Board Manager source platform dependency is defined, they will both be installed, with the non-Board Manager dependency overwriting the Board Manager platform installation. This permits testing against a non-release version of a platform while using Board Manager to install the platform's tools dependencies. 
+If a platform dependency from a non-Board Manager source of the same name as another Board Manager source platform dependency is defined, they will both be installed, with the non-Board Manager dependency overwriting the Board Manager platform installation. This permits testing against a non-release version of a platform while using Board Manager to install the platform's tools dependencies.
 Example:
 ```yaml
 platforms: |
@@ -68,6 +68,8 @@ YAML-format list of library dependencies to install.
 
 Default `"- source-path: ./"`. This causes the repository to be installed as a library. If there are no library dependencies and you want to override the default, set the `libraries` input to an empty list (`- libraries: '-'`).
 
+Libraries are installed under the Arduino user folder at `~/Arduino/libraries`.
+
 Note: the original space-separated list format is also supported. When this syntax is used, the repository under test will always be installed as a library.
 
 #### Sources:
@@ -75,7 +77,7 @@ Note: the original space-separated list format is also supported. When this synt
 ##### Library Manager
 
 Keys:
-- `name` - name of the library.
+- `name` - name of the library, as defined in the `name` field of its [library.properties](https://arduino.github.io/arduino-cli/library-specification/#libraryproperties-file-format) metadata file. The library will be installed to a folder matching the name, but with any spaces replaced by `_`.
 - `version` - version of the library to install. Default is the latest version.
 
 ##### Local path
