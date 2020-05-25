@@ -14,6 +14,8 @@ import pytest
 
 import compilesketches
 
+os.environ["GITHUB_WORKSPACE"] = "/foo/github-workspace"
+
 test_data_path = pathlib.PurePath(os.path.dirname(os.path.realpath(__file__)), "testdata")
 
 
@@ -151,8 +153,8 @@ def test_compilesketches():
     platforms = unittest.mock.sentinel.platforms
     libraries = unittest.mock.sentinel.libraries
     sketch_paths = "examples/FooSketchPath examples/BarSketchPath"
-    expected_sketch_paths_list = [pathlib.PurePath("examples/FooSketchPath"),
-                                  pathlib.PurePath("examples/BarSketchPath")]
+    expected_sketch_paths_list = [compilesketches.absolute_path(path="examples/FooSketchPath"),
+                                  compilesketches.absolute_path(path="examples/BarSketchPath")]
     verbose = "false"
     github_token = "fooGitHubToken"
     report_sketch = unittest.mock.sentinel.report_sketch
@@ -376,9 +378,7 @@ def test_get_fqbn_platform_dependency(fqbn_arg, expected_platform, expected_addi
      ([{compilesketches.CompileSketches.dependency_source_url_key: "git://example.com/foo/bar"}], ["repository"]),
      ]
 )
-def test_sort_dependency_list(monkeypatch, dependency_list, expected_dependency_type_list):
-    monkeypatch.setenv("GITHUB_WORKSPACE", "/foo/GitHubWorkspace")
-
+def test_sort_dependency_list(dependency_list, expected_dependency_type_list):
     compile_sketches = get_compilesketches_object()
 
     for dependency, expected_dependency_type in zip(dependency_list, expected_dependency_type_list):
@@ -546,7 +546,7 @@ def test_get_manager_dependency_name(dependency, expected_name):
     [(False, [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.Path("Foo")}]),
      (True, [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.Path("Foo")}])]
 )
-def test_install_platforms_from_path(capsys, monkeypatch, mocker, path_exists, platform_list):
+def test_install_platforms_from_path(capsys, mocker, path_exists, platform_list):
     class PlatformInstallationPath:
         def __init__(self):
             self.parent = pathlib.PurePath()
@@ -556,8 +556,6 @@ def test_install_platforms_from_path(capsys, monkeypatch, mocker, path_exists, p
     platform_installation_path.base = pathlib.Path("/foo/PlatformInstallationPathParent")
     platform_installation_path.platform = pathlib.Path("PlatformInstallationPathName")
     symlink_source_path = pathlib.Path("/foo/SymlinkSourcePath")
-
-    monkeypatch.setenv("GITHUB_WORKSPACE", "/foo/GitHubWorkspace")
 
     compile_sketches = get_compilesketches_object()
 
@@ -771,29 +769,52 @@ def test_install_platforms_from_download(mocker):
 
 @pytest.mark.parametrize(
     "libraries, expected_manager, expected_path, expected_repository, expected_download",
-    [("", [], [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.PurePath("/foo/GitHubWorkspace")}],
-      [], []),
-     ("foo bar", [{compilesketches.CompileSketches.dependency_name_key: "foo"},
-                  {compilesketches.CompileSketches.dependency_name_key: "bar"}],
-      [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.PurePath("/foo/GitHubWorkspace")}], [], []),
-     ("\"foo\" \"bar\"", [{compilesketches.CompileSketches.dependency_name_key: "foo"},
-                          {compilesketches.CompileSketches.dependency_name_key: "bar"}],
-      [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.PurePath("/foo/GitHubWorkspace")}], [], []),
-     ("-", [], [], [], []),
+    [("",
+      [],
+      [{compilesketches.CompileSketches.dependency_source_path_key: os.environ["GITHUB_WORKSPACE"]}],
+      [],
+      []),
+     ("foo bar",
+      [{compilesketches.CompileSketches.dependency_name_key: "foo"},
+       {compilesketches.CompileSketches.dependency_name_key: "bar"}],
+      [{compilesketches.CompileSketches.dependency_source_path_key: os.environ["GITHUB_WORKSPACE"]}],
+      [],
+      []),
+     ("\"foo\" \"bar\"",
+      [{compilesketches.CompileSketches.dependency_name_key: "foo"},
+       {compilesketches.CompileSketches.dependency_name_key: "bar"}],
+      [{compilesketches.CompileSketches.dependency_source_path_key: os.environ["GITHUB_WORKSPACE"]}],
+      [],
+      []),
+     ("-",
+      [],
+      [],
+      [],
+      []),
      ("- " + compilesketches.CompileSketches.dependency_name_key + ": foo",
-      [{compilesketches.CompileSketches.dependency_name_key: "foo"}], [], [], []),
-     ("- " + compilesketches.CompileSketches.dependency_source_path_key + ": /foo/bar", [],
-      [{compilesketches.CompileSketches.dependency_source_path_key: "/foo/bar"}], [], []),
-     ("- " + compilesketches.CompileSketches.dependency_source_url_key + ": https://example.com/foo.git", [], [],
-      [{"source-url": "https://example.com/foo.git"}], []),
-     ("- " + compilesketches.CompileSketches.dependency_source_url_key + ": https://example.com/foo.zip", [], [], [],
+      [{compilesketches.CompileSketches.dependency_name_key: "foo"}],
+      [],
+      [],
+      []),
+     ("- " + compilesketches.CompileSketches.dependency_source_path_key + ": /foo/bar",
+      [],
+      [{compilesketches.CompileSketches.dependency_source_path_key: "/foo/bar"}],
+      [],
+      []),
+     ("- " + compilesketches.CompileSketches.dependency_source_url_key + ": https://example.com/foo.git",
+      [],
+      [],
+      [{"source-url": "https://example.com/foo.git"}],
+      []),
+     ("- " + compilesketches.CompileSketches.dependency_source_url_key + ": https://example.com/foo.zip",
+      [],
+      [],
+      [],
       [{"source-url": "https://example.com/foo.zip"}])]
 )
-def test_install_libraries(monkeypatch, mocker, libraries, expected_manager, expected_path, expected_repository,
+def test_install_libraries(mocker, libraries, expected_manager, expected_path, expected_repository,
                            expected_download):
     libraries_path = pathlib.Path("/foo/LibrariesPath")
-
-    monkeypatch.setenv("GITHUB_WORKSPACE", "/foo/GitHubWorkspace")
 
     compile_sketches = get_compilesketches_object(libraries=libraries)
     compile_sketches.libraries_path = libraries_path
@@ -852,23 +873,27 @@ def test_install_libraries_from_library_manager(mocker):
                                                                      enable_output=run_command_output_level)
 
 
-@pytest.mark.parametrize("path_exists, library_list, expected_destination_name_list",
-                         [(False, [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.Path(
-                             "/foo/GitHubWorkspace/Nonexistent")}], []),
-                          (True, [{compilesketches.CompileSketches.dependency_destination_name_key: "FooName",
-                                   compilesketches.CompileSketches.dependency_source_path_key: pathlib.Path(
-                                       "/foo/GitHubWorkspace/FooLibrary")}], ["FooName"]),
-                          (True, [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.Path(
-                              "/foo/GitHubWorkspace")}], ["FooRepoName"]),
-                          (True,
-                           [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.Path(
-                               "/foo/GitHubWorkspace/Bar")}], ["Bar"])])
+@pytest.mark.parametrize(
+    "path_exists, library_list, expected_destination_name_list",
+    [(False,
+      [{compilesketches.CompileSketches.dependency_source_path_key: os.environ["GITHUB_WORKSPACE"] + "/Nonexistent"}],
+      []),
+     (True,
+      [{compilesketches.CompileSketches.dependency_destination_name_key: "FooName",
+        compilesketches.CompileSketches.dependency_source_path_key: os.environ["GITHUB_WORKSPACE"] + "/FooLibrary"}],
+      ["FooName"]),
+     (True,
+      [{compilesketches.CompileSketches.dependency_source_path_key: os.environ["GITHUB_WORKSPACE"]}],
+      ["FooRepoName"]),
+     (True,
+      [{compilesketches.CompileSketches.dependency_source_path_key: os.environ["GITHUB_WORKSPACE"] + "/Bar"}],
+      ["Bar"])]
+)
 def test_install_libraries_from_path(capsys, monkeypatch, mocker, path_exists, library_list,
                                      expected_destination_name_list):
     libraries_path = pathlib.Path("/foo/LibrariesPath")
     symlink_source_path = pathlib.Path("/foo/SymlinkSourcePath")
 
-    monkeypatch.setenv("GITHUB_WORKSPACE", "/foo/GitHubWorkspace")
     monkeypatch.setenv("GITHUB_REPOSITORY", "foo/FooRepoName")
 
     compile_sketches = get_compilesketches_object()
@@ -899,7 +924,8 @@ def test_install_libraries_from_path(capsys, monkeypatch, mocker, path_exists, l
             joinpath_calls.append(unittest.mock.call(libraries_path, expected_destination_name))
             symlink_to_calls.append(
                 unittest.mock.call(symlink_source_path,
-                                   target=library[compilesketches.CompileSketches.dependency_source_path_key],
+                                   target=compilesketches.absolute_path(
+                                       library[compilesketches.CompileSketches.dependency_source_path_key]),
                                    target_is_directory=True))
 
         # noinspection PyUnresolvedReferences
@@ -975,10 +1001,8 @@ def test_install_libraries_from_download(mocker):
     compilesketches.install_from_download.assert_has_calls(calls=install_libraries_from_download_calls)
 
 
-def test_find_sketches(capsys, monkeypatch):
+def test_find_sketches(capsys):
     nonexistent_sketch_path = "/foo/NonexistentSketch"
-
-    monkeypatch.setenv("GITHUB_WORKSPACE", "/foo/bar")
 
     # Test sketch path doesn't exist
     compile_sketches = get_compilesketches_object(
@@ -986,8 +1010,11 @@ def test_find_sketches(capsys, monkeypatch):
     )
     with pytest.raises(expected_exception=SystemExit, match="1"):
         compile_sketches.find_sketches()
-    assert capsys.readouterr().out.strip() == ("::error::Sketch path: " + str(pathlib.PurePath(nonexistent_sketch_path))
-                                               + " doesn't exist")
+    assert capsys.readouterr().out.strip() == (
+        "::error::Sketch path: "
+        + str(compilesketches.path_relative_to_workspace(path=nonexistent_sketch_path))
+        + " doesn't exist"
+    )
 
     # Test sketch path is a sketch file
     compile_sketches = get_compilesketches_object(
@@ -1053,9 +1080,9 @@ def test_path_is_sketch():
 
 @pytest.mark.parametrize("returncode, expected_success", [(1, False),
                                                           (0, True)])
-def test_compile_sketch(capsys, monkeypatch, mocker, returncode, expected_success):
+def test_compile_sketch(capsys, mocker, returncode, expected_success):
     stdout = unittest.mock.sentinel.stdout
-    relative_sketch_path = pathlib.PurePath("FooSketch", "FooSketch.ino")
+    sketch_path = pathlib.Path("FooSketch", "FooSketch.ino").resolve()
 
     # Stub
     class CompilationData:
@@ -1064,19 +1091,17 @@ def test_compile_sketch(capsys, monkeypatch, mocker, returncode, expected_succes
     CompilationData.returncode = returncode
     CompilationData.stdout = stdout
 
-    monkeypatch.setenv("GITHUB_WORKSPACE", "/foo/bar")
-
     compile_sketches = get_compilesketches_object()
 
     mocker.patch("compilesketches.CompileSketches.run_arduino_cli_command", autospec=True,
                  return_value=CompilationData())
 
     compilation_result = compile_sketches.compile_sketch(
-        sketch_path=pathlib.PurePath(os.environ["GITHUB_WORKSPACE"]).joinpath(relative_sketch_path)
+        sketch_path=sketch_path
     )
 
     expected_stdout = (
-        "::group::Compiling sketch: " + str(relative_sketch_path) + "\n"
+        "::group::Compiling sketch: " + str(compilesketches.path_relative_to_workspace(path=sketch_path)) + "\n"
         + str(stdout) + "\n"
         + "::endgroup::"
     )
@@ -1084,13 +1109,13 @@ def test_compile_sketch(capsys, monkeypatch, mocker, returncode, expected_succes
         expected_stdout += "\n::error::Compilation failed"
     assert capsys.readouterr().out.strip() == expected_stdout
 
-    assert compilation_result.sketch == relative_sketch_path
+    assert compilation_result.sketch == sketch_path
     assert compilation_result.success == expected_success
     assert compilation_result.output == stdout
 
 
 @pytest.mark.parametrize("do_size_deltas_report", [True, False])
-def test_get_sketch_report(monkeypatch, mocker, do_size_deltas_report):
+def test_get_sketch_report(mocker, do_size_deltas_report):
     original_git_ref = unittest.mock.sentinel.original_git_ref
     sketch_report_list = [unittest.mock.sentinel.sketch_report_list1, unittest.mock.sentinel.sketch_report_list2]
     sketch = unittest.mock.sentinel.sketch
@@ -1101,7 +1126,6 @@ def test_get_sketch_report(monkeypatch, mocker, do_size_deltas_report):
 
     compilation_result = CompilationResult(sketch_input=sketch)
 
-    sketch_absolute_path = unittest.mock.sentinel.sketch_absolute_path
     previous_compilation_result = unittest.mock.sentinel.previous_compilation_result
     sketch_size = unittest.mock.sentinel.sketch_size
 
@@ -1117,8 +1141,6 @@ def test_get_sketch_report(monkeypatch, mocker, do_size_deltas_report):
         def checkout(self):
             pass
 
-    monkeypatch.setenv("GITHUB_WORKSPACE", "/foo/bar")
-
     compile_sketches = get_compilesketches_object()
 
     mocker.patch("compilesketches.CompileSketches.get_sketch_report_from_output", autospec=True,
@@ -1127,7 +1149,6 @@ def test_get_sketch_report(monkeypatch, mocker, do_size_deltas_report):
                  return_value=do_size_deltas_report)
     mocker.patch("git.Repo", autospec=True, return_value=Repo())
     mocker.patch("compilesketches.CompileSketches.checkout_pull_request_base_ref", autospec=True)
-    mocker.patch("compilesketches.absolute_path", autospec=True, return_value=sketch_absolute_path)
     mocker.patch("compilesketches.CompileSketches.compile_sketch", autospec=True,
                  return_value=previous_compilation_result)
     mocker.patch.object(Repo, "checkout")
@@ -1141,8 +1162,7 @@ def test_get_sketch_report(monkeypatch, mocker, do_size_deltas_report):
     if do_size_deltas_report:
         git.Repo.assert_called_once_with(path=os.environ["GITHUB_WORKSPACE"])
         compile_sketches.checkout_pull_request_base_ref.assert_called_once()
-        compilesketches.absolute_path.assert_called_once_with(path=compilation_result.sketch)
-        compile_sketches.compile_sketch.assert_called_once_with(compile_sketches, sketch_path=sketch_absolute_path)
+        compile_sketches.compile_sketch.assert_called_once_with(compile_sketches, sketch_path=compilation_result.sketch)
         Repo.checkout.assert_called_once_with(original_git_ref)
         get_sketch_size_from_output_calls.append(
             unittest.mock.call(compile_sketches, compilation_result=previous_compilation_result))
@@ -1248,11 +1268,11 @@ def test_get_sketch_report(monkeypatch, mocker, do_size_deltas_report):
       get_compilesketches_object().not_applicable_indicator)]
 )
 def test_get_sketch_report_from_output(compilation_success, compilation_output, flash, ram):
-    sketch_path = unittest.mock.sentinel.sketch
+    sketch_path = pathlib.PurePath("foo/bar")
     compilation_output = compilation_output.format(flash=str(flash), ram=str(ram))
     compile_sketches = get_compilesketches_object()
     compilation_result = type("CompilationResult", (),
-                              {compile_sketches.report_sketch_key: sketch_path,
+                              {"sketch": sketch_path,
                                "success": compilation_success,
                                "output": compilation_output})
 
@@ -1331,7 +1351,6 @@ def test_checkout_pull_request_base_ref(monkeypatch, mocker):
             pass
 
     monkeypatch.setenv("GITHUB_REPOSITORY", "fooRepository/fooOwner")
-    monkeypatch.setenv("GITHUB_WORKSPACE", "/fooWorkspace")
     monkeypatch.setenv("GITHUB_EVENT_PATH", str(test_data_path.joinpath("githubevent.json")))
 
     compile_sketches = get_compilesketches_object()
@@ -1415,7 +1434,6 @@ def test_create_sketches_report_file(monkeypatch, tmp_path, mocker):
             pass
 
     monkeypatch.setenv("GITHUB_REPOSITORY", "fooRepository/fooOwner")
-    monkeypatch.setenv("GITHUB_WORKSPACE", "/fooWorkspace")
 
     sketches_report_path = tmp_path
     fqbn_arg = "arduino:avr:uno"
@@ -1500,20 +1518,42 @@ def test_parse_boolean_input(boolean_input, expected_output):
     assert compilesketches.parse_boolean_input(boolean_input=boolean_input) == expected_output
 
 
-def test_path_relative_to_workspace(monkeypatch):
-    monkeypatch.setenv("GITHUB_WORKSPACE", "/fooWorkspace")
+@pytest.mark.parametrize("path, expected_relative_path",
+                         # Path under workspace
+                         [(os.environ["GITHUB_WORKSPACE"] + "/baz", pathlib.PurePath("baz")),
+                          # Path outside workspace
+                          ("/bar/foo", pathlib.Path("/").resolve().joinpath("bar", "foo"))])
+def test_path_relative_to_workspace(path, expected_relative_path):
+    assert compilesketches.path_relative_to_workspace(path=path) == expected_relative_path
+    assert compilesketches.path_relative_to_workspace(path=pathlib.PurePath(path)) == expected_relative_path
 
-    assert compilesketches.path_relative_to_workspace(path=pathlib.PurePath("/fooWorkspace", "baz")
-                                                      ) == pathlib.PurePath("baz")
-    assert compilesketches.path_relative_to_workspace(path="/fooWorkspace/baz") == pathlib.PurePath("baz")
+
+@pytest.mark.parametrize("path, expected_absolute_path",
+                         # Absolute path
+                         [("/asdf", pathlib.Path("/").resolve().joinpath("asdf")),
+                          # Relative path
+                          ("asdf", pathlib.Path(os.environ["GITHUB_WORKSPACE"]).resolve().joinpath("asdf")),
+                          # Use of ~
+                          ("~/foo", pathlib.Path.home().joinpath("foo")),
+                          # Use of ..
+                          ("/foo/bar/../baz", pathlib.Path("/").resolve().joinpath("foo", "baz"))
+                          ])
+def test_absolute_path(path, expected_absolute_path):
+    assert compilesketches.absolute_path(path=path) == expected_absolute_path
+    assert compilesketches.absolute_path(path=pathlib.PurePath(path)) == expected_absolute_path
 
 
-@pytest.mark.parametrize("path, expected_absolute_path", [("/asdf", "/asdf"), ("asdf", "/fooWorkspace/asdf")])
-def test_absolute_path(monkeypatch, path, expected_absolute_path):
-    monkeypatch.setenv("GITHUB_WORKSPACE", "/fooWorkspace")
-
-    assert compilesketches.absolute_path(path=path) == pathlib.PurePath(expected_absolute_path)
-    assert compilesketches.absolute_path(path=pathlib.PurePath(path)) == pathlib.PurePath(expected_absolute_path)
+@pytest.mark.parametrize(
+    "path, expected_path",
+    [("foo/bar-relative-path", pathlib.PurePath("foo/bar-relative-path")),
+     ("/foo/bar-absolute-path", pathlib.Path("/").resolve().joinpath("foo", "bar-absolute-path"))]
+)
+def test_absolute_relative_path_conversion(path, expected_path):
+    assert compilesketches.path_relative_to_workspace(
+        path=compilesketches.absolute_path(
+            path=path
+        )
+    ) == expected_path
 
 
 def test_list_to_string():
