@@ -1065,9 +1065,13 @@ def test_path_is_sketch():
     assert compilesketches.path_is_sketch(
         path=test_data_path.joinpath("NoSketches", "NotSketch", "NotSketch.foo")) is False
 
-    # Sketch folder
+    # Sketch folder with .ino sketch file
     assert compilesketches.path_is_sketch(
         path=test_data_path.joinpath("HasSketches", "Sketch1")) is True
+
+    # Sketch folder with .pde sketch file
+    assert compilesketches.path_is_sketch(
+        path=test_data_path.joinpath("HasSketches", "Sketch2")) is True
 
     # No files in path
     assert compilesketches.path_is_sketch(

@@ -1080,7 +1080,7 @@ def path_is_sketch(path):
     Keyword arguments:
     path -- path of to check for a sketch
     """
-    sketch_extensions = [".ino"]  # TODO: this is preparation for the addition of support for the .pde extension
+    sketch_extensions = [".ino", ".pde"]
 
     path = pathlib.Path(path)
 
