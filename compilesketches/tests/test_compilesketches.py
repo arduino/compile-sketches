@@ -1521,7 +1521,7 @@ def test_get_sketches_report(monkeypatch, mocker):
                                                                 + "/commit/"
                                                                 + current_git_ref),
         compilesketches.CompileSketches.ReportKeys.sizes: sizes_summary_report,
-        compilesketches.CompileSketches.ReportKeys.sketch: sketch_report_list
+        compilesketches.CompileSketches.ReportKeys.sketches: sketch_report_list
     }
 
     compile_sketches.get_sizes_summary_report.assert_called_once_with(compile_sketches,
@@ -1537,7 +1537,7 @@ def test_get_sketches_report(monkeypatch, mocker):
                                                                 + github_repository
                                                                 + "/commit/"
                                                                 + current_git_ref),
-        compilesketches.CompileSketches.ReportKeys.sketch: sketch_report_list
+        compilesketches.CompileSketches.ReportKeys.sketches: sketch_report_list
     }
 
 

@@ -92,7 +92,7 @@ class CompileSketches:
         delta = "delta"
         minimum = "minimum"
         maximum = "maximum"
-        sketch = "sketch"
+        sketches = "sketches"
 
     dependency_name_key = "name"
     dependency_version_key = "version"
@@ -958,7 +958,7 @@ class CompileSketches:
                                          + os.environ["GITHUB_REPOSITORY"]
                                          + "/commit/"
                                          + current_git_ref),
-            self.ReportKeys.sketch: sketch_report_list
+            self.ReportKeys.sketches: sketch_report_list
         }
 
         sizes_summary_report = self.get_sizes_summary_report(sketch_report_list=sketch_report_list)
