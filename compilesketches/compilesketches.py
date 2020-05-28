@@ -80,7 +80,7 @@ class CompileSketches:
     board_manager_platforms_path = arduino_cli_data_directory_path.joinpath("packages")
 
     class ReportKeys:
-        fqbn = "fqbn"
+        board = "board"
         commit_hash = "commit_hash"
         commit_url = "commit_url"
         compilation_success = "compilation_success"
@@ -952,7 +952,7 @@ class CompileSketches:
         current_git_ref = get_head_commit_hash()
 
         sketches_report = {
-            self.ReportKeys.fqbn: self.fqbn,
+            self.ReportKeys.board: self.fqbn,
             self.ReportKeys.commit_hash: current_git_ref,
             self.ReportKeys.commit_url: ("https://github.com/"
                                          + os.environ["GITHUB_REPOSITORY"]
