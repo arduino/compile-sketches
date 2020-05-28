@@ -78,17 +78,20 @@ class CompileSketches:
     user_platforms_path = arduino_cli_user_directory_path.joinpath("hardware")
     board_manager_platforms_path = arduino_cli_data_directory_path.joinpath("packages")
 
-    report_fqbn_key = "fqbn"
-    report_commit_hash_key = "commit_hash"
-    report_commit_url_key = "commit_url"
-    report_sketch_key = "sketch"
-    report_compilation_success_key = "compilation_success"
-    report_flash_key = "flash"
-    report_previous_flash_key = "previous_flash"
-    report_flash_delta_key = "flash_delta"
-    report_ram_key = "ram"
-    report_previous_ram_key = "previous_ram"
-    report_ram_delta_key = "ram_delta"
+    class ReportKeys:
+        fqbn = "fqbn"
+        commit_hash = "commit_hash"
+        commit_url = "commit_url"
+        compilation_success = "compilation_success"
+        sizes = "sizes"
+        name = "name"
+        absolute = "absolute"
+        current = "current"
+        previous = "previous"
+        delta = "delta"
+        minimum = "minimum"
+        maximum = "maximum"
+        sketch = "sketch"
 
     dependency_name_key = "name"
     dependency_version_key = "version"
@@ -764,25 +767,14 @@ class CompileSketches:
         return CompilationResult()
 
     def get_sketch_report(self, compilation_result):
-        """Return a dictionary containing data on the sketch:
-        sketch_path -- the sketch path relative to the workspace
-        compilation_success -- the success of the compilation (True, False)
-        flash -- program memory usage of the sketch
-        previous_flash -- if size deltas reporting is enabled, flash usage of the sketch at the base ref of the
-                          pull request
-        flash_delta -- if size deltas reporting is enabled, difference between the flash usage of the pull request head
-                       and base refs
-        ram -- dynamic memory used by globals
-        previous_ram -- if size deltas reporting is enabled, dynamic memory used by globals at the base ref of the
-                        pull request
-        ram_delta -- if size deltas reporting is enabled, difference between the flash usage of the pull request head
-                     and base ref
+        """Return a dictionary containing data on the sketch.
 
         Keyword arguments:
         compilation_result -- object returned by compile_sketch()
         """
-        current_sketch_report = self.get_sketch_report_from_output(compilation_result=compilation_result)
-        if self.do_size_deltas_report(sketch_report=current_sketch_report):
+        current_sizes = self.get_sizes_from_output(compilation_result=compilation_result)
+        previous_sizes = None
+        if self.do_size_deltas_report(compilation_result=compilation_result, current_sizes=current_sizes):
             # Get data for the sketch at the tip of the target repository's default branch
             # Get the pull request's head ref
             repository = git.Repo(path=os.environ["GITHUB_WORKSPACE"])
@@ -798,71 +790,99 @@ class CompileSketches:
             # git checkout the PR's head ref to return the repository to its previous state
             repository.git.checkout(original_git_ref)
 
-            previous_sketch_report = self.get_sketch_report_from_output(compilation_result=previous_compilation_result)
+            previous_sizes = self.get_sizes_from_output(compilation_result=previous_compilation_result)
 
-            # Determine the memory usage change
-            sketch_report = self.get_size_deltas(current_sketch_report=current_sketch_report,
-                                                 previous_sketch_report=previous_sketch_report)
-        else:
-            sketch_report = current_sketch_report
+        # Add global data for sketch to report
+        sketch_report = {
+            self.ReportKeys.name: str(path_relative_to_workspace(path=compilation_result.sketch)),
+            self.ReportKeys.compilation_success: compilation_result.success,
+            self.ReportKeys.sizes: self.get_sizes_report(current_sizes=current_sizes,
+                                                         previous_sizes=previous_sizes)
+        }
 
         return sketch_report
 
-    def get_sketch_report_from_output(self, compilation_result):
-        """Parse the stdout from the compilation process and return a dictionary containing data on the sketch:
-        sketch_path -- the sketch path relative to the workspace
-        compilation_success -- the success of the compilation (True, False)
-        flash -- program memory usage of the sketch
-        ram -- dynamic memory used by globals
+    def get_sketch_report_from_sketches_report(self, sketches_report):
+        """Return the report for the report sketch
+        Keyword arguments:
+        sketches_report -- list containing the reports for all sketches
+        """
+        # TODO: The plan is to switch to reporting memory usage data for all sketches, rather than only a single sketch.
+        #       The current system of unnecessarily storing data for all sketches, then searching back through it for a
+        #       single item to report is in anticipation of that change
+        for sketch_report in sketches_report:
+            if self.is_report_sketch(sketch_path=sketch_report[self.ReportKeys.name]):
+                return sketch_report
+
+        # Data for the size reports sketch was not found
+        print("::error::size-report-sketch:", self.report_sketch, "was not found")
+        sys.exit(1)
+
+    def get_sizes_from_output(self, compilation_result):
+        """Parse the stdout from the compilation process and return a list containing memory usage data.
 
         Keyword arguments:
         compilation_result -- object returned by compile_sketch()
         """
-        flash_regex = r"Sketch uses [0-9]+ bytes .*of program storage space\."
-        ram_regex = r"Global variables use [0-9]+ bytes .*of dynamic memory"
+        memory_types = [
+            {
+                "name": "flash",
+                "regex": r"Sketch uses [0-9]+ bytes .*of program storage space\."
+            },
+            {
+                "name": "RAM for global variables",
+                "regex": r"Global variables use [0-9]+ bytes .*of dynamic memory"
+            }
+        ]
 
-        # Set default report values
-        sketch_report = {self.report_sketch_key: str(path_relative_to_workspace(path=compilation_result.sketch)),
-                         self.report_compilation_success_key: compilation_result.success,
-                         self.report_flash_key: self.not_applicable_indicator,
-                         self.report_ram_key: self.not_applicable_indicator}
-        if sketch_report[self.report_compilation_success_key] is True:
-            # Determine flash usage of the sketch by parsing Arduino CLI's output
-            flash_match = re.search(pattern=flash_regex, string=compilation_result.output)
-            if flash_match:
-                # If any of the following:
-                # - recipe.size.regex is not defined in platform.txt
-                # - upload.maximum_size is not defined in boards.txt
-                # flash usage will not be reported in the Arduino CLI output
-                sketch_report[self.report_flash_key] = int(
-                    re.search(pattern="[0-9]+", string=flash_match.group(0)).group(0))
+        sizes = []
+        for memory_type in memory_types:
+            size = {
+                self.ReportKeys.name: memory_type["name"],
+                # Set default memory usage value, to be used if memory usage can't be determined
+                self.ReportKeys.absolute: self.not_applicable_indicator
+            }
 
-            # Determine RAM usage by global variables
-            ram_match = re.search(pattern=ram_regex, string=compilation_result.output)
-            if ram_match:
-                # If any of the following:
-                # - recipe.size.regex.data is not defined in platform.txt (e.g., Arduino SAM Boards)
-                # - recipe.size.regex is not defined in platform.txt
-                # - upload.maximum_size is not defined in boards.txt
-                # RAM usage will not be reported in the Arduino CLI output
-                sketch_report[self.report_ram_key] = int(
-                    re.search(pattern="[0-9]+", string=ram_match.group(0)).group(0))
+            if compilation_result.success is True:
+                # Determine memory usage of the sketch by parsing Arduino CLI's output
+                regex_match = re.search(pattern=memory_type["regex"], string=compilation_result.output)
+                if regex_match:
+                    size[self.ReportKeys.absolute] = int(
+                        re.search(pattern="[0-9]+", string=regex_match.group(0)).group(0))
+                else:
+                    # If any of the following:
+                    # - recipe.size.regex is not defined in platform.txt
+                    # - upload.maximum_size is not defined in boards.txt
+                    # flash usage will not be reported in the Arduino CLI output
+                    # If any of the following:
+                    # - recipe.size.regex.data is not defined in platform.txt (e.g., Arduino SAM Boards)
+                    # - recipe.size.regex is not defined in platform.txt
+                    # - upload.maximum_size is not defined in boards.txt
+                    # RAM usage will not be reported in the Arduino CLI output
+                    self.verbose_print(
+                        "::warning::Unable to determine",
+                        memory_type["name"],
+                        "memory usage. The board's platform may not have been configured to provide this information."
+                    )
 
-        return sketch_report
+            sizes.append(size)
 
-    def do_size_deltas_report(self, sketch_report):
+        return sizes
+
+    def do_size_deltas_report(self, compilation_result, current_sizes):
         """Return whether size deltas reporting is enabled for the given sketch.
 
         Keyword arguments:
-        sketch_report -- sketch report dictionary
+        compilation_result -- object returned by compile_sketch()
+        current_sizes -- memory usage data from the compilation
         """
         return (
             self.enable_size_deltas_report
             and os.environ["GITHUB_EVENT_NAME"] == "pull_request"
-            and self.is_report_sketch(sketch_path=sketch_report[self.report_sketch_key])
-            and sketch_report[self.report_compilation_success_key]
-            and not (sketch_report[self.report_flash_key] == self.not_applicable_indicator
-                     and sketch_report[self.report_ram_key] == self.not_applicable_indicator)
+            and self.is_report_sketch(sketch_path=compilation_result.sketch)
+            and compilation_result.success
+            and any(size.get(self.ReportKeys.absolute) != self.not_applicable_indicator for
+                    size in current_sizes)
         )
 
     def is_report_sketch(self, sketch_path):
@@ -902,82 +922,162 @@ class CompileSketches:
         # git checkout the PR base ref
         repository.git.checkout(pull_request_base_ref)
 
-    def get_size_deltas(self, current_sketch_report, previous_sketch_report):
-        """Return the sketch report with memory usage size deltas data added
+    def get_sizes_report(self, current_sizes, previous_sizes):
+        """Return a list containing all memory usage data assembled.
 
         Keyword arguments:
-        current_sketch_report -- data from the compilation of the sketch at the pull request's head ref
-        previous_sketch_report -- data from the compilation of the sketch at the pull request's base ref
+        current_sizes -- memory usage data at the head ref
+        previous_sizes -- memory usage data at the base ref, or None if the size deltas feature is not enabled
         """
-        # Record current memory usage
-        sketch_report = current_sketch_report
-        # Record previous memory usage
-        sketch_report[self.report_previous_flash_key] = previous_sketch_report[self.report_flash_key]
-        sketch_report[self.report_previous_ram_key] = previous_sketch_report[self.report_ram_key]
 
-        # Calculate the memory usage change
-        if (
-            sketch_report[self.report_flash_key] == self.not_applicable_indicator
-            or sketch_report[self.report_previous_flash_key] == self.not_applicable_indicator
-        ):
-            sketch_report[self.report_flash_delta_key] = self.not_applicable_indicator
-        else:
-            sketch_report[self.report_flash_delta_key] = (sketch_report[self.report_flash_key]
-                                                          - sketch_report[self.report_previous_flash_key])
+        if previous_sizes is None:
+            # Generate a dummy previous_sizes list full of None
+            previous_sizes = [None for _ in current_sizes]
 
-        if (
-            sketch_report[self.report_ram_key] == self.not_applicable_indicator
-            or sketch_report[self.report_previous_ram_key] == self.not_applicable_indicator
-        ):
-            sketch_report[self.report_ram_delta_key] = self.not_applicable_indicator
-        else:
-            sketch_report[self.report_ram_delta_key] = (sketch_report[self.report_ram_key]
-                                                        - sketch_report[self.report_previous_ram_key])
+        sizes_report = []
+        for current_size, previous_size in zip(current_sizes, previous_sizes):
+            sizes_report.append(self.get_size_report(current_size=current_size,
+                                                     previous_size=previous_size))
 
-        # Print the memory usage change data to the log
-        print("Change in flash memory usage:", sketch_report[self.report_flash_delta_key])
-        print("Change in RAM used by globals:", sketch_report[self.report_ram_delta_key])
+        return sizes_report
 
-        return sketch_report
-
-    def get_sketch_report_from_sketches_report(self, sketches_report):
-        """Return the report for the report sketch
+    def get_size_report(self, current_size, previous_size):
+        """Return a list of the combined current and previous size data, with deltas.
 
         Keyword arguments:
-        sketches_report -- list containing the reports for all sketches
+        current_size -- data from the compilation of the sketch at the pull request's head ref
+        previous_size -- data from the compilation of the sketch at the pull request's base ref, or None if the size
+                         deltas feature is not enabled
         """
-        # TODO: The plan is to switch to reporting memory usage data for all sketches, rather than only a single sketch.
-        #       The current system of unnecessarily storing data for all sketches, then searching back through it for a
-        #       single item to report is in anticipation of that change
-        for sketch_report in sketches_report:
-            if self.is_report_sketch(sketch_path=sketch_report[self.report_sketch_key]):
-                return sketch_report
+        size_report = {
+            self.ReportKeys.name: current_size[self.ReportKeys.name],
+            self.ReportKeys.current: {
+                self.ReportKeys.absolute: current_size[self.ReportKeys.absolute]
+            }
+        }
 
-        # Data for the size reports sketch was not found
-        print("::error::size-report-sketch:", self.report_sketch, "was not found")
-        sys.exit(1)
+        if previous_size is not None:
+            # Calculate the memory usage change
+            if (
+                current_size[self.ReportKeys.absolute] == self.not_applicable_indicator
+                or previous_size[self.ReportKeys.absolute] == self.not_applicable_indicator
+            ):
+                absolute_delta = self.not_applicable_indicator
+            else:
+                absolute_delta = (current_size[self.ReportKeys.absolute] - previous_size[self.ReportKeys.absolute])
+
+            # Size deltas reports are enabled
+            # Print the memory usage change data to the log
+            print("Change in", current_size[self.ReportKeys.name] + ":", absolute_delta)
+
+            size_report[self.ReportKeys.previous] = {
+                self.ReportKeys.absolute: previous_size[self.ReportKeys.absolute]
+            }
+            size_report[self.ReportKeys.delta] = {
+                self.ReportKeys.absolute: absolute_delta
+            }
+
+        return size_report
+
+    def get_sketches_report(self, sketch_report_list):
+        """Return the dictionary containing data on all sketch compilations
+
+        Keyword arguments:
+        sketch_report_list -- list of reports from each sketch compilation
+        """
+        # Get the short hash of the pull request head ref
+        repository = git.Repo(path=os.environ["GITHUB_WORKSPACE"])
+        current_git_ref = repository.git.rev_parse("HEAD", short=True)
+
+        sketches_report = {
+            self.ReportKeys.fqbn: self.fqbn,
+            self.ReportKeys.commit_hash: current_git_ref,
+            self.ReportKeys.commit_url: ("https://github.com/"
+                                         + os.environ["GITHUB_REPOSITORY"]
+                                         + "/commit/"
+                                         + current_git_ref),
+            self.ReportKeys.sketch: sketch_report_list
+        }
+
+        sizes_summary_report = self.get_sizes_summary_report(sketch_report_list=sketch_report_list)
+        if sizes_summary_report:
+            sketches_report[self.ReportKeys.sizes] = sizes_summary_report
+
+        return sketches_report
+
+    def get_sizes_summary_report(self, sketch_report_list):
+        """Return the list containing a summary of size data for all sketch compilations for each memory type.
+
+        Keyword arguments:
+        sketch_report_list -- list of reports from each sketch compilation
+        """
+        sizes_summary_report = []
+        for sketch_report in sketch_report_list:
+            for size_report in sketch_report[self.ReportKeys.sizes]:
+                if self.ReportKeys.delta in size_report:
+                    # Determine the sizes_summary_report index for this memory type
+                    size_summary_report_index_list = [
+                        index for index, size_summary in enumerate(sizes_summary_report)
+                        if size_summary.get(self.ReportKeys.name) == size_report[self.ReportKeys.name]
+                    ]
+                    if not size_summary_report_index_list:
+                        # There is no existing entry in the summary list for this memory type, so create one
+                        sizes_summary_report.append(
+                            {
+                                self.ReportKeys.name: size_report[self.ReportKeys.name],
+                                self.ReportKeys.delta: {
+                                    self.ReportKeys.absolute: {
+                                        self.ReportKeys.minimum: size_report[self.ReportKeys.delta][
+                                            self.ReportKeys.absolute],
+                                        self.ReportKeys.maximum: size_report[self.ReportKeys.delta][
+                                            self.ReportKeys.absolute]
+                                    }
+                                }
+                            }
+                        )
+                    else:
+                        size_summary_report_index = size_summary_report_index_list[0]
+
+                        if (
+                            sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
+                                self.ReportKeys.absolute][self.ReportKeys.minimum] == self.not_applicable_indicator
+                        ):
+                            sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
+                                self.ReportKeys.absolute][self.ReportKeys.minimum] = size_report[self.ReportKeys.delta][
+                                self.ReportKeys.absolute]
+
+                            sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
+                                self.ReportKeys.absolute][self.ReportKeys.maximum] = size_report[self.ReportKeys.delta][
+                                self.ReportKeys.absolute]
+
+                        elif size_report[self.ReportKeys.delta][self.ReportKeys.absolute] != (
+                            self.not_applicable_indicator
+                        ):
+                            if (size_report[self.ReportKeys.delta][self.ReportKeys.absolute]
+                                < sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
+                                    self.ReportKeys.absolute][self.ReportKeys.minimum]):
+                                sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
+                                    self.ReportKeys.absolute][self.ReportKeys.minimum] = (
+                                    size_report[self.ReportKeys.delta][self.ReportKeys.absolute]
+                                )
+
+                            if (size_report[self.ReportKeys.delta][self.ReportKeys.absolute]
+                                > sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
+                                    self.ReportKeys.absolute][self.ReportKeys.maximum]):
+                                sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
+                                    self.ReportKeys.absolute][self.ReportKeys.maximum] = (
+                                    size_report[self.ReportKeys.delta][self.ReportKeys.absolute]
+                                )
+
+        return sizes_summary_report
 
     def create_sketches_report_file(self, sketches_report):
         """Write the report for the report sketch to a file.
 
         Keyword arguments:
-        sketch_report -- report for the sketch report
+        sketches_report -- dictionary containing data on the compiled sketches
         """
         self.verbose_print("Creating sketch report file")
-        # Add the shared data to the report
-        # TODO: doing this here is in anticipation of the planned switch to reporting for all sketches, when it will
-        #       make sense to only add a single copy of the data that's universal to all sketches to the report
-        sketches_report[self.report_fqbn_key] = self.fqbn
-
-        # Get the short hash of the pull request head ref
-        repository = git.Repo(path=os.environ["GITHUB_WORKSPACE"])
-        current_git_ref = repository.git.rev_parse("HEAD", short=True)
-        sketches_report[self.report_commit_hash_key] = current_git_ref
-
-        sketches_report[self.report_commit_url_key] = ("https://github.com/"
-                                                       + os.environ["GITHUB_REPOSITORY"]
-                                                       + "/commit/"
-                                                       + current_git_ref)
 
         sketches_report_path = absolute_path(path=self.sketches_report_path)
 

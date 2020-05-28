@@ -1121,17 +1121,19 @@ def test_compile_sketch(capsys, mocker, returncode, expected_success):
 @pytest.mark.parametrize("do_size_deltas_report", [True, False])
 def test_get_sketch_report(mocker, do_size_deltas_report):
     original_git_ref = unittest.mock.sentinel.original_git_ref
-    sketch_report_list = [unittest.mock.sentinel.sketch_report_list1, unittest.mock.sentinel.sketch_report_list2]
-    sketch = unittest.mock.sentinel.sketch
+    sizes_list = [unittest.mock.sentinel.sketch_report_list1, unittest.mock.sentinel.sketch_report_list2]
+    sketch = "/foo/SketchName"
+    success = unittest.mock.sentinel.success
 
     class CompilationResult:
-        def __init__(self, sketch_input):
+        def __init__(self, sketch_input, success_input):
             self.sketch = sketch_input
+            self.success = success_input
 
-    compilation_result = CompilationResult(sketch_input=sketch)
+    compilation_result = CompilationResult(sketch_input=sketch, success_input=success)
 
     previous_compilation_result = unittest.mock.sentinel.previous_compilation_result
-    sketch_size = unittest.mock.sentinel.sketch_size
+    sizes_report = unittest.mock.sentinel.sizes_report
 
     # Stub
     class Repo:
@@ -1147,8 +1149,8 @@ def test_get_sketch_report(mocker, do_size_deltas_report):
 
     compile_sketches = get_compilesketches_object()
 
-    mocker.patch("compilesketches.CompileSketches.get_sketch_report_from_output", autospec=True,
-                 side_effect=sketch_report_list)
+    mocker.patch("compilesketches.CompileSketches.get_sizes_from_output", autospec=True,
+                 side_effect=sizes_list)
     mocker.patch("compilesketches.CompileSketches.do_size_deltas_report", autospec=True,
                  return_value=do_size_deltas_report)
     mocker.patch("git.Repo", autospec=True, return_value=Repo())
@@ -1156,31 +1158,39 @@ def test_get_sketch_report(mocker, do_size_deltas_report):
     mocker.patch("compilesketches.CompileSketches.compile_sketch", autospec=True,
                  return_value=previous_compilation_result)
     mocker.patch.object(Repo, "checkout")
-    mocker.patch("compilesketches.CompileSketches.get_size_deltas", autospec=True, return_value=sketch_size)
+    mocker.patch("compilesketches.CompileSketches.get_sizes_report", autospec=True, return_value=sizes_report)
 
-    sketch_size_output = compile_sketches.get_sketch_report(compilation_result=compilation_result)
+    sketch_report = compile_sketches.get_sketch_report(compilation_result=compilation_result)
 
-    get_sketch_size_from_output_calls = [unittest.mock.call(compile_sketches, compilation_result=compilation_result)]
+    get_sizes_from_output_calls = [unittest.mock.call(compile_sketches, compilation_result=compilation_result)]
     compilesketches.CompileSketches.do_size_deltas_report.assert_called_once_with(compile_sketches,
-                                                                                  sketch_report=sketch_report_list[0])
+                                                                                  compilation_result=compilation_result,
+                                                                                  current_sizes=sizes_list[0])
     if do_size_deltas_report:
         git.Repo.assert_called_once_with(path=os.environ["GITHUB_WORKSPACE"])
         compile_sketches.checkout_pull_request_base_ref.assert_called_once()
         compile_sketches.compile_sketch.assert_called_once_with(compile_sketches, sketch_path=compilation_result.sketch)
         Repo.checkout.assert_called_once_with(original_git_ref)
-        get_sketch_size_from_output_calls.append(
+        get_sizes_from_output_calls.append(
             unittest.mock.call(compile_sketches, compilation_result=previous_compilation_result))
-        compile_sketches.get_size_deltas.assert_called_once_with(compile_sketches,
-                                                                 current_sketch_report=sketch_report_list[0],
-                                                                 previous_sketch_report=sketch_report_list[1])
-
-        assert sketch_size_output == sketch_size
+        expected_previous_sizes = sizes_list[1]
 
     else:
-        assert sketch_size_output == sketch_report_list[0]
+        expected_previous_sizes = None
 
-    compilesketches.CompileSketches.get_sketch_report_from_output.assert_has_calls(
-        calls=get_sketch_size_from_output_calls)
+    compilesketches.CompileSketches.get_sizes_from_output.assert_has_calls(
+        calls=get_sizes_from_output_calls)
+
+    compile_sketches.get_sizes_report.assert_called_once_with(compile_sketches,
+                                                              current_sizes=sizes_list[0],
+                                                              previous_sizes=expected_previous_sizes)
+    assert sketch_report == {
+        compile_sketches.ReportKeys.name: (
+            str(compilesketches.path_relative_to_workspace(path=compilation_result.sketch))
+        ),
+        compile_sketches.ReportKeys.compilation_success: compilation_result.success,
+        compile_sketches.ReportKeys.sizes: sizes_report
+    }
 
 
 @pytest.mark.parametrize(
@@ -1271,7 +1281,7 @@ def test_get_sketch_report(mocker, do_size_deltas_report):
       get_compilesketches_object().not_applicable_indicator,
       get_compilesketches_object().not_applicable_indicator)]
 )
-def test_get_sketch_report_from_output(compilation_success, compilation_output, flash, ram):
+def test_get_sizes_from_output(compilation_success, compilation_output, flash, ram):
     sketch_path = pathlib.PurePath("foo/bar")
     compilation_output = compilation_output.format(flash=str(flash), ram=str(ram))
     compile_sketches = get_compilesketches_object()
@@ -1280,53 +1290,92 @@ def test_get_sketch_report_from_output(compilation_success, compilation_output, 
                                "success": compilation_success,
                                "output": compilation_output})
 
-    sketch_report = compile_sketches.get_sketch_report_from_output(compilation_result=compilation_result)
+    sizes = compile_sketches.get_sizes_from_output(compilation_result=compilation_result)
 
-    assert sketch_report == {compile_sketches.report_sketch_key: str(sketch_path),
-                             compile_sketches.report_compilation_success_key: compilation_success,
-                             compile_sketches.report_flash_key: flash,
-                             compile_sketches.report_ram_key: ram}
+    assert sizes == [
+        {
+            compile_sketches.ReportKeys.name: "flash",
+            compile_sketches.ReportKeys.absolute: flash
+        },
+        {
+            compile_sketches.ReportKeys.name: "RAM for global variables",
+            compile_sketches.ReportKeys.absolute: ram
+        }
+    ]
 
 
 @pytest.mark.parametrize(
-    "enable_size_deltas_report, github_event_name, sketch_path, sketch_report_compilation_success,"
-    "sketch_report_flash, sketch_report_ram, do_size_deltas_report_expected",
-    [("true", "pull_request", "foo/ReportSketch", True, 123, 42, True),
-     ("false", "pull_request", "foo/ReportSketch", True, 123, 42, False),
-     ("true", "push", "foo/ReportSketch", True, 123, 42, False),
-     ("true", "pull_request", "foo/NotReportSketch", True, 123, 42, False),
-     ("true", "pull_request", "foo/ReportSketch", False, 123, 42, False),
-     (
-         "true", "pull_request", "foo/ReportSketch", True, get_compilesketches_object().not_applicable_indicator,
-         42,
-         True),
-     ("true", "pull_request", "foo/ReportSketch", True, 123, get_compilesketches_object().not_applicable_indicator,
+    "enable_size_deltas_report,"
+    " github_event_name,"
+    " sketch_path,"
+    " compilation_success,"
+    " current_sizes,"
+    " do_size_deltas_report_expected",
+    [("true",
+      "pull_request",
+      "foo/ReportSketch",
+      True,
+      [{compilesketches.CompileSketches.ReportKeys.name: "foo",
+        compilesketches.CompileSketches.ReportKeys.absolute: 24},
+       {compilesketches.CompileSketches.ReportKeys.name: "bar",
+        compilesketches.CompileSketches.ReportKeys.absolute: compilesketches.CompileSketches.not_applicable_indicator}],
       True),
-     ("true", "pull_request", "foo/ReportSketch", True, get_compilesketches_object().not_applicable_indicator,
-      get_compilesketches_object().not_applicable_indicator, False)]
+     ("false",
+      "pull_request",
+      "foo/ReportSketch",
+      True,
+      [{compilesketches.CompileSketches.ReportKeys.name: "foo",
+        compilesketches.CompileSketches.ReportKeys.absolute: 24}],
+      False),
+     ("true",
+      "push",
+      "foo/ReportSketch",
+      True,
+      [{compilesketches.CompileSketches.ReportKeys.name: "foo",
+        compilesketches.CompileSketches.ReportKeys.absolute: 24}],
+      False),
+     ("true",
+      "pull_request",
+      "foo/NotReportSketch",
+      True,
+      [{compilesketches.CompileSketches.ReportKeys.name: "foo",
+        compilesketches.CompileSketches.ReportKeys.absolute: 24}],
+      False),
+     ("true",
+      "pull_request",
+      "foo/ReportSketch",
+      False,
+      [{compilesketches.CompileSketches.ReportKeys.name: "foo",
+        compilesketches.CompileSketches.ReportKeys.absolute: 24}],
+      False),
+     ("true",
+      "pull_request",
+      "foo/ReportSketch",
+      True,
+      [{compilesketches.CompileSketches.ReportKeys.name: "foo",
+        compilesketches.CompileSketches.ReportKeys.absolute: compilesketches.CompileSketches.not_applicable_indicator},
+       {compilesketches.CompileSketches.ReportKeys.name: "bar",
+        compilesketches.CompileSketches.ReportKeys.absolute: compilesketches.CompileSketches.not_applicable_indicator}],
+      False)]
 )
-def test_do_size_deltas_report(monkeypatch, enable_size_deltas_report, github_event_name, sketch_path,
-                               sketch_report_compilation_success, sketch_report_flash, sketch_report_ram,
+def test_do_size_deltas_report(monkeypatch,
+                               enable_size_deltas_report,
+                               github_event_name,
+                               sketch_path,
+                               compilation_success,
+                               current_sizes,
                                do_size_deltas_report_expected):
     monkeypatch.setenv("GITHUB_EVENT_NAME", github_event_name)
 
     compile_sketches = get_compilesketches_object(enable_size_deltas_report=enable_size_deltas_report,
                                                   report_sketch="ReportSketch")
 
-    sketch_report = {compile_sketches.report_sketch_key: sketch_path,
-                     compile_sketches.report_compilation_success_key: sketch_report_compilation_success,
-                     compile_sketches.report_flash_key: sketch_report_flash,
-                     compile_sketches.report_ram_key: sketch_report_ram}
-    assert compile_sketches.do_size_deltas_report(sketch_report=sketch_report) == do_size_deltas_report_expected
-
-
-@pytest.mark.parametrize("report_sketch, sketch_path, expected_result",
-                         [("ReportSketch", "/foo/ReportSketch", True),
-                          ("ReportSketch", "/foo/NotReportSketch", False)])
-def test_is_report_sketch(report_sketch, sketch_path, expected_result):
-    compile_sketches = get_compilesketches_object(report_sketch=report_sketch)
-
-    assert compile_sketches.is_report_sketch(sketch_path=sketch_path) == expected_result
+    compilation_result = type("CompilationResult", (),
+                              {"sketch": sketch_path,
+                               "success": compilation_success,
+                               "output": "foo compilation output"})
+    assert compile_sketches.do_size_deltas_report(compilation_result=compilation_result,
+                                                  current_sizes=current_sizes) == do_size_deltas_report_expected
 
 
 def test_checkout_pull_request_base_ref(monkeypatch, mocker):
@@ -1384,49 +1433,90 @@ def test_checkout_pull_request_base_ref(monkeypatch, mocker):
         compile_sketches.checkout_pull_request_base_ref()
 
 
-@pytest.mark.parametrize("flash, ram, previous_flash, previous_ram, expected_flash_delta,expected_ram_delta",
-                         [(get_compilesketches_object().not_applicable_indicator, 42, 42,
-                           get_compilesketches_object().not_applicable_indicator,
-                           get_compilesketches_object().not_applicable_indicator,
-                           get_compilesketches_object().not_applicable_indicator),
-                          (52, 42, 42, 52, 10, -10)])
-def test_get_size_deltas(capsys, flash, ram, previous_flash, previous_ram, expected_flash_delta,
-                         expected_ram_delta):
+def test_get_sizes_report(mocker):
+    sizes_report = [unittest.mock.sentinel.size_report1, unittest.mock.sentinel.size_report1]
+    current_sizes = [unittest.mock.sentinel.current_sizes1, unittest.mock.sentinel.current_sizes2]
+    previous_sizes = [unittest.mock.sentinel.previous_sizes1, unittest.mock.sentinel.previous_sizes2]
+
     compile_sketches = get_compilesketches_object()
 
-    current_sketch_size = {compile_sketches.report_flash_key: flash, compile_sketches.report_ram_key: ram}
-    previous_sketch_size = {compile_sketches.report_flash_key: previous_flash,
-                            compile_sketches.report_ram_key: previous_ram}
+    mocker.patch("compilesketches.CompileSketches.get_size_report", autospec=True, side_effect=sizes_report)
 
-    sketch_size = compile_sketches.get_size_deltas(current_sketch_size,
-                                                   previous_sketch_size)
+    assert compile_sketches.get_sizes_report(current_sizes=current_sizes, previous_sizes=previous_sizes) == sizes_report
 
-    assert capsys.readouterr().out.strip() == ("Change in flash memory usage: " + str(expected_flash_delta) + "\n"
-                                               + "Change in RAM used by globals: " + str(expected_ram_delta))
+    get_size_report_calls = []
+    for current_size, previous_size in zip(current_sizes, previous_sizes):
+        get_size_report_calls.append(unittest.mock.call(compile_sketches,
+                                                        current_size=current_size,
+                                                        previous_size=previous_size))
 
-    assert sketch_size[compile_sketches.report_flash_key] == flash
-    assert sketch_size[compile_sketches.report_ram_key] == ram
-    assert sketch_size[compile_sketches.report_previous_flash_key] == previous_flash
-    assert sketch_size[compile_sketches.report_previous_ram_key] == previous_ram
-    assert sketch_size[compile_sketches.report_flash_delta_key] == expected_flash_delta
-    assert sketch_size[compile_sketches.report_ram_delta_key] == expected_ram_delta
+    compile_sketches.get_size_report.assert_has_calls(get_size_report_calls)
+
+    # Test size deltas not enabled
+    previous_sizes = None
+    mocker.resetall()
+    compilesketches.CompileSketches.get_size_report.side_effect = sizes_report
+    assert compile_sketches.get_sizes_report(current_sizes=current_sizes, previous_sizes=previous_sizes) == sizes_report
+
+    get_size_report_calls = []
+    for current_size in current_sizes:
+        get_size_report_calls.append(unittest.mock.call(compile_sketches,
+                                                        current_size=current_size,
+                                                        previous_size=None))
+
+    compile_sketches.get_size_report.assert_has_calls(get_size_report_calls)
 
 
-@pytest.mark.parametrize("report_sketch, expected_success", [("FooSketch", True), ("NonexistentSketch", False)])
-def test_get_sketch_report_from_sketches_report(report_sketch, expected_success):
-    report_sketch_report = {compilesketches.CompileSketches.report_sketch_key: "FooSketch"}
-    sketch_sizes = [report_sketch_report, {compilesketches.CompileSketches.report_sketch_key: "BarSketch"}]
+@pytest.mark.parametrize(
+    "current_absolute,previous_size, expected_absolute_delta",
+    [(compilesketches.CompileSketches.not_applicable_indicator,
+      {compilesketches.CompileSketches.ReportKeys.absolute: 11},
+      compilesketches.CompileSketches.not_applicable_indicator),
+     (42,
+      {compilesketches.CompileSketches.ReportKeys.absolute: compilesketches.CompileSketches.not_applicable_indicator},
+      compilesketches.CompileSketches.not_applicable_indicator),
+     (42,
+      {compilesketches.CompileSketches.ReportKeys.absolute: 11},
+      31),
+     (42,
+      None,
+      None)]
+)
+def test_get_size_report(capsys, current_absolute, previous_size, expected_absolute_delta):
+    size_name = "Foo size name"
+    current_size = {
+        compilesketches.CompileSketches.ReportKeys.name: size_name,
+        compilesketches.CompileSketches.ReportKeys.absolute: current_absolute
+    }
+    expected_size_report = {
+        compilesketches.CompileSketches.ReportKeys.name: size_name,
+        compilesketches.CompileSketches.ReportKeys.current: {
+            compilesketches.CompileSketches.ReportKeys.absolute: current_absolute
+        }
+    }
 
-    compile_sketches = get_compilesketches_object(report_sketch=report_sketch)
+    compile_sketches = get_compilesketches_object()
 
-    if expected_success:
-        assert compile_sketches.get_sketch_report_from_sketches_report(sketch_sizes) == report_sketch_report
+    size_report = compile_sketches.get_size_report(current_size=current_size, previous_size=previous_size)
+
+    if previous_size is None:
+        assert capsys.readouterr().out.strip() == ""
     else:
-        with pytest.raises(expected_exception=SystemExit, match="1"):
-            compile_sketches.get_sketch_report_from_sketches_report(sketch_sizes)
+        expected_size_report[compilesketches.CompileSketches.ReportKeys.previous] = {
+            compilesketches.CompileSketches.ReportKeys.absolute: previous_size[
+                compilesketches.CompileSketches.ReportKeys.absolute]
+        }
+        expected_size_report[compilesketches.CompileSketches.ReportKeys.delta] = {
+            compilesketches.CompileSketches.ReportKeys.absolute: expected_absolute_delta
+        }
+        assert capsys.readouterr().out.strip() == ("Change in " + size_name + ": " + str(expected_absolute_delta))
+
+    assert size_report == expected_size_report
 
 
-def test_create_sketches_report_file(monkeypatch, tmp_path, mocker):
+def test_get_sketches_report(monkeypatch, mocker):
+    github_repository = "fooRepository/fooOwner"
+    fqbn_arg = "arduino:avr:uno"
     current_git_ref = "fooref"
 
     # Stub
@@ -1437,10 +1527,280 @@ def test_create_sketches_report_file(monkeypatch, tmp_path, mocker):
         def rev_parse(self):
             pass
 
-    monkeypatch.setenv("GITHUB_REPOSITORY", "fooRepository/fooOwner")
+    monkeypatch.setenv("GITHUB_REPOSITORY", github_repository)
 
+    mocker.patch("git.Repo", autospec=True, return_value=Repo())
+    mocker.patch.object(Repo, "rev_parse", return_value=current_git_ref)
+
+    sizes_summary_report = unittest.mock.sentinel.sizes_summary_report
+    sketch_report_list = unittest.mock.sentinel.sketch_report_list
+
+    mocker.patch("compilesketches.CompileSketches.get_sizes_summary_report",
+                 autospec=True,
+                 return_value=sizes_summary_report)
+
+    compile_sketches = get_compilesketches_object(fqbn_arg=fqbn_arg)
+
+    assert compile_sketches.get_sketches_report(sketch_report_list=sketch_report_list) == {
+        compilesketches.CompileSketches.ReportKeys.fqbn: compile_sketches.fqbn,
+        compilesketches.CompileSketches.ReportKeys.commit_hash: current_git_ref,
+        compilesketches.CompileSketches.ReportKeys.commit_url: ("https://github.com/"
+                                                                + github_repository
+                                                                + "/commit/"
+                                                                + current_git_ref),
+        compilesketches.CompileSketches.ReportKeys.sizes: sizes_summary_report,
+        compilesketches.CompileSketches.ReportKeys.sketch: sketch_report_list
+    }
+
+    git.Repo.assert_called_once_with(path=os.environ["GITHUB_WORKSPACE"])
+    Repo.rev_parse.assert_called_once_with("HEAD", short=True)
+    compile_sketches.get_sizes_summary_report.assert_called_once_with(compile_sketches,
+                                                                      sketch_report_list=sketch_report_list)
+
+    # Test no summary report data (size deltas not enabled)
+    compilesketches.CompileSketches.get_sizes_summary_report.return_value = []
+
+    assert compile_sketches.get_sketches_report(sketch_report_list=sketch_report_list) == {
+        compilesketches.CompileSketches.ReportKeys.fqbn: compile_sketches.fqbn,
+        compilesketches.CompileSketches.ReportKeys.commit_hash: current_git_ref,
+        compilesketches.CompileSketches.ReportKeys.commit_url: ("https://github.com/"
+                                                                + github_repository
+                                                                + "/commit/"
+                                                                + current_git_ref),
+        compilesketches.CompileSketches.ReportKeys.sketch: sketch_report_list
+    }
+
+
+def test_get_sizes_summary_report():
+    sketch_report_list = [
+        {
+            compilesketches.CompileSketches.ReportKeys.sizes: [
+                {
+                    compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+                    compilesketches.CompileSketches.ReportKeys.delta: {
+                        compilesketches.CompileSketches.ReportKeys.absolute: 42
+                    }
+                },
+                {
+                    compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+                    compilesketches.CompileSketches.ReportKeys.delta: {
+                        compilesketches.CompileSketches.ReportKeys.absolute: 11
+                    }
+                }
+            ]
+        },
+        {
+            compilesketches.CompileSketches.ReportKeys.sizes: [
+                {
+                    compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+                    compilesketches.CompileSketches.ReportKeys.delta: {
+                        compilesketches.CompileSketches.ReportKeys.absolute: 8
+                    }
+                },
+                {
+                    compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+                    compilesketches.CompileSketches.ReportKeys.delta: {
+                        compilesketches.CompileSketches.ReportKeys.absolute: 33
+                    }
+                }
+            ]
+        }
+    ]
+
+    expected_sizes_summary_report = [
+        {
+            compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+            compilesketches.CompileSketches.ReportKeys.delta: {
+                compilesketches.CompileSketches.ReportKeys.absolute: {
+                    compilesketches.CompileSketches.ReportKeys.minimum: 8,
+                    compilesketches.CompileSketches.ReportKeys.maximum: 42
+                }
+            }
+        },
+        {
+            compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+            compilesketches.CompileSketches.ReportKeys.delta: {
+                compilesketches.CompileSketches.ReportKeys.absolute: {
+                    compilesketches.CompileSketches.ReportKeys.minimum: 11,
+                    compilesketches.CompileSketches.ReportKeys.maximum: 33
+                }
+            }
+        }
+    ]
+
+    compile_sketches = get_compilesketches_object()
+
+    assert compile_sketches.get_sizes_summary_report(sketch_report_list=sketch_report_list) == (
+        expected_sizes_summary_report
+    )
+
+    # N/A in one sketch report
+    sketch_report_list = [
+        {
+            compilesketches.CompileSketches.ReportKeys.sizes: [
+                {
+                    compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+                    compilesketches.CompileSketches.ReportKeys.delta: {
+                        compilesketches.CompileSketches.ReportKeys.absolute: "N/A"
+                    }
+                },
+                {
+                    compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+                    compilesketches.CompileSketches.ReportKeys.delta: {
+                        compilesketches.CompileSketches.ReportKeys.absolute: 11
+                    }
+                }
+            ]
+        },
+        {
+            compilesketches.CompileSketches.ReportKeys.sizes: [
+                {
+                    compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+                    compilesketches.CompileSketches.ReportKeys.delta: {
+                        compilesketches.CompileSketches.ReportKeys.absolute: 8
+                    }
+                },
+                {
+                    compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+                    compilesketches.CompileSketches.ReportKeys.delta: {
+                        compilesketches.CompileSketches.ReportKeys.absolute: 33
+                    }
+                }
+            ]
+        }
+    ]
+
+    expected_sizes_summary_report = [
+        {
+            compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+            compilesketches.CompileSketches.ReportKeys.delta: {
+                compilesketches.CompileSketches.ReportKeys.absolute: {
+                    compilesketches.CompileSketches.ReportKeys.minimum: 8,
+                    compilesketches.CompileSketches.ReportKeys.maximum: 8
+                }
+            }
+        },
+        {
+            compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+            compilesketches.CompileSketches.ReportKeys.delta: {
+                compilesketches.CompileSketches.ReportKeys.absolute: {
+                    compilesketches.CompileSketches.ReportKeys.minimum: 11,
+                    compilesketches.CompileSketches.ReportKeys.maximum: 33
+                }
+            }
+        }
+    ]
+
+    assert compile_sketches.get_sizes_summary_report(sketch_report_list=sketch_report_list) == (
+        expected_sizes_summary_report
+    )
+
+    # N/A in all sketch reports
+    sketch_report_list = [
+        {
+            compilesketches.CompileSketches.ReportKeys.sizes: [
+                {
+                    compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+                    compilesketches.CompileSketches.ReportKeys.delta: {
+                        compilesketches.CompileSketches.ReportKeys.absolute: "N/A"
+                    }
+                },
+                {
+                    compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+                    compilesketches.CompileSketches.ReportKeys.delta: {
+                        compilesketches.CompileSketches.ReportKeys.absolute: 11
+                    }
+                }
+            ]
+        },
+        {
+            compilesketches.CompileSketches.ReportKeys.sizes: [
+                {
+                    compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+                    compilesketches.CompileSketches.ReportKeys.delta: {
+                        compilesketches.CompileSketches.ReportKeys.absolute: "N/A"
+                    }
+                },
+                {
+                    compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+                    compilesketches.CompileSketches.ReportKeys.delta: {
+                        compilesketches.CompileSketches.ReportKeys.absolute: 33
+                    }
+                }
+            ]
+        }
+    ]
+
+    expected_sizes_summary_report = [
+        {
+            compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+            compilesketches.CompileSketches.ReportKeys.delta: {
+                compilesketches.CompileSketches.ReportKeys.absolute: {
+                    compilesketches.CompileSketches.ReportKeys.minimum: "N/A",
+                    compilesketches.CompileSketches.ReportKeys.maximum: "N/A"
+                }
+            }
+        },
+        {
+            compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+            compilesketches.CompileSketches.ReportKeys.delta: {
+                compilesketches.CompileSketches.ReportKeys.absolute: {
+                    compilesketches.CompileSketches.ReportKeys.minimum: 11,
+                    compilesketches.CompileSketches.ReportKeys.maximum: 33
+                }
+            }
+        }
+    ]
+
+    assert compile_sketches.get_sizes_summary_report(sketch_report_list=sketch_report_list) == (
+        expected_sizes_summary_report
+    )
+
+    # No deltas data
+    sketch_report_list = [
+        {
+            compilesketches.CompileSketches.ReportKeys.sizes: [
+                {
+                    compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+                    compilesketches.CompileSketches.ReportKeys.current: {
+                        compilesketches.CompileSketches.ReportKeys.absolute: 42
+                    }
+                },
+                {
+                    compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+                    compilesketches.CompileSketches.ReportKeys.current: {
+                        compilesketches.CompileSketches.ReportKeys.absolute: 11
+                    }
+                }
+            ]
+        },
+        {
+            compilesketches.CompileSketches.ReportKeys.sizes: [
+                {
+                    compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+                    compilesketches.CompileSketches.ReportKeys.current: {
+                        compilesketches.CompileSketches.ReportKeys.absolute: 5
+                    }
+                },
+                {
+                    compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+                    compilesketches.CompileSketches.ReportKeys.current: {
+                        compilesketches.CompileSketches.ReportKeys.absolute: 33
+                    }
+                }
+            ]
+        }
+    ]
+
+    expected_sizes_summary_report = []
+
+    assert compile_sketches.get_sizes_summary_report(sketch_report_list=sketch_report_list) == (
+        expected_sizes_summary_report
+    )
+
+
+def test_create_sketches_report_file(monkeypatch, tmp_path):
     sketches_report_path = tmp_path
-    fqbn_arg = "arduino:avr:uno"
     sketches_report = {
         "sketch": "examples/Foo",
         "compilation_success": True,
@@ -1453,19 +1813,13 @@ def test_create_sketches_report_file(monkeypatch, tmp_path, mocker):
         "fqbn": "arduino:avr:uno"
     }
 
-    mocker.patch("git.Repo", autospec=True, return_value=Repo())
-    mocker.patch.object(Repo, "rev_parse", return_value=current_git_ref)
-
     compile_sketches = get_compilesketches_object(sketches_report_path=str(sketches_report_path),
-                                                  fqbn_arg=fqbn_arg)
+                                                  fqbn_arg="arduino:avr:uno")
 
     compile_sketches.create_sketches_report_file(sketches_report=sketches_report)
 
     with open(file=str(sketches_report_path.joinpath("arduino-avr-uno.json"))) as sketch_report_file:
         assert json.load(sketch_report_file) == sketches_report
-
-    git.Repo.assert_called_once_with(path=os.environ["GITHUB_WORKSPACE"])
-    Repo.rev_parse.assert_called_once_with("HEAD", short=True)
 
 
 @pytest.mark.parametrize("verbose", ["true", "false"])
