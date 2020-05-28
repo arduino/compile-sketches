@@ -20,6 +20,9 @@ import yaml.parser
 
 
 def main():
+    if "INPUT_SIZE-REPORT-SKETCH" in os.environ:
+        print("::warning::The size-report-sketch input is no longer used")
+
     if "INPUT_SIZE-DELTAS-REPORT-FOLDER-NAME" in os.environ:
         print("::warning::The size-deltas-report-folder-name input is deprecated. Use the equivalent input: "
               "sketches-report-path instead.")
@@ -37,7 +40,6 @@ def main():
         sketch_paths=os.environ["INPUT_SKETCH-PATHS"],
         verbose=os.environ["INPUT_VERBOSE"],
         github_token=os.environ["INPUT_GITHUB-TOKEN"],
-        report_sketch=os.environ["INPUT_SIZE-REPORT-SKETCH"],
         enable_size_deltas_report=os.environ["INPUT_ENABLE-SIZE-DELTAS-REPORT"],
         sketches_report_path=os.environ["INPUT_SKETCHES-REPORT-PATH"]
     )
@@ -58,9 +60,8 @@ class CompileSketches:
                     recursively for sketches.
     verbose -- set to "true" for verbose output ("true", "false")
     github_token -- GitHub access token
-    report_sketch -- name of the sketch to make the report for
-    enable_size_deltas_report -- set to "true" to cause the action to determine the change in memory usage for the
-                                 report_sketch ("true", "false")
+    enable_size_deltas_report -- set to "true" to cause the action to determine the change in memory usage
+                                 ("true", "false")
     sketches_report_path -- folder to save the sketches report to
     """
 
@@ -101,7 +102,7 @@ class CompileSketches:
 
     latest_release_indicator = "latest"
 
-    def __init__(self, cli_version, fqbn_arg, platforms, libraries, sketch_paths, verbose, github_token, report_sketch,
+    def __init__(self, cli_version, fqbn_arg, platforms, libraries, sketch_paths, verbose, github_token,
                  enable_size_deltas_report, sketches_report_path):
         """Process, store, and validate the action's inputs."""
         self.cli_version = cli_version
@@ -125,8 +126,6 @@ class CompileSketches:
         else:
             self.github_api = github.Github(login_or_token=github_token)
 
-        self.report_sketch = report_sketch
-
         self.enable_size_deltas_report = parse_boolean_input(boolean_input=enable_size_deltas_report)
         # The enable-size-deltas-report input has a default value so it should always be either True or False
         if self.enable_size_deltas_report is None:
@@ -134,10 +133,6 @@ class CompileSketches:
             sys.exit(1)
 
         self.sketches_report_path = pathlib.PurePath(sketches_report_path)
-
-        if self.enable_size_deltas_report and self.report_sketch == "":
-            print("::error::size-report-sketch input was not defined")
-            sys.exit(1)
 
     def compile_sketches(self):
         """Do compilation tests and record data."""
@@ -151,7 +146,7 @@ class CompileSketches:
 
         # Compile all sketches under the paths specified by the sketch-paths input
         all_compilations_successful = True
-        sketches_report = []
+        sketch_report_list = []
 
         sketch_list = self.find_sketches()
         for sketch in sketch_list:
@@ -160,14 +155,11 @@ class CompileSketches:
                 all_compilations_successful = False
 
             # Store the size data for this sketch
-            sketches_report.append(self.get_sketch_report(compilation_result=compilation_result))
+            sketch_report_list.append(self.get_sketch_report(compilation_result=compilation_result))
 
-        if self.report_sketch != "":
-            # Make sketch reports
-            sketch_report = self.get_sketch_report_from_sketches_report(sketches_report=sketches_report)
-            # TODO: The current behavior is to only write the report for the report sketch, but the plan is to change to
-            #       reporting data for all sketches, thus the passing of sketch_report to the function
-            self.create_sketches_report_file(sketches_report=sketch_report)
+        sketches_report = self.get_sketches_report(sketch_report_list=sketch_report_list)
+
+        self.create_sketches_report_file(sketches_report=sketches_report)
 
         if not all_compilations_successful:
             print("::error::One or more compilations failed")
@@ -802,22 +794,6 @@ class CompileSketches:
 
         return sketch_report
 
-    def get_sketch_report_from_sketches_report(self, sketches_report):
-        """Return the report for the report sketch
-        Keyword arguments:
-        sketches_report -- list containing the reports for all sketches
-        """
-        # TODO: The plan is to switch to reporting memory usage data for all sketches, rather than only a single sketch.
-        #       The current system of unnecessarily storing data for all sketches, then searching back through it for a
-        #       single item to report is in anticipation of that change
-        for sketch_report in sketches_report:
-            if self.is_report_sketch(sketch_path=sketch_report[self.ReportKeys.name]):
-                return sketch_report
-
-        # Data for the size reports sketch was not found
-        print("::error::size-report-sketch:", self.report_sketch, "was not found")
-        sys.exit(1)
-
     def get_sizes_from_output(self, compilation_result):
         """Parse the stdout from the compilation process and return a list containing memory usage data.
 
@@ -870,7 +846,7 @@ class CompileSketches:
         return sizes
 
     def do_size_deltas_report(self, compilation_result, current_sizes):
-        """Return whether size deltas reporting is enabled for the given sketch.
+        """Return whether size deltas reporting is enabled.
 
         Keyword arguments:
         compilation_result -- object returned by compile_sketch()
@@ -879,22 +855,10 @@ class CompileSketches:
         return (
             self.enable_size_deltas_report
             and os.environ["GITHUB_EVENT_NAME"] == "pull_request"
-            and self.is_report_sketch(sketch_path=compilation_result.sketch)
             and compilation_result.success
             and any(size.get(self.ReportKeys.absolute) != self.not_applicable_indicator for
                     size in current_sizes)
         )
-
-    def is_report_sketch(self, sketch_path):
-        """Return whether the given sketch is the report sketch.
-
-        Keyword arguments:
-        sketch_path -- path to the sketch
-        """
-        # TODO: yes, it was silly to identify the report sketch only by the name, rather than the path, but the whole
-        #       concept of the size report sketch will be removed soon when the behavior is switched to reporting memory
-        #       usage for all sketches. So for now, it's best to simply continue with the existing behavior.
-        return pathlib.PurePath(sketch_path).name == self.report_sketch
 
     def checkout_pull_request_base_ref(self):
         """git checkout the base ref of the pull request"""
