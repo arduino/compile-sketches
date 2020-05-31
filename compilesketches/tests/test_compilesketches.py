@@ -1500,18 +1500,9 @@ def test_get_sketches_report(monkeypatch, mocker):
     fqbn_arg = "arduino:avr:uno"
     current_git_ref = "fooref"
 
-    # Stub
-    class Repo:
-        def __init__(self):
-            self.git = self
-
-        def rev_parse(self):
-            pass
-
     monkeypatch.setenv("GITHUB_REPOSITORY", github_repository)
 
-    mocker.patch("git.Repo", autospec=True, return_value=Repo())
-    mocker.patch.object(Repo, "rev_parse", return_value=current_git_ref)
+    mocker.patch("compilesketches.get_head_commit_hash", autospec=True, return_value=current_git_ref)
 
     sizes_summary_report = unittest.mock.sentinel.sizes_summary_report
     sketch_report_list = unittest.mock.sentinel.sketch_report_list
@@ -1533,8 +1524,6 @@ def test_get_sketches_report(monkeypatch, mocker):
         compilesketches.CompileSketches.ReportKeys.sketch: sketch_report_list
     }
 
-    git.Repo.assert_called_once_with(path=os.environ["GITHUB_WORKSPACE"])
-    Repo.rev_parse.assert_called_once_with("HEAD", short=True)
     compile_sketches.get_sizes_summary_report.assert_called_once_with(compile_sketches,
                                                                       sketch_report_list=sketch_report_list)
 
@@ -2033,3 +2022,23 @@ def test_clone_repository(tmp_path, git_ref):
     # Verify that the installation matches the test clone
     assert directories_are_same(left_directory=destination_path,
                                 right_directory=test_clone_path)
+
+
+@pytest.mark.parametrize("github_event, expected_hash",
+                         [("pull_request", "pull_request-head-sha"), ("push", "push-head-sha")])
+def test_get_head_commit_hash(monkeypatch, mocker, github_event, expected_hash):
+    # Stub
+    class Repo:
+        def __init__(self):
+            self.git = self
+
+        def rev_parse(self):
+            pass
+
+    monkeypatch.setenv("GITHUB_EVENT_NAME", github_event)
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(test_data_path.joinpath("githubevent.json")))
+
+    mocker.patch("git.Repo", autospec=True, return_value=Repo())
+    mocker.patch.object(Repo, "rev_parse", return_value="push-head-sha")
+
+    assert compilesketches.get_head_commit_hash() == expected_hash

@@ -1,5 +1,8 @@
 {
   "pull_request": {
+    "head": {
+      "sha": "pull_request-head-sha"
+    },
     "number": 42
   }
 }

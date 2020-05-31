@@ -949,9 +949,7 @@ class CompileSketches:
         Keyword arguments:
         sketch_report_list -- list of reports from each sketch compilation
         """
-        # Get the short hash of the pull request head ref
-        repository = git.Repo(path=os.environ["GITHUB_WORKSPACE"])
-        current_git_ref = repository.git.rev_parse("HEAD", short=True)
+        current_git_ref = get_head_commit_hash()
 
         sketches_report = {
             self.ReportKeys.fqbn: self.fqbn,
@@ -1242,6 +1240,22 @@ def get_archive_root_path(archive_extract_path):
             break
 
     return archive_root_folder_name
+
+
+def get_head_commit_hash():
+    """Return the head commit's hash."""
+    if os.environ["GITHUB_EVENT_NAME"] == "pull_request":
+        # When the workflow is triggered by a pull_request event, actions/checkout checks out the hypothetical merge
+        # commit GitHub automatically generates for PRs. The user will expect the report to show the hash of the head
+        # commit of the PR, not of this hidden merge commit. So it's necessary it get it from GITHUB_EVENT_PATH instead
+        # of git rev-parse HEAD.
+        with open(file=os.environ["GITHUB_EVENT_PATH"]) as github_event_file:
+            commit_hash = json.load(github_event_file)["pull_request"]["head"]["sha"]
+    else:
+        repository = git.Repo(path=os.environ["GITHUB_WORKSPACE"])
+        commit_hash = repository.git.rev_parse("HEAD")
+
+    return commit_hash
 
 
 # Only execute the following code if the script is run directly, not imported
