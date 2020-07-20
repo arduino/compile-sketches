@@ -338,7 +338,9 @@ def test_install_platforms(mocker, platforms):
     [("arduino:avr:uno", "arduino:avr", None),
      # FQBN with space, additional Board Manager URL
      ('\'"foo bar:baz:asdf" "https://example.com/platform_foo_index.json"\'', "foo bar:baz",
-      "https://example.com/platform_foo_index.json")]
+      "https://example.com/platform_foo_index.json"),
+     # Custom board option
+     ("arduino:avr:nano:cpu=atmega328old", "arduino:avr", None)]
 )
 def test_get_fqbn_platform_dependency(fqbn_arg, expected_platform, expected_additional_url):
     compile_sketches = get_compilesketches_object(fqbn_arg=fqbn_arg)

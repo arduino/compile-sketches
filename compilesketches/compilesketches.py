@@ -214,7 +214,8 @@ class CompileSketches:
     def get_fqbn_platform_dependency(self):
         """Return the platform dependency definition automatically generated from the FQBN."""
         # Extract the platform name from the FQBN (e.g., arduino:avr:uno => arduino:avr)
-        fqbn_platform_dependency = {self.dependency_name_key: self.fqbn.rsplit(sep=":", maxsplit=1)[0]}
+        fqbn_component_list = self.fqbn.split(sep=":")
+        fqbn_platform_dependency = {self.dependency_name_key: fqbn_component_list[0] + ":" + fqbn_component_list[1]}
         if self.additional_url is not None:
             fqbn_platform_dependency[self.dependency_source_url_key] = self.additional_url
 
