@@ -27,18 +27,27 @@ def get_compilesketches_object(
     sketch_paths="foo sketch_paths",
     verbose="false",
     github_token="",
+    github_api=unittest.mock.sentinel.github_api,
+    deltas_base_ref="foodeltasbaseref",
     enable_size_deltas_report="false",
     sketches_report_path="foo report_folder_name"
 ):
-    return compilesketches.CompileSketches(cli_version=cli_version,
-                                           fqbn_arg=fqbn_arg,
-                                           platforms=platforms,
-                                           libraries=libraries,
-                                           sketch_paths=sketch_paths,
-                                           verbose=verbose,
-                                           github_token=github_token,
-                                           enable_size_deltas_report=enable_size_deltas_report,
-                                           sketches_report_path=sketches_report_path)
+    with unittest.mock.patch("compilesketches.CompileSketches.get_deltas_base_ref",
+                             autospec=True,
+                             return_value=deltas_base_ref):
+        compilesketches_object = compilesketches.CompileSketches(cli_version=cli_version,
+                                                                 fqbn_arg=fqbn_arg,
+                                                                 platforms=platforms,
+                                                                 libraries=libraries,
+                                                                 sketch_paths=sketch_paths,
+                                                                 verbose=verbose,
+                                                                 github_token=github_token,
+                                                                 enable_size_deltas_report=enable_size_deltas_report,
+                                                                 sketches_report_path=sketches_report_path)
+
+    compilesketches_object.github_api = github_api
+
+    return compilesketches_object
 
 
 def directories_are_same(left_directory, right_directory):
@@ -165,20 +174,24 @@ def test_compilesketches():
                                   compilesketches.absolute_path(path="examples/BarSketchPath")]
     verbose = "false"
     github_token = "fooGitHubToken"
+    expected_deltas_base_ref = unittest.mock.sentinel.deltas_base_ref
     enable_size_deltas_report = "true"
     sketches_report_path = "FooSketchesReportFolder"
 
-    compile_sketches = compilesketches.CompileSketches(
-        cli_version=cli_version,
-        fqbn_arg="\'\"" + expected_fqbn + "\" \"" + expected_additional_url + "\"\'",
-        platforms=platforms,
-        libraries=libraries,
-        sketch_paths=sketch_paths,
-        verbose=verbose,
-        github_token=github_token,
-        enable_size_deltas_report=enable_size_deltas_report,
-        sketches_report_path=sketches_report_path
-    )
+    with unittest.mock.patch("compilesketches.CompileSketches.get_deltas_base_ref",
+                             autospec=True,
+                             return_value=expected_deltas_base_ref):
+        compile_sketches = compilesketches.CompileSketches(
+            cli_version=cli_version,
+            fqbn_arg="\'\"" + expected_fqbn + "\" \"" + expected_additional_url + "\"\'",
+            platforms=platforms,
+            libraries=libraries,
+            sketch_paths=sketch_paths,
+            verbose=verbose,
+            github_token=github_token,
+            enable_size_deltas_report=enable_size_deltas_report,
+            sketches_report_path=sketches_report_path
+        )
 
     assert compile_sketches.cli_version == cli_version
     assert compile_sketches.fqbn == expected_fqbn
@@ -187,12 +200,80 @@ def test_compilesketches():
     assert compile_sketches.libraries == libraries
     assert compile_sketches.sketch_paths == expected_sketch_paths_list
     assert compile_sketches.verbose is False
+    assert compile_sketches.deltas_base_ref == expected_deltas_base_ref
     assert compile_sketches.enable_size_deltas_report is True
     assert compile_sketches.sketches_report_path == pathlib.PurePath(sketches_report_path)
 
     # Test invalid enable_size_deltas_report value
     with pytest.raises(expected_exception=SystemExit, match="1"):
         get_compilesketches_object(enable_size_deltas_report="fooInvalidEnableSizeDeltasBoolean")
+
+
+@pytest.mark.parametrize("event_name, expected_ref",
+                         [("pull_request", unittest.mock.sentinel.pull_request_base_ref),
+                          ("push", unittest.mock.sentinel.parent_commit_ref)])
+def test_get_deltas_base_ref(monkeypatch, mocker, event_name, expected_ref):
+    monkeypatch.setenv("GITHUB_EVENT_NAME", event_name)
+
+    mocker.patch("compilesketches.CompileSketches.get_pull_request_base_ref", autospec=True,
+                 return_value=unittest.mock.sentinel.pull_request_base_ref)
+    mocker.patch("compilesketches.get_parent_commit_ref", autospec=True,
+                 return_value=unittest.mock.sentinel.parent_commit_ref)
+
+    compile_sketches = get_compilesketches_object()
+
+    assert compile_sketches.get_deltas_base_ref() == expected_ref
+
+
+def test_get_pull_request_base_ref(monkeypatch, mocker):
+    class Github:
+        """Stub"""
+        ref = unittest.mock.sentinel.pull_request_base_ref
+
+        def __init__(self):
+            self.base = self
+
+        def get_repo(self):
+            pass
+
+        def get_pull(self, number):
+            pass
+
+    github_api_object = Github()
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(test_data_path.joinpath("githubevent.json")))
+    monkeypatch.setenv("GITHUB_REPOSITORY", "fooRepository/fooOwner")
+
+    mocker.patch.object(Github, "get_repo", return_value=Github())
+    mocker.patch.object(Github, "get_pull", return_value=Github())
+
+    compile_sketches = get_compilesketches_object(github_api=github_api_object)
+
+    assert compile_sketches.get_pull_request_base_ref() == unittest.mock.sentinel.pull_request_base_ref
+
+    github_api_object.get_repo.assert_called_once_with(full_name_or_id=os.environ["GITHUB_REPOSITORY"])
+    github_api_object.get_pull.assert_called_once_with(number=42)  # PR number is hardcoded into test file
+
+    mocker.patch.object(Github, "get_repo", side_effect=github.UnknownObjectException(status=42, data="foo"))
+    with pytest.raises(expected_exception=SystemExit, match="1"):
+        compile_sketches.get_pull_request_base_ref()
+
+
+def test_get_parent_commit_ref(mocker):
+    parent_commit_ref = unittest.mock.sentinel.parent_commit_ref
+
+    class Repo:
+        """Stub"""
+        hexsha = parent_commit_ref
+
+        def __init__(self):
+            self.head = self
+            self.object = self
+            self.parents = [self]
+
+    mocker.patch("git.Repo", autospec=True, return_value=Repo())
+
+    assert compilesketches.get_parent_commit_ref() == parent_commit_ref
+    git.Repo.assert_called_once_with(path=os.environ["GITHUB_WORKSPACE"])
 
 
 @pytest.mark.parametrize("compilation_success_list, expected_success",
@@ -1152,7 +1233,7 @@ def test_get_sketch_report(mocker, do_size_deltas_report):
     mocker.patch("compilesketches.CompileSketches.do_size_deltas_report", autospec=True,
                  return_value=do_size_deltas_report)
     mocker.patch("git.Repo", autospec=True, return_value=Repo())
-    mocker.patch("compilesketches.CompileSketches.checkout_pull_request_base_ref", autospec=True)
+    mocker.patch("compilesketches.CompileSketches.checkout_deltas_base_ref", autospec=True)
     mocker.patch("compilesketches.CompileSketches.compile_sketch", autospec=True,
                  return_value=previous_compilation_result)
     mocker.patch.object(Repo, "checkout")
@@ -1166,7 +1247,7 @@ def test_get_sketch_report(mocker, do_size_deltas_report):
                                                                                   current_sizes=sizes_list[0])
     if do_size_deltas_report:
         git.Repo.assert_called_once_with(path=os.environ["GITHUB_WORKSPACE"])
-        compile_sketches.checkout_pull_request_base_ref.assert_called_once()
+        compile_sketches.checkout_deltas_base_ref.assert_called_once()
         compile_sketches.compile_sketch.assert_called_once_with(compile_sketches, sketch_path=compilation_result.sketch)
         Repo.checkout.assert_called_once_with(original_git_ref)
         get_sizes_from_output_calls.append(
@@ -1304,12 +1385,10 @@ def test_get_sizes_from_output(compilation_success, compilation_output, flash, r
 
 @pytest.mark.parametrize(
     "enable_size_deltas_report,"
-    "github_event_name,"
     "compilation_success,"
     "current_sizes,"
     "do_size_deltas_report_expected",
     [("true",
-      "pull_request",
       True,
       [{compilesketches.CompileSketches.ReportKeys.name: "foo",
         compilesketches.CompileSketches.ReportKeys.absolute: 24},
@@ -1317,25 +1396,16 @@ def test_get_sizes_from_output(compilation_success, compilation_output, flash, r
         compilesketches.CompileSketches.ReportKeys.absolute: compilesketches.CompileSketches.not_applicable_indicator}],
       True),
      ("false",
-      "pull_request",
       True,
       [{compilesketches.CompileSketches.ReportKeys.name: "foo",
         compilesketches.CompileSketches.ReportKeys.absolute: 24}],
       False),
      ("true",
-      "push",
-      True,
-      [{compilesketches.CompileSketches.ReportKeys.name: "foo",
-        compilesketches.CompileSketches.ReportKeys.absolute: 24}],
-      False),
-     ("true",
-      "push",
       False,
       [{compilesketches.CompileSketches.ReportKeys.name: "foo",
         compilesketches.CompileSketches.ReportKeys.absolute: 24}],
       False),
      ("true",
-      "pull_request",
       True,
       [{compilesketches.CompileSketches.ReportKeys.name: "foo",
         compilesketches.CompileSketches.ReportKeys.absolute: compilesketches.CompileSketches.not_applicable_indicator},
@@ -1345,12 +1415,9 @@ def test_get_sizes_from_output(compilation_success, compilation_output, flash, r
 )
 def test_do_size_deltas_report(monkeypatch,
                                enable_size_deltas_report,
-                               github_event_name,
                                compilation_success,
                                current_sizes,
                                do_size_deltas_report_expected):
-    monkeypatch.setenv("GITHUB_EVENT_NAME", github_event_name)
-
     compile_sketches = get_compilesketches_object(enable_size_deltas_report=enable_size_deltas_report)
 
     compilation_result = type("CompilationResult", (),
@@ -1361,7 +1428,9 @@ def test_do_size_deltas_report(monkeypatch,
                                                   current_sizes=current_sizes) == do_size_deltas_report_expected
 
 
-def test_checkout_pull_request_base_ref(monkeypatch, mocker):
+def test_checkout_deltas_base_ref(monkeypatch, mocker):
+    deltas_base_ref = unittest.mock.sentinel.deltas_base_ref
+
     # Stubs
     class Repo:
         def __init__(self):
@@ -1374,46 +1443,20 @@ def test_checkout_pull_request_base_ref(monkeypatch, mocker):
         def checkout(self):
             pass
 
-    class Github:
-        ref = unittest.mock.sentinel.pull_request_base_ref
-
-        def __init__(self):
-            self.base = self
-
-        def get_repo(self):
-            pass
-
-        def get_pull(self):
-            pass
-
-    monkeypatch.setenv("GITHUB_REPOSITORY", "fooRepository/fooOwner")
-    monkeypatch.setenv("GITHUB_EVENT_PATH", str(test_data_path.joinpath("githubevent.json")))
-
-    compile_sketches = get_compilesketches_object()
+    compile_sketches = get_compilesketches_object(deltas_base_ref=deltas_base_ref)
 
     mocker.patch("git.Repo", autospec=True, return_value=Repo())
     mocker.patch.object(Repo, "fetch")
     mocker.patch.object(Repo, "checkout")
 
-    compile_sketches.github_api = Github()
-    mocker.patch.object(Github, "get_repo", return_value=Github())
-    mocker.patch.object(Github, "get_pull", return_value=Github())
-
-    compile_sketches.checkout_pull_request_base_ref()
+    compile_sketches.checkout_deltas_base_ref()
 
     git.Repo.assert_called_once_with(path=os.environ["GITHUB_WORKSPACE"])
-    Github.get_repo.assert_called_once_with(full_name_or_id=os.environ["GITHUB_REPOSITORY"])
-    Github.get_pull.assert_called_once_with(number=42)  # PR number is hardcoded into test file
-
-    Repo.fetch.assert_called_once_with(refspec=Github.ref,
+    Repo.fetch.assert_called_once_with(refspec=deltas_base_ref,
                                        verbose=compile_sketches.verbose,
                                        no_tags=True, prune=True,
                                        depth=1)
-    Repo.checkout.assert_called_once_with(Github.ref)
-
-    mocker.patch.object(Github, "get_repo", side_effect=github.UnknownObjectException(status=42, data="foo"))
-    with pytest.raises(expected_exception=SystemExit, match="1"):
-        compile_sketches.checkout_pull_request_base_ref()
+    Repo.checkout.assert_called_once_with(deltas_base_ref)
 
 
 def test_get_sizes_report(mocker):

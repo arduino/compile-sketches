@@ -119,7 +119,7 @@ GitHub access token used to get information from the GitHub API. Only needed if 
 
 ### `enable-size-deltas-report`
 
-Set to `true` to cause the action to determine the change in memory usage of the compiled sketches between the pull request branch and the tip of the pull request's base branch. This may be used with the [`arduino/actions/libraries/report-size-deltas` action](https://github.com/arduino/actions/tree/master/libraries/report-size-deltas). Default `false`.
+Set to `true` to cause the action to determine the change in memory usage of the compiled sketches. If the workflow is triggered by a `pull_request` event, the comparison is between the pull request branch and the tip of the pull request's base branch. If the workflow is triggered by a `push` event, the comparison is between the pushed commit and its immediate parent. This may be used with the [`arduino/actions/libraries/report-size-deltas` action](https://github.com/arduino/actions/tree/master/libraries/report-size-deltas). Default `false`.
 
 ## Example usage
 

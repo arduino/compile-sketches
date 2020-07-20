@@ -126,6 +126,8 @@ class CompileSketches:
         else:
             self.github_api = github.Github(login_or_token=github_token)
 
+        self.deltas_base_ref = self.get_deltas_base_ref()
+
         self.enable_size_deltas_report = parse_boolean_input(boolean_input=enable_size_deltas_report)
         # The enable-size-deltas-report input has a default value so it should always be either True or False
         if self.enable_size_deltas_report is None:
@@ -133,6 +135,31 @@ class CompileSketches:
             sys.exit(1)
 
         self.sketches_report_path = pathlib.PurePath(sketches_report_path)
+
+    def get_deltas_base_ref(self):
+        """Return the Git ref to make deltas comparisons against."""
+        if os.environ["GITHUB_EVENT_NAME"] == "pull_request":
+            # For pull requests, the comparison is done against the PR's base branch
+            return self.get_pull_request_base_ref()
+        else:
+            # For pushes, the base ref is the immediate parent
+            return get_parent_commit_ref()
+
+    def get_pull_request_base_ref(self):
+        """Return the name of the pull request's base branch."""
+        # Determine the pull request number, to use for the GitHub API request
+        with open(file=os.environ["GITHUB_EVENT_PATH"]) as github_event_file:
+            pull_request_number = json.load(github_event_file)["pull_request"]["number"]
+
+        # Get the PR's base ref from the GitHub API
+        try:
+            repository_api = self.github_api.get_repo(full_name_or_id=os.environ["GITHUB_REPOSITORY"])
+        except github.UnknownObjectException:
+            print("::error::Unable to access repository data. Please specify the github-token input in your "
+                  "workflow configuration.")
+            sys.exit(1)
+
+        return repository_api.get_pull(number=pull_request_number).base.ref
 
     def compile_sketches(self):
         """Do compilation tests and record data."""
@@ -768,19 +795,19 @@ class CompileSketches:
         current_sizes = self.get_sizes_from_output(compilation_result=compilation_result)
         previous_sizes = None
         if self.do_size_deltas_report(compilation_result=compilation_result, current_sizes=current_sizes):
-            # Get data for the sketch at the tip of the target repository's default branch
-            # Get the pull request's head ref
+            # Get data for the sketch at the base ref
+            # Get the head ref
             repository = git.Repo(path=os.environ["GITHUB_WORKSPACE"])
             original_git_ref = repository.head.object.hexsha
 
-            # git checkout the PR's base ref
-            self.checkout_pull_request_base_ref()
+            # git checkout the base ref
+            self.checkout_deltas_base_ref()
 
             # Compile the sketch again
             print("Compiling previous version of sketch to determine memory usage change")
             previous_compilation_result = self.compile_sketch(sketch_path=compilation_result.sketch)
 
-            # git checkout the PR's head ref to return the repository to its previous state
+            # git checkout the head ref to return the repository to its previous state
             repository.git.checkout(original_git_ref)
 
             previous_sizes = self.get_sizes_from_output(compilation_result=previous_compilation_result)
@@ -855,37 +882,22 @@ class CompileSketches:
         """
         return (
             self.enable_size_deltas_report
-            and os.environ["GITHUB_EVENT_NAME"] == "pull_request"
             and compilation_result.success
             and any(size.get(self.ReportKeys.absolute) != self.not_applicable_indicator for
                     size in current_sizes)
         )
 
-    def checkout_pull_request_base_ref(self):
-        """git checkout the base ref of the pull request"""
+    def checkout_deltas_base_ref(self):
+        """git checkout the base ref of the deltas comparison"""
         repository = git.Repo(path=os.environ["GITHUB_WORKSPACE"])
 
-        # Determine the pull request number, to use for the GitHub API request
-        with open(file=os.environ["GITHUB_EVENT_PATH"]) as github_event_file:
-            pull_request_number = json.load(github_event_file)["pull_request"]["number"]
-
-        # Get the PR's base ref from the GitHub API
-        try:
-            repository_api = self.github_api.get_repo(full_name_or_id=os.environ["GITHUB_REPOSITORY"])
-        except github.UnknownObjectException:
-            print("::error::Unable to access repository data. Please specify the github-token input in your workflow"
-                  " configuration.")
-            sys.exit(1)
-
-        pull_request_base_ref = repository_api.get_pull(number=pull_request_number).base.ref
-
-        # git fetch the PR's base ref
+        # git fetch the deltas base ref
         origin_remote = repository.remotes["origin"]
-        origin_remote.fetch(refspec=pull_request_base_ref, verbose=self.verbose, no_tags=True, prune=True,
+        origin_remote.fetch(refspec=self.deltas_base_ref, verbose=self.verbose, no_tags=True, prune=True,
                             depth=1)
 
-        # git checkout the PR base ref
-        repository.git.checkout(pull_request_base_ref)
+        # git checkout the deltas base ref
+        repository.git.checkout(self.deltas_base_ref)
 
     def get_sizes_report(self, current_sizes, previous_sizes):
         """Return a list containing all memory usage data assembled.
@@ -1099,6 +1111,12 @@ def parse_boolean_input(boolean_input):
         parsed_boolean_input = None
 
     return parsed_boolean_input
+
+
+def get_parent_commit_ref():
+    """Return the Git ref of the immediate parent commit."""
+    repository_object = git.Repo(path=os.environ["GITHUB_WORKSPACE"])
+    return repository_object.head.object.parents[0].hexsha
 
 
 def path_relative_to_workspace(path):
