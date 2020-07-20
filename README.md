@@ -109,10 +109,6 @@ List of paths containing sketches to compile. These paths will be searched recur
 
 Set to true to show verbose output in the log. Default `false`
 
-### `size-report-sketch`
-
-Name of the sketch used to compare memory usage change. Default `""`.
-
 ### `sketches-report-path`
 
 Path in which to save a JSON formatted file containing data from the sketch compilations. Should be used only to store reports. Relative paths are relative to [`GITHUB_WORKSPACE`](https://help.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables). The folder will be created if it doesn't already exist. This report is used by the `arduino/libraries/report-size-deltas` and `arduino/libraries/report-size-trends` actions. Default `"size-deltas-reports"`.
@@ -123,7 +119,7 @@ GitHub access token used to get information from the GitHub API. Only needed if 
 
 ### `enable-size-deltas-report`
 
-Set to `true` to cause the action to determine the change in memory usage for the [`size-reports-sketch`](#size-reports-sketch) between the pull request branch and the tip of the pull request's base branch. This may be used with the [`arduino/actions/libraries/report-size-deltas` action](https://github.com/arduino/actions/tree/master/libraries/report-size-deltas). Default `false`.
+Set to `true` to cause the action to determine the change in memory usage of the compiled sketches between the pull request branch and the tip of the pull request's base branch. This may be used with the [`arduino/actions/libraries/report-size-deltas` action](https://github.com/arduino/actions/tree/master/libraries/report-size-deltas). Default `false`.
 
 ## Example usage
 
@@ -142,7 +138,6 @@ Storing the memory usage change report as a [workflow artifact](https://help.git
 ```yaml
 - uses: arduino/actions/libraries/compile-examples@master
   with:
-    size-report-sketch: Foobar
     enable-size-deltas-report: true
 - if: github.event_name == 'pull_request'
   uses: actions/upload-artifact@v1
