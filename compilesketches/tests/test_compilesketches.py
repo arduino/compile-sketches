@@ -1559,14 +1559,18 @@ def test_get_sketches_report(monkeypatch, mocker):
     compile_sketches = get_compilesketches_object(fqbn_arg=fqbn_arg)
 
     assert compile_sketches.get_sketches_report(sketch_report_list=sketch_report_list) == {
-        compilesketches.CompileSketches.ReportKeys.board: compile_sketches.fqbn,
         compilesketches.CompileSketches.ReportKeys.commit_hash: current_git_ref,
         compilesketches.CompileSketches.ReportKeys.commit_url: ("https://github.com/"
                                                                 + github_repository
                                                                 + "/commit/"
                                                                 + current_git_ref),
-        compilesketches.CompileSketches.ReportKeys.sizes: sizes_summary_report,
-        compilesketches.CompileSketches.ReportKeys.sketches: sketch_report_list
+        compilesketches.CompileSketches.ReportKeys.boards: [
+            {
+                compilesketches.CompileSketches.ReportKeys.board: compile_sketches.fqbn,
+                compilesketches.CompileSketches.ReportKeys.sizes: sizes_summary_report,
+                compilesketches.CompileSketches.ReportKeys.sketches: sketch_report_list
+            }
+        ]
     }
 
     compile_sketches.get_sizes_summary_report.assert_called_once_with(compile_sketches,
@@ -1576,13 +1580,17 @@ def test_get_sketches_report(monkeypatch, mocker):
     compilesketches.CompileSketches.get_sizes_summary_report.return_value = []
 
     assert compile_sketches.get_sketches_report(sketch_report_list=sketch_report_list) == {
-        compilesketches.CompileSketches.ReportKeys.board: compile_sketches.fqbn,
         compilesketches.CompileSketches.ReportKeys.commit_hash: current_git_ref,
         compilesketches.CompileSketches.ReportKeys.commit_url: ("https://github.com/"
                                                                 + github_repository
                                                                 + "/commit/"
                                                                 + current_git_ref),
-        compilesketches.CompileSketches.ReportKeys.sketches: sketch_report_list
+        compilesketches.CompileSketches.ReportKeys.boards: [
+            {
+                compilesketches.CompileSketches.ReportKeys.board: compile_sketches.fqbn,
+                compilesketches.CompileSketches.ReportKeys.sketches: sketch_report_list
+            }
+        ]
     }
 
 
@@ -1816,7 +1824,7 @@ def test_get_sizes_summary_report():
 
 def test_create_sketches_report_file(monkeypatch, tmp_path):
     sketches_report_path = tmp_path
-    sketches_report = {
+    sketches_report = [{
         "sketch": "examples/Foo",
         "compilation_success": True,
         "flash": 444,
@@ -1826,7 +1834,7 @@ def test_create_sketches_report_file(monkeypatch, tmp_path):
         "flash_delta": -994,
         "ram_delta": -175,
         "fqbn": "arduino:avr:uno"
-    }
+    }]
 
     compile_sketches = get_compilesketches_object(sketches_report_path=str(sketches_report_path),
                                                   fqbn_arg="arduino:avr:uno")

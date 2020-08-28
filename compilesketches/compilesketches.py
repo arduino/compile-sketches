@@ -80,6 +80,7 @@ class CompileSketches:
     board_manager_platforms_path = arduino_cli_data_directory_path.joinpath("packages")
 
     class ReportKeys:
+        boards = "boards"
         board = "board"
         commit_hash = "commit_hash"
         commit_url = "commit_url"
@@ -957,7 +958,7 @@ class CompileSketches:
         return size_report
 
     def get_sketches_report(self, sketch_report_list):
-        """Return the dictionary containing data on all sketch compilations
+        """Return the dictionary containing data on all sketch compilations for each board
 
         Keyword arguments:
         sketch_report_list -- list of reports from each sketch compilation
@@ -965,18 +966,25 @@ class CompileSketches:
         current_git_ref = get_head_commit_hash()
 
         sketches_report = {
-            self.ReportKeys.board: self.fqbn,
             self.ReportKeys.commit_hash: current_git_ref,
             self.ReportKeys.commit_url: ("https://github.com/"
                                          + os.environ["GITHUB_REPOSITORY"]
                                          + "/commit/"
                                          + current_git_ref),
-            self.ReportKeys.sketches: sketch_report_list
+            # The action is currently designed to only compile for one board per run, so the boards list will only have
+            # a single element, but this provides a report format that can accommodate the possible addition of multiple
+            # boards support
+            self.ReportKeys.boards: [
+                {
+                    self.ReportKeys.board: self.fqbn,
+                    self.ReportKeys.sketches: sketch_report_list
+                }
+            ]
         }
 
         sizes_summary_report = self.get_sizes_summary_report(sketch_report_list=sketch_report_list)
         if sizes_summary_report:
-            sketches_report[self.ReportKeys.sizes] = sizes_summary_report
+            sketches_report[self.ReportKeys.boards][0][self.ReportKeys.sizes] = sizes_summary_report
 
         return sketches_report
 
