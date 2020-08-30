@@ -40,6 +40,7 @@ platforms: |
 Keys:
 - `name` - platform name in the form of `VENDOR:ARCHITECTURE`.
 - `version` - version of the platform to install. Default is the latest version.
+- `source-url` - Boards Manager URL of the platform. Default is Arduino's package index, which allows installation of all official platforms.
 
 ##### Local path
 
