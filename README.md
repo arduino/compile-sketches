@@ -20,13 +20,13 @@ For 3rd party boards, also specify the Boards Manager URL:
 
 YAML-format list of platform dependencies to install.
 
-Default `""`. If no `platforms` input is provided, the board's dependency will be automatically determined from the `fqbn` input and the latest version of that platform will be installed via Board Manager.
+Default `""`. If no `platforms` input is provided, the board's dependency will be automatically determined from the `fqbn` input and the latest version of that platform will be installed via Boards Manager.
 
-If a platform dependency from a non-Board Manager source of the same name as another Board Manager source platform dependency is defined, they will both be installed, with the non-Board Manager dependency overwriting the Board Manager platform installation. This permits testing against a non-release version of a platform while using Board Manager to install the platform's tools dependencies.
+If a platform dependency from a non-Boards Manager source of the same name as another Boards Manager source platform dependency is defined, they will both be installed, with the non-Boards Manager dependency overwriting the Boards Manager platform installation. This permits testing against a non-release version of a platform while using Boards Manager to install the platform's tools dependencies.
 Example:
 ```yaml
 platforms: |
-  # Install the latest release of Arduino SAMD Boards and its toolchain via Board Manager
+  # Install the latest release of Arduino SAMD Boards and its toolchain via Boards Manager
   - name: "arduino:samd"
   # Install the platform from the root of the repository, replacing the BM installed platform
   - source-path: "."
@@ -35,7 +35,7 @@ platforms: |
 
 #### Sources:
 
-##### Board Manager
+##### Boards Manager
 
 Keys:
 - `name` - platform name in the form of `VENDOR:ARCHITECTURE`.
