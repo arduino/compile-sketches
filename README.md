@@ -112,7 +112,7 @@ Set to true to show verbose output in the log. Default `false`
 
 ### `sketches-report-path`
 
-Path in which to save a JSON formatted file containing data from the sketch compilations. Should be used only to store reports. Relative paths are relative to [`GITHUB_WORKSPACE`](https://help.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables). The folder will be created if it doesn't already exist. This report is used by the `arduino/libraries/report-size-deltas` and `arduino/libraries/report-size-trends` actions. Default `"size-deltas-reports"`.
+Path in which to save a JSON formatted file containing data from the sketch compilations. Should be used only to store reports. Relative paths are relative to [`GITHUB_WORKSPACE`](https://help.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables). The folder will be created if it doesn't already exist. This report is used by the `arduino/actions/libraries/report-size-deltas` and `arduino/actions/libraries/report-size-trends` actions. Default `"size-deltas-reports"`.
 
 ### `github-token`
 
