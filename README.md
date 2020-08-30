@@ -116,7 +116,7 @@ Path in which to save a JSON formatted file containing data from the sketch comp
 
 ### `github-token`
 
-GitHub access token used to get information from the GitHub API. Only needed if you're using the size report features with private repositories. It will be convenient to use [`${{ secrets.GITHUB_TOKEN }}`](https://help.github.com/en/actions/configuring-and-managing-workflows/authenticating-with-the-github_token). Default `""`.
+GitHub access token used to get information from the GitHub API. Only needed for private repositories with `enable-size-deltas-report` set to `true`. It will be convenient to use [`${{ secrets.GITHUB_TOKEN }}`](https://help.github.com/en/actions/configuring-and-managing-workflows/authenticating-with-the-github_token). Default `""`.
 
 ### `enable-size-deltas-report`
 
