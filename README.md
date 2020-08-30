@@ -78,7 +78,7 @@ Note: the original space-separated list format is also supported. When this synt
 ##### Library Manager
 
 Keys:
-- `name` - name of the library, as defined in the `name` field of its [library.properties](https://arduino.github.io/arduino-cli/library-specification/#libraryproperties-file-format) metadata file. The library will be installed to a folder matching the name, but with any spaces replaced by `_`.
+- `name` - name of the library, as defined in the `name` field of its [library.properties](https://arduino.github.io/arduino-cli/latest/library-specification/#libraryproperties-file-format) metadata file. The library will be installed to a folder matching the name, but with any spaces replaced by `_`.
 - `version` - version of the library to install. Default is the latest version.
 
 ##### Local path
