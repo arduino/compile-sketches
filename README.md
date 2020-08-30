@@ -1,6 +1,6 @@
 # libraries/compile-examples action
 
-This action compiles all of the examples contained in the library.
+This action checks whether Arduino sketches compile and produces a report of data from the compilations.
 
 ## Inputs
 
