@@ -208,6 +208,10 @@ def test_compilesketches():
     with pytest.raises(expected_exception=SystemExit, match="1"):
         get_compilesketches_object(enable_size_deltas_report="fooInvalidEnableSizeDeltasBoolean")
 
+    # Test deltas_base_ref when size deltas report is disabled
+    compile_sketches = get_compilesketches_object(enable_size_deltas_report="false")
+    assert compile_sketches.deltas_base_ref is None
+
 
 @pytest.mark.parametrize("event_name, expected_ref",
                          [("pull_request", unittest.mock.sentinel.pull_request_base_ref),
@@ -1443,7 +1447,7 @@ def test_checkout_deltas_base_ref(monkeypatch, mocker):
         def checkout(self):
             pass
 
-    compile_sketches = get_compilesketches_object(deltas_base_ref=deltas_base_ref)
+    compile_sketches = get_compilesketches_object(enable_size_deltas_report="true", deltas_base_ref=deltas_base_ref)
 
     mocker.patch("git.Repo", autospec=True, return_value=Repo())
     mocker.patch.object(Repo, "fetch")
