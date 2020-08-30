@@ -6,7 +6,7 @@ This action checks whether Arduino sketches compile and produces a report of dat
 
 ### `cli-version`
 
-The version of `arduino-cli` to use. Default `"latest"`.
+The version of [Arduino CLI](https://github.com/arduino/arduino-cli) to use. Default `"latest"`.
 
 ### `fqbn`
 
