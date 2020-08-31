@@ -126,13 +126,18 @@ class CompileSketches:
         else:
             self.github_api = github.Github(login_or_token=github_token)
 
-        self.deltas_base_ref = self.get_deltas_base_ref()
-
         self.enable_size_deltas_report = parse_boolean_input(boolean_input=enable_size_deltas_report)
         # The enable-size-deltas-report input has a default value so it should always be either True or False
         if self.enable_size_deltas_report is None:
             print("::error::Invalid value for enable-size-deltas-report input")
             sys.exit(1)
+
+        if self.enable_size_deltas_report:
+            self.deltas_base_ref = self.get_deltas_base_ref()
+        else:
+            # If deltas reports are not enabled, there is no use for the base ref and it could result in an GitHub API
+            # request which requires a GitHub token when used in a private repository
+            self.deltas_base_ref = None
 
         self.sketches_report_path = pathlib.PurePath(sketches_report_path)
 
