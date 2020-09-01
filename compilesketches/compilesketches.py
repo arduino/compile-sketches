@@ -1385,4 +1385,4 @@ def get_head_commit_hash():
 
 # Only execute the following code if the script is run directly, not imported
 if __name__ == "__main__":
-    main()
+    main()  # pragma: no cover

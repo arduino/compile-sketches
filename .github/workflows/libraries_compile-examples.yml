@@ -35,7 +35,14 @@ jobs:
           pip install --quiet pep8-naming
           flake8 --config "$GITHUB_WORKSPACE/libraries/compile-examples/compilesketches/.flake8" --show-source "$GITHUB_WORKSPACE/libraries/compile-examples/compilesketches"
 
-      - name: Run Python unit tests
+      - name: Run Python unit tests and report code coverage
         run: |
           export PYTHONPATH="$GITHUB_WORKSPACE/libraries/compile-examples/compilesketches"
-          pytest "$GITHUB_WORKSPACE/libraries/compile-examples/compilesketches/tests"
+          coverage run --source="$GITHUB_WORKSPACE/libraries/compile-examples/compilesketches" --module pytest "$GITHUB_WORKSPACE/libraries/compile-examples/compilesketches/tests"
+          # Display code coverage report in workflow run log
+          coverage report
+
+      - name: Upload coverage report to Codecov
+        uses: codecov/codecov-action@v1
+        with:
+          fail_ci_if_error: true

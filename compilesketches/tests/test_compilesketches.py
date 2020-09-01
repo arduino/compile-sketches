@@ -104,7 +104,7 @@ def test_main(capsys,
 
     class CompileSketches:
         def compile_sketches(self):
-            pass
+            pass  # pragma: no cover
 
     monkeypatch.setenv("INPUT_CLI-VERSION", cli_version)
     monkeypatch.setenv("INPUT_FQBN", fqbn_arg)
@@ -238,10 +238,10 @@ def test_get_pull_request_base_ref(monkeypatch, mocker):
             self.base = self
 
         def get_repo(self):
-            pass
+            pass  # pragma: no cover
 
         def get_pull(self, number):
-            pass
+            pass  # pragma: no cover
 
     github_api_object = Github()
     monkeypatch.setenv("GITHUB_EVENT_PATH", str(test_data_path.joinpath("githubevent.json")))
@@ -1228,7 +1228,7 @@ def test_get_sketch_report(mocker, do_size_deltas_report):
             self.git = self
 
         def checkout(self):
-            pass
+            pass  # pragma: no cover
 
     compile_sketches = get_compilesketches_object()
 
@@ -1519,10 +1519,10 @@ def test_checkout_deltas_base_ref(monkeypatch, mocker):
             self.git = self
 
         def fetch(self):
-            pass
+            pass  # pragma: no cover
 
         def checkout(self):
-            pass
+            pass  # pragma: no cover
 
     compile_sketches = get_compilesketches_object(enable_size_deltas_report="true", deltas_base_ref=deltas_base_ref)
 
@@ -2259,7 +2259,7 @@ def test_get_head_commit_hash(monkeypatch, mocker, github_event, expected_hash):
             self.git = self
 
         def rev_parse(self):
-            pass
+            pass  # pragma: no cover
 
     monkeypatch.setenv("GITHUB_EVENT_NAME", github_event)
     monkeypatch.setenv("GITHUB_EVENT_PATH", str(test_data_path.joinpath("githubevent.json")))
