@@ -11,10 +11,8 @@ The version of [Arduino CLI](https://github.com/arduino/arduino-cli) to use. Def
 ### `fqbn`
 
 The fully qualified board name to use when compiling. Default `"arduino:avr:uno"`.
-For 3rd party boards, also specify the Boards Manager URL:
-```yaml
-  fqbn: '"sandeepmistry:nRF5:Generic_nRF52832" "https://sandeepmistry.github.io/arduino-nRF5/package_nRF5_boards_index.json"'
-```
+
+If the board is from one of the platforms provided by Arduino's [default package index](https://downloads.arduino.cc/packages/package_index.json), the board's platform dependency will be automatically detected and the latest version installed. For boards of platforms not in the default package index, previous versions, or other platform sources, the platform dependency must be defined via the [`platforms` input](#platforms).
 
 ### `platforms`
 
@@ -71,7 +69,7 @@ Default `"- source-path: ./"`. This causes the repository to be installed as a l
 
 Libraries are installed under the Arduino user folder at `~/Arduino/libraries`.
 
-Note: the original space-separated list format is also supported. When this syntax is used, the repository under test will always be installed as a library.
+Note: when the deprecated space-separated list format of this input is used, the repository under test will always be installed as a library.
 
 #### Sources:
 
