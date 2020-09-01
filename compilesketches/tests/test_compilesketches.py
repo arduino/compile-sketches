@@ -1277,8 +1277,14 @@ def test_get_sketch_report(mocker, do_size_deltas_report):
 
 
 @pytest.mark.parametrize(
-    "compilation_success, compilation_output, flash, ram",
-    [(False, "foo output", get_compilesketches_object().not_applicable_indicator,
+    "compilation_success, compilation_output, flash, maximum_flash, relative_flash, ram, maximum_ram, relative_ram",
+    [(False,
+      "foo output",
+      get_compilesketches_object().not_applicable_indicator,
+      get_compilesketches_object().not_applicable_indicator,
+      get_compilesketches_object().not_applicable_indicator,
+      get_compilesketches_object().not_applicable_indicator,
+      get_compilesketches_object().not_applicable_indicator,
       get_compilesketches_object().not_applicable_indicator),
      (True,
       "/home/per/.arduino15/packages/arduino/hardware/megaavr/1.8.5/cores/arduino/NANO_compat.cpp:23:2: warning: #warni"
@@ -1287,10 +1293,10 @@ def test_get_sketch_report(mocker, do_size_deltas_report):
       " #warning \"ATMEGA328 registers emulation is enabled. You may encounter some speed issue. Please consider to dis"
       "able it in the Tools menu\"\n"
       "  ^~~~~~~\n"
-      "Sketch uses {flash} bytes (1%) of program storage space. Maximum is 49152 bytes.\n"
-      "Global variables use {ram} bytes (0%) of dynamic memory, leaving 6122 bytes for local variables. Maximum is 6144"
-      " bytes.\n",
-      802, 22),
+      "Sketch uses {flash} bytes (1%) of program storage space. Maximum is {maximum_flash} bytes.\n"
+      "Global variables use {ram} bytes (0%) of dynamic memory, leaving 6122 bytes for local variables. Maximum is"
+      " {maximum_ram} bytes.\n",
+      802, 1604, 50.0, 22, 33, 66.67),
      (True,
       "In file included from /home/per/.arduino15/packages/arduino/tools/CMSIS-Atmel/1.2.0/CMSIS/Device/ATMEL/samd21/in"
       "clude/samd21.h:69:0,\n"
@@ -1315,9 +1321,14 @@ def test_get_sketch_report(mocker, do_size_deltas_report):
       ":0: note: this is the location of the previous definition\n"
       " #define LITTLE_ENDIAN _LITTLE_ENDIAN\n"
       " \n"
-      "Sketch uses {flash} bytes (12%) of program storage space. Maximum is 262144 bytes.\n"
+      "Sketch uses {flash} bytes (12%) of program storage space. Maximum is {maximum_flash} bytes.\n"
       "Global variables use {ram} bytes of dynamic memory.\n",
-      32740, 3648),
+      32740,
+      32740,
+      100.0,
+      3648,
+      get_compilesketches_object().not_applicable_indicator,
+      get_compilesketches_object().not_applicable_indicator),
      (True,
       "/home/per/Arduino/libraries/Servo/src/samd/Servo.cpp: In function 'void _initISR(Tc*, uint8_t, uint32_t, IRQn_Ty"
       "pe, uint8_t, uint8_t)':\n"
@@ -1331,8 +1342,13 @@ def test_get_sketch_report(mocker, do_size_deltas_report):
       "er]\n"
       " static void finISR(timer16_Sequence_t timer)\n"
       "                                       ^~~~~\n"
-      "Sketch uses {flash} bytes (4%) of program storage space. Maximum is 262144 bytes.\n",
-      12636, get_compilesketches_object().not_applicable_indicator),
+      "Sketch uses {flash} bytes (4%) of program storage space. Maximum is {maximum_flash} bytes.\n",
+      12636,
+      get_compilesketches_object().not_applicable_indicator,
+      get_compilesketches_object().not_applicable_indicator,
+      get_compilesketches_object().not_applicable_indicator,
+      get_compilesketches_object().not_applicable_indicator,
+      get_compilesketches_object().not_applicable_indicator),
      (True,
       "In file included from /home/per/.arduino15/packages/arduino/tools/CMSIS-Atmel/1.2.0/CMSIS/Device/ATMEL/samd21/in"
       "clude/samd21.h:69:0,\n"
@@ -1362,11 +1378,25 @@ def test_get_sketch_report(mocker, do_size_deltas_report):
       "     RTC->MODE2.CLOCK.reg = oldTime.reg;\n"
       "Couldn't determine program size",
       get_compilesketches_object().not_applicable_indicator,
+      get_compilesketches_object().not_applicable_indicator,
+      get_compilesketches_object().not_applicable_indicator,
+      get_compilesketches_object().not_applicable_indicator,
+      get_compilesketches_object().not_applicable_indicator,
       get_compilesketches_object().not_applicable_indicator)]
 )
-def test_get_sizes_from_output(compilation_success, compilation_output, flash, ram):
+def test_get_sizes_from_output(compilation_success,
+                               compilation_output,
+                               flash,
+                               maximum_flash,
+                               relative_flash,
+                               ram,
+                               maximum_ram,
+                               relative_ram):
     sketch_path = pathlib.PurePath("foo/bar")
-    compilation_output = compilation_output.format(flash=str(flash), ram=str(ram))
+    compilation_output = compilation_output.format(flash=str(flash),
+                                                   maximum_flash=str(maximum_flash),
+                                                   ram=str(ram),
+                                                   maximum_ram=str(maximum_ram))
     compile_sketches = get_compilesketches_object()
     compilation_result = type("CompilationResult", (),
                               {"sketch": sketch_path,
@@ -1378,13 +1408,60 @@ def test_get_sizes_from_output(compilation_success, compilation_output, flash, r
     assert sizes == [
         {
             compile_sketches.ReportKeys.name: "flash",
-            compile_sketches.ReportKeys.absolute: flash
+            compile_sketches.ReportKeys.absolute: flash,
+            compile_sketches.ReportKeys.maximum: maximum_flash,
+            compile_sketches.ReportKeys.relative: relative_flash
         },
         {
             compile_sketches.ReportKeys.name: "RAM for global variables",
-            compile_sketches.ReportKeys.absolute: ram
+            compile_sketches.ReportKeys.absolute: ram,
+            compile_sketches.ReportKeys.maximum: maximum_ram,
+            compile_sketches.ReportKeys.relative: relative_ram
         }
     ]
+
+
+@pytest.mark.parametrize(
+    "compilation_output, memory_type, size_data_type, expected_output",
+    [("foo output",
+      {
+          "name": "RAM for global variables",
+          "regex": {
+              get_compilesketches_object().ReportKeys.maximum: (
+                  r"Global variables use [0-9]+ bytes .*of dynamic memory.*\. Maximum is ([0-9]+) bytes."
+              )
+          }
+      },
+      get_compilesketches_object().ReportKeys.maximum,
+      None),
+     ("Global variables use 11 bytes (0%) of dynamic memory, leaving 22 bytes for local variables. Maximum is"
+      + " {expected_output} bytes.",
+      {
+          "name": "RAM for global variables",
+          "regex": {
+              get_compilesketches_object().ReportKeys.maximum: (
+                  r"Global variables use [0-9]+ bytes .*of dynamic memory.*\. Maximum is ([0-9]+) bytes."
+              )
+          }
+      },
+      get_compilesketches_object().ReportKeys.maximum,
+      42)]
+)
+def test_get_size_data_from_output(capsys, compilation_output, memory_type, size_data_type, expected_output):
+    compilation_output = compilation_output.format(expected_output=str(expected_output))
+    # print(compilation_output)
+    # size_data_type=get_compilesketches_object().ReportKeys.maximum
+    compile_sketches = get_compilesketches_object(verbose="true")
+
+    size_data = compile_sketches.get_size_data_from_output(compilation_output, memory_type, size_data_type)
+    assert size_data == expected_output
+    if expected_output is None:
+        expected_stdout = (
+            "::warning::Unable to determine the: \"" + str(size_data_type) + "\" value for memory type: \""
+            + memory_type["name"]
+            + "\". The board's platform may not have been configured to provide this information."
+        )
+        assert capsys.readouterr().out.strip() == expected_stdout
 
 
 @pytest.mark.parametrize(
@@ -1498,30 +1575,51 @@ def test_get_sizes_report(mocker):
 
 
 @pytest.mark.parametrize(
-    "current_absolute,previous_size, expected_absolute_delta",
+    "size_maximum, current_absolute, previous_size, expected_absolute_delta, expected_relative_delta",
     [(compilesketches.CompileSketches.not_applicable_indicator,
-      {compilesketches.CompileSketches.ReportKeys.absolute: 11},
+      compilesketches.CompileSketches.not_applicable_indicator,
+      {compilesketches.CompileSketches.ReportKeys.absolute: 11,
+       compilesketches.CompileSketches.ReportKeys.relative: 9.91},
+      compilesketches.CompileSketches.not_applicable_indicator,
       compilesketches.CompileSketches.not_applicable_indicator),
-     (42,
-      {compilesketches.CompileSketches.ReportKeys.absolute: compilesketches.CompileSketches.not_applicable_indicator},
+     (111,
+      42,
+      {compilesketches.CompileSketches.ReportKeys.absolute: compilesketches.CompileSketches.not_applicable_indicator,
+       compilesketches.CompileSketches.ReportKeys.relative: compilesketches.CompileSketches.not_applicable_indicator},
+      compilesketches.CompileSketches.not_applicable_indicator,
       compilesketches.CompileSketches.not_applicable_indicator),
-     (42,
-      {compilesketches.CompileSketches.ReportKeys.absolute: 11},
-      31),
-     (42,
+     (111,
+      42,
+      {compilesketches.CompileSketches.ReportKeys.absolute: 11,
+       compilesketches.CompileSketches.ReportKeys.relative: 9.91},
+      31,
+      27.93),
+     (111,
+      42,
+      None,
       None,
       None)]
 )
-def test_get_size_report(capsys, current_absolute, previous_size, expected_absolute_delta):
+def test_get_size_report(capsys,
+                         size_maximum,
+                         current_absolute,
+                         previous_size,
+                         expected_absolute_delta,
+                         expected_relative_delta):
     size_name = "Foo size name"
+    current_relative = 42
     current_size = {
         compilesketches.CompileSketches.ReportKeys.name: size_name,
-        compilesketches.CompileSketches.ReportKeys.absolute: current_absolute
+        compilesketches.CompileSketches.ReportKeys.maximum: size_maximum,
+        compilesketches.CompileSketches.ReportKeys.absolute: current_absolute,
+        compilesketches.CompileSketches.ReportKeys.relative: current_relative
     }
     expected_size_report = {
         compilesketches.CompileSketches.ReportKeys.name: size_name,
+        compilesketches.CompileSketches.ReportKeys.maximum: size_maximum,
         compilesketches.CompileSketches.ReportKeys.current: {
-            compilesketches.CompileSketches.ReportKeys.absolute: current_absolute
+            compilesketches.CompileSketches.ReportKeys.absolute: current_absolute,
+            compilesketches.CompileSketches.ReportKeys.relative: current_relative
         }
     }
 
@@ -1534,12 +1632,21 @@ def test_get_size_report(capsys, current_absolute, previous_size, expected_absol
     else:
         expected_size_report[compilesketches.CompileSketches.ReportKeys.previous] = {
             compilesketches.CompileSketches.ReportKeys.absolute: previous_size[
-                compilesketches.CompileSketches.ReportKeys.absolute]
+                compilesketches.CompileSketches.ReportKeys.absolute],
+            compilesketches.CompileSketches.ReportKeys.relative: previous_size[
+                compilesketches.CompileSketches.ReportKeys.relative]
         }
         expected_size_report[compilesketches.CompileSketches.ReportKeys.delta] = {
-            compilesketches.CompileSketches.ReportKeys.absolute: expected_absolute_delta
+            compilesketches.CompileSketches.ReportKeys.absolute: expected_absolute_delta,
+            compilesketches.CompileSketches.ReportKeys.relative: expected_relative_delta
         }
-        assert capsys.readouterr().out.strip() == ("Change in " + size_name + ": " + str(expected_absolute_delta))
+        if expected_relative_delta == compilesketches.CompileSketches.not_applicable_indicator:
+            assert capsys.readouterr().out.strip() == ("Change in " + size_name + ": " + str(expected_absolute_delta))
+        else:
+            assert capsys.readouterr().out.strip() == (
+                "Change in " + size_name + ": " + str(expected_absolute_delta) + " (" + str(expected_relative_delta)
+                + "%)"
+            )
 
     assert size_report == expected_size_report
 
@@ -1604,14 +1711,18 @@ def test_get_sizes_summary_report():
             compilesketches.CompileSketches.ReportKeys.sizes: [
                 {
                     compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+                    compilesketches.CompileSketches.ReportKeys.maximum: 111,
                     compilesketches.CompileSketches.ReportKeys.delta: {
-                        compilesketches.CompileSketches.ReportKeys.absolute: 42
+                        compilesketches.CompileSketches.ReportKeys.absolute: 42,
+                        compilesketches.CompileSketches.ReportKeys.relative: 5.142
                     }
                 },
                 {
                     compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+                    compilesketches.CompileSketches.ReportKeys.maximum: 222,
                     compilesketches.CompileSketches.ReportKeys.delta: {
-                        compilesketches.CompileSketches.ReportKeys.absolute: 11
+                        compilesketches.CompileSketches.ReportKeys.absolute: 11,
+                        compilesketches.CompileSketches.ReportKeys.relative: 2.242
                     }
                 }
             ]
@@ -1620,14 +1731,18 @@ def test_get_sizes_summary_report():
             compilesketches.CompileSketches.ReportKeys.sizes: [
                 {
                     compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+                    compilesketches.CompileSketches.ReportKeys.maximum: 111,
                     compilesketches.CompileSketches.ReportKeys.delta: {
-                        compilesketches.CompileSketches.ReportKeys.absolute: 8
+                        compilesketches.CompileSketches.ReportKeys.absolute: 8,
+                        compilesketches.CompileSketches.ReportKeys.relative: 1.542
                     }
                 },
                 {
                     compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+                    compilesketches.CompileSketches.ReportKeys.maximum: 222,
                     compilesketches.CompileSketches.ReportKeys.delta: {
-                        compilesketches.CompileSketches.ReportKeys.absolute: 33
+                        compilesketches.CompileSketches.ReportKeys.absolute: 33,
+                        compilesketches.CompileSketches.ReportKeys.relative: 10.042
                     }
                 }
             ]
@@ -1637,19 +1752,29 @@ def test_get_sizes_summary_report():
     expected_sizes_summary_report = [
         {
             compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+            compilesketches.CompileSketches.ReportKeys.maximum: 111,
             compilesketches.CompileSketches.ReportKeys.delta: {
                 compilesketches.CompileSketches.ReportKeys.absolute: {
                     compilesketches.CompileSketches.ReportKeys.minimum: 8,
                     compilesketches.CompileSketches.ReportKeys.maximum: 42
+                },
+                compilesketches.CompileSketches.ReportKeys.relative: {
+                    compilesketches.CompileSketches.ReportKeys.minimum: 1.542,
+                    compilesketches.CompileSketches.ReportKeys.maximum: 5.142
                 }
             }
         },
         {
             compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+            compilesketches.CompileSketches.ReportKeys.maximum: 222,
             compilesketches.CompileSketches.ReportKeys.delta: {
                 compilesketches.CompileSketches.ReportKeys.absolute: {
                     compilesketches.CompileSketches.ReportKeys.minimum: 11,
                     compilesketches.CompileSketches.ReportKeys.maximum: 33
+                },
+                compilesketches.CompileSketches.ReportKeys.relative: {
+                    compilesketches.CompileSketches.ReportKeys.minimum: 2.242,
+                    compilesketches.CompileSketches.ReportKeys.maximum: 10.042
                 }
             }
         }
@@ -1667,14 +1792,18 @@ def test_get_sizes_summary_report():
             compilesketches.CompileSketches.ReportKeys.sizes: [
                 {
                     compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+                    compilesketches.CompileSketches.ReportKeys.maximum: "N/A",
                     compilesketches.CompileSketches.ReportKeys.delta: {
-                        compilesketches.CompileSketches.ReportKeys.absolute: "N/A"
+                        compilesketches.CompileSketches.ReportKeys.absolute: "N/A",
+                        compilesketches.CompileSketches.ReportKeys.relative: "N/A"
                     }
                 },
                 {
                     compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+                    compilesketches.CompileSketches.ReportKeys.maximum: 222,
                     compilesketches.CompileSketches.ReportKeys.delta: {
-                        compilesketches.CompileSketches.ReportKeys.absolute: 11
+                        compilesketches.CompileSketches.ReportKeys.absolute: 11,
+                        compilesketches.CompileSketches.ReportKeys.relative: 2.742
                     }
                 }
             ]
@@ -1683,14 +1812,18 @@ def test_get_sizes_summary_report():
             compilesketches.CompileSketches.ReportKeys.sizes: [
                 {
                     compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+                    compilesketches.CompileSketches.ReportKeys.maximum: 111,
                     compilesketches.CompileSketches.ReportKeys.delta: {
-                        compilesketches.CompileSketches.ReportKeys.absolute: 8
+                        compilesketches.CompileSketches.ReportKeys.absolute: 8,
+                        compilesketches.CompileSketches.ReportKeys.relative: 2.442
                     }
                 },
                 {
                     compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+                    compilesketches.CompileSketches.ReportKeys.maximum: 222,
                     compilesketches.CompileSketches.ReportKeys.delta: {
-                        compilesketches.CompileSketches.ReportKeys.absolute: 33
+                        compilesketches.CompileSketches.ReportKeys.absolute: 33,
+                        compilesketches.CompileSketches.ReportKeys.relative: 4.942
                     }
                 }
             ]
@@ -1700,19 +1833,29 @@ def test_get_sizes_summary_report():
     expected_sizes_summary_report = [
         {
             compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+            compilesketches.CompileSketches.ReportKeys.maximum: 111,
             compilesketches.CompileSketches.ReportKeys.delta: {
                 compilesketches.CompileSketches.ReportKeys.absolute: {
                     compilesketches.CompileSketches.ReportKeys.minimum: 8,
                     compilesketches.CompileSketches.ReportKeys.maximum: 8
+                },
+                compilesketches.CompileSketches.ReportKeys.relative: {
+                    compilesketches.CompileSketches.ReportKeys.minimum: 2.442,
+                    compilesketches.CompileSketches.ReportKeys.maximum: 2.442
                 }
             }
         },
         {
             compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+            compilesketches.CompileSketches.ReportKeys.maximum: 222,
             compilesketches.CompileSketches.ReportKeys.delta: {
                 compilesketches.CompileSketches.ReportKeys.absolute: {
                     compilesketches.CompileSketches.ReportKeys.minimum: 11,
                     compilesketches.CompileSketches.ReportKeys.maximum: 33
+                },
+                compilesketches.CompileSketches.ReportKeys.relative: {
+                    compilesketches.CompileSketches.ReportKeys.minimum: 2.742,
+                    compilesketches.CompileSketches.ReportKeys.maximum: 4.942
                 }
             }
         }
@@ -1728,14 +1871,18 @@ def test_get_sizes_summary_report():
             compilesketches.CompileSketches.ReportKeys.sizes: [
                 {
                     compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+                    compilesketches.CompileSketches.ReportKeys.maximum: "N/A",
                     compilesketches.CompileSketches.ReportKeys.delta: {
-                        compilesketches.CompileSketches.ReportKeys.absolute: "N/A"
+                        compilesketches.CompileSketches.ReportKeys.absolute: "N/A",
+                        compilesketches.CompileSketches.ReportKeys.relative: "N/A"
                     }
                 },
                 {
                     compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+                    compilesketches.CompileSketches.ReportKeys.maximum: 222,
                     compilesketches.CompileSketches.ReportKeys.delta: {
-                        compilesketches.CompileSketches.ReportKeys.absolute: 11
+                        compilesketches.CompileSketches.ReportKeys.absolute: 11,
+                        compilesketches.CompileSketches.ReportKeys.relative: 0.842
                     }
                 }
             ]
@@ -1744,14 +1891,18 @@ def test_get_sizes_summary_report():
             compilesketches.CompileSketches.ReportKeys.sizes: [
                 {
                     compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+                    compilesketches.CompileSketches.ReportKeys.maximum: "N/A",
                     compilesketches.CompileSketches.ReportKeys.delta: {
-                        compilesketches.CompileSketches.ReportKeys.absolute: "N/A"
+                        compilesketches.CompileSketches.ReportKeys.absolute: "N/A",
+                        compilesketches.CompileSketches.ReportKeys.relative: "N/A"
                     }
                 },
                 {
                     compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+                    compilesketches.CompileSketches.ReportKeys.maximum: 222,
                     compilesketches.CompileSketches.ReportKeys.delta: {
-                        compilesketches.CompileSketches.ReportKeys.absolute: 33
+                        compilesketches.CompileSketches.ReportKeys.absolute: 33,
+                        compilesketches.CompileSketches.ReportKeys.relative: 7.742
                     }
                 }
             ]
@@ -1761,8 +1912,13 @@ def test_get_sizes_summary_report():
     expected_sizes_summary_report = [
         {
             compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+            compilesketches.CompileSketches.ReportKeys.maximum: "N/A",
             compilesketches.CompileSketches.ReportKeys.delta: {
                 compilesketches.CompileSketches.ReportKeys.absolute: {
+                    compilesketches.CompileSketches.ReportKeys.minimum: "N/A",
+                    compilesketches.CompileSketches.ReportKeys.maximum: "N/A"
+                },
+                compilesketches.CompileSketches.ReportKeys.relative: {
                     compilesketches.CompileSketches.ReportKeys.minimum: "N/A",
                     compilesketches.CompileSketches.ReportKeys.maximum: "N/A"
                 }
@@ -1770,10 +1926,15 @@ def test_get_sizes_summary_report():
         },
         {
             compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+            compilesketches.CompileSketches.ReportKeys.maximum: 222,
             compilesketches.CompileSketches.ReportKeys.delta: {
                 compilesketches.CompileSketches.ReportKeys.absolute: {
                     compilesketches.CompileSketches.ReportKeys.minimum: 11,
                     compilesketches.CompileSketches.ReportKeys.maximum: 33
+                },
+                compilesketches.CompileSketches.ReportKeys.relative: {
+                    compilesketches.CompileSketches.ReportKeys.minimum: 0.842,
+                    compilesketches.CompileSketches.ReportKeys.maximum: 7.742
                 }
             }
         }
@@ -1789,14 +1950,18 @@ def test_get_sizes_summary_report():
             compilesketches.CompileSketches.ReportKeys.sizes: [
                 {
                     compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+                    compilesketches.CompileSketches.ReportKeys.maximum: 111,
                     compilesketches.CompileSketches.ReportKeys.current: {
-                        compilesketches.CompileSketches.ReportKeys.absolute: 42
+                        compilesketches.CompileSketches.ReportKeys.absolute: 42,
+                        compilesketches.CompileSketches.ReportKeys.relative: 2.342
                     }
                 },
                 {
                     compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+                    compilesketches.CompileSketches.ReportKeys.maximum: 222,
                     compilesketches.CompileSketches.ReportKeys.current: {
-                        compilesketches.CompileSketches.ReportKeys.absolute: 11
+                        compilesketches.CompileSketches.ReportKeys.absolute: 11,
+                        compilesketches.CompileSketches.ReportKeys.relative: 1.142
                     }
                 }
             ]
@@ -1805,14 +1970,18 @@ def test_get_sizes_summary_report():
             compilesketches.CompileSketches.ReportKeys.sizes: [
                 {
                     compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+                    compilesketches.CompileSketches.ReportKeys.maximum: 111,
                     compilesketches.CompileSketches.ReportKeys.current: {
-                        compilesketches.CompileSketches.ReportKeys.absolute: 5
+                        compilesketches.CompileSketches.ReportKeys.absolute: 5,
+                        compilesketches.CompileSketches.ReportKeys.relative: 0.542
                     }
                 },
                 {
                     compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+                    compilesketches.CompileSketches.ReportKeys.maximum: 111,
                     compilesketches.CompileSketches.ReportKeys.current: {
-                        compilesketches.CompileSketches.ReportKeys.absolute: 33
+                        compilesketches.CompileSketches.ReportKeys.absolute: 33,
+                        compilesketches.CompileSketches.ReportKeys.relative: 3.342
                     }
                 }
             ]

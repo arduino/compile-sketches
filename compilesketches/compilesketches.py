@@ -71,6 +71,7 @@ class CompileSketches:
         ALWAYS = enum.auto()
 
     not_applicable_indicator = "N/A"
+    relative_size_report_decimal_places = 2
 
     arduino_cli_installation_path = pathlib.Path.home().joinpath("bin")
     arduino_cli_user_directory_path = pathlib.Path.home().joinpath("Arduino")
@@ -88,6 +89,7 @@ class CompileSketches:
         sizes = "sizes"
         name = "name"
         absolute = "absolute"
+        relative = "relative"
         current = "current"
         previous = "previous"
         delta = "delta"
@@ -837,11 +839,24 @@ class CompileSketches:
         memory_types = [
             {
                 "name": "flash",
-                "regex": r"Sketch uses [0-9]+ bytes .*of program storage space\."
+                # Use capturing parentheses to identify the location of the data in the regular expression
+                "regex": {
+                    # The regular expression for the absolute memory usage
+                    self.ReportKeys.absolute: r"Sketch uses ([0-9]+) bytes .*of program storage space\.",
+                    # The regular expression for the total memory
+                    self.ReportKeys.maximum: (
+                        r"Sketch uses [0-9]+ bytes .*of program storage space\. Maximum is ([0-9]+) bytes."
+                    )
+                }
             },
             {
                 "name": "RAM for global variables",
-                "regex": r"Global variables use [0-9]+ bytes .*of dynamic memory"
+                "regex": {
+                    self.ReportKeys.absolute: r"Global variables use ([0-9]+) bytes .*of dynamic memory",
+                    self.ReportKeys.maximum: (
+                        r"Global variables use [0-9]+ bytes .*of dynamic memory.*\. Maximum is ([0-9]+) bytes."
+                    )
+                }
             }
         ]
 
@@ -850,34 +865,63 @@ class CompileSketches:
             size = {
                 self.ReportKeys.name: memory_type["name"],
                 # Set default memory usage value, to be used if memory usage can't be determined
-                self.ReportKeys.absolute: self.not_applicable_indicator
+                self.ReportKeys.absolute: self.not_applicable_indicator,
+                self.ReportKeys.maximum: self.not_applicable_indicator,
+                self.ReportKeys.relative: self.not_applicable_indicator
             }
 
             if compilation_result.success is True:
                 # Determine memory usage of the sketch by parsing Arduino CLI's output
-                regex_match = re.search(pattern=memory_type["regex"], string=compilation_result.output)
-                if regex_match:
-                    size[self.ReportKeys.absolute] = int(
-                        re.search(pattern="[0-9]+", string=regex_match.group(0)).group(0))
-                else:
-                    # If any of the following:
-                    # - recipe.size.regex is not defined in platform.txt
-                    # - upload.maximum_size is not defined in boards.txt
-                    # flash usage will not be reported in the Arduino CLI output
-                    # If any of the following:
-                    # - recipe.size.regex.data is not defined in platform.txt (e.g., Arduino SAM Boards)
-                    # - recipe.size.regex is not defined in platform.txt
-                    # - upload.maximum_size is not defined in boards.txt
-                    # RAM usage will not be reported in the Arduino CLI output
-                    self.verbose_print(
-                        "::warning::Unable to determine",
-                        memory_type["name"],
-                        "memory usage. The board's platform may not have been configured to provide this information."
-                    )
+                size_data = self.get_size_data_from_output(compilation_output=compilation_result.output,
+                                                           memory_type=memory_type,
+                                                           size_data_type=self.ReportKeys.absolute)
+                if size_data:
+                    size[self.ReportKeys.absolute] = size_data
+
+                    size_data = self.get_size_data_from_output(compilation_output=compilation_result.output,
+                                                               memory_type=memory_type,
+                                                               size_data_type=self.ReportKeys.maximum)
+                    if size_data:
+                        size[self.ReportKeys.maximum] = size_data
+
+                        size[self.ReportKeys.relative] = round(
+                            (100 * size[self.ReportKeys.absolute] / size[self.ReportKeys.maximum]),
+                            self.relative_size_report_decimal_places
+                        )
 
             sizes.append(size)
 
         return sizes
+
+    def get_size_data_from_output(self, compilation_output, memory_type, size_data_type):
+        """Parse the stdout from the compilation process for a specific datum and return it, or None if not found.
+
+        Keyword arguments:
+        compilation_output -- stdout from the compilation process
+        memory_type -- dictionary defining a memory type
+        size_data_type -- the type of size data to get
+        """
+        size_data = None
+        regex_match = re.search(pattern=memory_type["regex"][size_data_type], string=compilation_output)
+        if regex_match:
+            size_data = int(regex_match.group(1))
+        else:
+            # If any of the following:
+            # - recipe.size.regex is not defined in platform.txt
+            # - upload.maximum_size is not defined in boards.txt
+            # flash usage will not be reported in the Arduino CLI output
+            # If any of the following:
+            # - recipe.size.regex.data is not defined in platform.txt (e.g., Arduino SAM Boards)
+            # - recipe.size.regex is not defined in platform.txt
+            # - upload.maximum_size is not defined in boards.txt
+            # RAM usage will not be reported in the Arduino CLI output
+            self.verbose_print(
+                "::warning::Unable to determine the: \"" + size_data_type + "\" value for memory type: \""
+                + memory_type["name"]
+                + "\". The board's platform may not have been configured to provide this information."
+            )
+
+        return size_data
 
     def do_size_deltas_report(self, compilation_result, current_sizes):
         """Return whether size deltas reporting is enabled.
@@ -934,8 +978,10 @@ class CompileSketches:
         """
         size_report = {
             self.ReportKeys.name: current_size[self.ReportKeys.name],
+            self.ReportKeys.maximum: current_size[self.ReportKeys.maximum],
             self.ReportKeys.current: {
-                self.ReportKeys.absolute: current_size[self.ReportKeys.absolute]
+                self.ReportKeys.absolute: current_size[self.ReportKeys.absolute],
+                self.ReportKeys.relative: current_size[self.ReportKeys.relative]
             }
         }
 
@@ -949,15 +995,30 @@ class CompileSketches:
             else:
                 absolute_delta = (current_size[self.ReportKeys.absolute] - previous_size[self.ReportKeys.absolute])
 
+            if (
+                absolute_delta == self.not_applicable_indicator
+                or size_report[self.ReportKeys.maximum] == self.not_applicable_indicator
+            ):
+                relative_delta = self.not_applicable_indicator
+            else:
+                # Calculate from absolute values to avoid rounding errors
+                relative_delta = round((100 * absolute_delta / size_report[self.ReportKeys.maximum]),
+                                       self.relative_size_report_decimal_places)
+
             # Size deltas reports are enabled
             # Print the memory usage change data to the log
-            print("Change in", current_size[self.ReportKeys.name] + ":", absolute_delta)
+            delta_message = "Change in " + str(current_size[self.ReportKeys.name]) + ": " + str(absolute_delta)
+            if relative_delta != self.not_applicable_indicator:
+                delta_message += " (" + str(relative_delta) + "%)"
+            print(delta_message)
 
             size_report[self.ReportKeys.previous] = {
-                self.ReportKeys.absolute: previous_size[self.ReportKeys.absolute]
+                self.ReportKeys.absolute: previous_size[self.ReportKeys.absolute],
+                self.ReportKeys.relative: previous_size[self.ReportKeys.relative]
             }
             size_report[self.ReportKeys.delta] = {
-                self.ReportKeys.absolute: absolute_delta
+                self.ReportKeys.absolute: absolute_delta,
+                self.ReportKeys.relative: relative_delta
             }
 
         return size_report
@@ -1013,18 +1074,32 @@ class CompileSketches:
                         sizes_summary_report.append(
                             {
                                 self.ReportKeys.name: size_report[self.ReportKeys.name],
+                                self.ReportKeys.maximum: size_report[self.ReportKeys.maximum],
                                 self.ReportKeys.delta: {
                                     self.ReportKeys.absolute: {
                                         self.ReportKeys.minimum: size_report[self.ReportKeys.delta][
                                             self.ReportKeys.absolute],
                                         self.ReportKeys.maximum: size_report[self.ReportKeys.delta][
                                             self.ReportKeys.absolute]
-                                    }
+                                    },
+                                    self.ReportKeys.relative: {
+                                        self.ReportKeys.minimum: size_report[self.ReportKeys.delta][
+                                            self.ReportKeys.relative],
+                                        self.ReportKeys.maximum: size_report[self.ReportKeys.delta][
+                                            self.ReportKeys.relative]
+                                    },
                                 }
                             }
                         )
                     else:
                         size_summary_report_index = size_summary_report_index_list[0]
+
+                        if (
+                            sizes_summary_report[size_summary_report_index][
+                                self.ReportKeys.maximum] == self.not_applicable_indicator
+                        ):
+                            sizes_summary_report[size_summary_report_index][
+                                self.ReportKeys.maximum] = size_report[self.ReportKeys.maximum]
 
                         if (
                             sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
@@ -1035,8 +1110,16 @@ class CompileSketches:
                                 self.ReportKeys.absolute]
 
                             sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
+                                self.ReportKeys.relative][self.ReportKeys.minimum] = size_report[self.ReportKeys.delta][
+                                self.ReportKeys.relative]
+
+                            sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
                                 self.ReportKeys.absolute][self.ReportKeys.maximum] = size_report[self.ReportKeys.delta][
                                 self.ReportKeys.absolute]
+
+                            sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
+                                self.ReportKeys.relative][self.ReportKeys.maximum] = size_report[self.ReportKeys.delta][
+                                self.ReportKeys.relative]
 
                         elif size_report[self.ReportKeys.delta][self.ReportKeys.absolute] != (
                             self.not_applicable_indicator
@@ -1049,12 +1132,22 @@ class CompileSketches:
                                     size_report[self.ReportKeys.delta][self.ReportKeys.absolute]
                                 )
 
+                                sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
+                                    self.ReportKeys.relative][self.ReportKeys.minimum] = (
+                                    size_report[self.ReportKeys.delta][self.ReportKeys.relative]
+                                )
+
                             if (size_report[self.ReportKeys.delta][self.ReportKeys.absolute]
                                 > sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
                                     self.ReportKeys.absolute][self.ReportKeys.maximum]):
                                 sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
                                     self.ReportKeys.absolute][self.ReportKeys.maximum] = (
                                     size_report[self.ReportKeys.delta][self.ReportKeys.absolute]
+                                )
+
+                                sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
+                                    self.ReportKeys.relative][self.ReportKeys.maximum] = (
+                                    size_report[self.ReportKeys.delta][self.ReportKeys.relative]
                                 )
 
         return sizes_summary_report
