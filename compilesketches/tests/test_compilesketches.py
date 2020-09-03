@@ -1101,7 +1101,7 @@ def test_find_sketches(capsys):
 
     # Test sketch path is a sketch file
     compile_sketches = get_compilesketches_object(
-        sketch_paths="\"" + str(test_data_path.joinpath("HasSketches", "Sketch1", "Sketch1.ino")) + "\""
+        sketch_paths="\'" + str(test_data_path.joinpath("HasSketches", "Sketch1", "Sketch1.ino")) + "\'"
     )
     assert compile_sketches.find_sketches() == [
         test_data_path.joinpath("HasSketches", "Sketch1")
@@ -1109,14 +1109,14 @@ def test_find_sketches(capsys):
 
     # Test sketch path is a non-sketch file
     non_sketch_path = str(test_data_path.joinpath("NoSketches", "NotSketch", "NotSketch.foo"))
-    compile_sketches = get_compilesketches_object(sketch_paths="\"" + non_sketch_path + "\"")
+    compile_sketches = get_compilesketches_object(sketch_paths="\'" + non_sketch_path + "\'")
     with pytest.raises(expected_exception=SystemExit, match="1"):
         compile_sketches.find_sketches()
     assert capsys.readouterr().out.strip() == ("::error::Sketch path: " + non_sketch_path + " is not a sketch")
 
     # Test sketch path is a sketch folder
     compile_sketches = get_compilesketches_object(
-        sketch_paths="\"" + str(test_data_path.joinpath("HasSketches", "Sketch1")) + "\""
+        sketch_paths="\'" + str(test_data_path.joinpath("HasSketches", "Sketch1")) + "\'"
     )
     assert compile_sketches.find_sketches() == [
         test_data_path.joinpath("HasSketches", "Sketch1")
@@ -1124,7 +1124,7 @@ def test_find_sketches(capsys):
 
     # Test sketch path does contain sketches
     compile_sketches = get_compilesketches_object(
-        sketch_paths="\"" + str(test_data_path.joinpath("HasSketches")) + "\"")
+        sketch_paths="\'" + str(test_data_path.joinpath("HasSketches")) + "\'")
     assert compile_sketches.find_sketches() == [
         test_data_path.joinpath("HasSketches", "Sketch1"),
         test_data_path.joinpath("HasSketches", "Sketch2")
@@ -1133,11 +1133,25 @@ def test_find_sketches(capsys):
     # Test sketch path doesn't contain any sketches
     no_sketches_path = str(test_data_path.joinpath("NoSketches"))
     compile_sketches = get_compilesketches_object(
-        sketch_paths="\"" + no_sketches_path + "\"")
+        sketch_paths="\'" + no_sketches_path + "\'")
     with pytest.raises(expected_exception=SystemExit, match="1"):
         compile_sketches.find_sketches()
     assert capsys.readouterr().out.strip() == ("::error::No sketches were found in "
                                                + no_sketches_path)
+
+
+@pytest.mark.parametrize(
+    "input_value, expected_list, expected_was_yaml_list",
+    [("", [], False),
+     ("foo", ["foo"], False),
+     ("\'\"foo bar\" baz\'", ["foo bar", "baz"], False),
+     ("foo: bar", ["foo:", "bar"], False),
+     ("-", [None], True),
+     ("- foo: asdf\n  bar: qwer\n- baz: zxcv", [{"foo": "asdf", "bar": "qwer"}, {"baz": "zxcv"}], True)])
+def test_get_list_from_multiformat_input(input_value, expected_list, expected_was_yaml_list):
+    input_list = compilesketches.get_list_from_multiformat_input(input_value=input_value)
+    assert input_list.value == expected_list
+    assert input_list.was_yaml_list == expected_was_yaml_list
 
 
 def test_path_is_sketch():
