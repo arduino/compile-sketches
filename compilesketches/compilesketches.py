@@ -117,8 +117,8 @@ class CompileSketches:
         self.libraries = libraries
 
         # Save the space-separated list of paths as a Python list
-        sketch_paths = parse_list_input(sketch_paths)
-        absolute_sketch_paths = [absolute_path(path=sketch_path) for sketch_path in sketch_paths]
+        sketch_paths = get_list_from_multiformat_input(input_value=sketch_paths)
+        absolute_sketch_paths = [absolute_path(path=sketch_path) for sketch_path in sketch_paths.value]
         self.sketch_paths = absolute_sketch_paths
 
         self.verbose = parse_boolean_input(boolean_input=verbose)
@@ -596,21 +596,16 @@ class CompileSketches:
 
     def install_libraries(self):
         """Install Arduino libraries."""
-        libraries = yaml.load(stream="", Loader=yaml.SafeLoader)
-        try:
-            libraries = yaml.load(stream=self.libraries, Loader=yaml.SafeLoader)
-        except yaml.parser.ParserError:
-            # This exception occurs when the space separated list items are individually quoted (e.g., '"Foo" "Bar"')
-            pass
+        libraries = get_list_from_multiformat_input(input_value=self.libraries)
 
         library_list = self.Dependencies()
-        if type(libraries) is list:
+        if libraries.was_yaml_list:
             # libraries input is YAML
-            library_list = self.sort_dependency_list(libraries)
+            library_list = self.sort_dependency_list(libraries.value)
         else:
             # libraries input uses the old space-separated list syntax
             library_list.manager = [{self.dependency_name_key: library_name}
-                                    for library_name in parse_list_input(self.libraries)]
+                                    for library_name in libraries.value]
 
             # The original behavior of the action was to assume the root of the repo is a library to be installed, so
             # that behavior is retained when using the old input syntax
@@ -1259,6 +1254,46 @@ def absolute_path(path):
     path = path.resolve()
 
     return path
+
+
+def get_list_from_multiformat_input(input_value):
+    """For backwards compatibility with the legacy API, some inputs support a space-separated list format in addition to
+    the modern YAML format. This function converts either input format into a list and returns an object with the
+    attributes:
+    value -- the list that was parsed from the input
+    was_yaml_list -- whether the input was in YAML format (True, False)
+
+    Keyword arguments:
+    input_value -- the raw input
+    """
+
+    class InputList:
+        def __init__(self):
+            self.value = []
+            self.was_yaml_list = False
+
+    input_list = InputList()
+
+    try:
+        processed_input_value = yaml.load(stream=input_value, Loader=yaml.SafeLoader)
+    except yaml.parser.ParserError:
+        # The input value was not valid YAML
+        # This exception occurs when the space separated list items are individually quoted (e.g., '"Foo" "Bar"')
+        # Note: some old format list values are also valid YAML by chance (e.g., a normal string), so old format input
+        # won't always cause this exception
+        processed_input_value = input_value
+        pass
+
+    if type(processed_input_value) is list:
+        # The input value was valid YAML and in list format
+        input_list.value = processed_input_value
+        input_list.was_yaml_list = True
+    else:
+        # The input value was either valid YAML, but not a list, or invalid YAML
+        input_list.value = parse_list_input(list_input=input_value)
+        input_list.was_yaml_list = False
+
+    return input_list
 
 
 def path_is_sketch(path):

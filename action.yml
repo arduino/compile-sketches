@@ -15,7 +15,7 @@ inputs:
     default: ''
   sketch-paths:
     description: 'List of paths containing sketches to compile.'
-    default: 'examples'
+    default: '- examples'
   verbose:
     description: 'Set to true to show verbose output in the log'
     default: false

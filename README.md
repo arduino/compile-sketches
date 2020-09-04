@@ -102,7 +102,7 @@ Keys:
 
 ### `sketch-paths`
 
-List of paths containing sketches to compile. These paths will be searched recursively. Default `"examples"`.
+YAML-format list of paths containing sketches to compile. These paths will be searched recursively. Default `- examples`.
 
 ### `verbose`
 
