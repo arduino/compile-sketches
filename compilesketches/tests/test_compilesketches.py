@@ -630,15 +630,7 @@ def test_get_manager_dependency_name(dependency, expected_name):
      (True, [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.Path("Foo")}])]
 )
 def test_install_platforms_from_path(capsys, mocker, path_exists, platform_list):
-    class PlatformInstallationPath:
-        def __init__(self):
-            self.parent = pathlib.PurePath()
-            self.name = pathlib.PurePath()
-
-    platform_installation_path = PlatformInstallationPath()
-    platform_installation_path.base = pathlib.Path("/foo/PlatformInstallationPathParent")
-    platform_installation_path.platform = pathlib.Path("PlatformInstallationPathName")
-    symlink_source_path = pathlib.Path("/foo/SymlinkSourcePath")
+    platform_installation_path = pathlib.Path("/foo/PlatformInstallationPathParent/PlatformInstallationPathName")
 
     compile_sketches = get_compilesketches_object()
 
@@ -647,7 +639,6 @@ def test_install_platforms_from_path(capsys, mocker, path_exists, platform_list)
                  autospec=True,
                  return_value=platform_installation_path)
     mocker.patch.object(pathlib.Path, "mkdir", autospec=True)
-    mocker.patch.object(pathlib.Path, "joinpath", autospec=True, return_value=symlink_source_path)
     mocker.patch.object(pathlib.Path, "symlink_to", autospec=True)
 
     if not path_exists:
@@ -664,17 +655,14 @@ def test_install_platforms_from_path(capsys, mocker, path_exists, platform_list)
         compile_sketches.install_platforms_from_path(platform_list=platform_list)
 
         get_platform_installation_path_calls = []
-        joinpath_calls = []
         mkdir_calls = []
         symlink_to_calls = []
         for platform in platform_list:
             get_platform_installation_path_calls.append(unittest.mock.call(compile_sketches, platform=platform))
-            mkdir_calls.append(unittest.mock.call(platform_installation_path.base, parents=True, exist_ok=True))
-            joinpath_calls.append(unittest.mock.call(platform_installation_path.base,
-                                                     platform_installation_path.platform))
+            mkdir_calls.append(unittest.mock.call(platform_installation_path.parent, parents=True, exist_ok=True))
             symlink_to_calls.append(
                 unittest.mock.call(
-                    symlink_source_path,
+                    platform_installation_path,
                     target=compilesketches.absolute_path(
                         platform[compilesketches.CompileSketches.dependency_source_path_key]
                     ),
@@ -684,35 +672,29 @@ def test_install_platforms_from_path(capsys, mocker, path_exists, platform_list)
 
         # noinspection PyUnresolvedReferences
         pathlib.Path.mkdir.assert_has_calls(calls=mkdir_calls)
-        # noinspection PyUnresolvedReferences
-        pathlib.Path.joinpath.assert_has_calls(calls=joinpath_calls)
         pathlib.Path.symlink_to.assert_has_calls(calls=symlink_to_calls)
 
 
 @pytest.mark.parametrize(
     "platform,"
     "command_data_stdout,"
-    "expected_installation_path_base,"
-    "expected_installation_path_platform,"
+    "expected_installation_path,"
     "expected_rmtree",
     # No match to previously installed platforms
     [({compilesketches.CompileSketches.dependency_name_key: "foo:bar"},
       "[{\"ID\": \"asdf:zxcv\"}]",
-      pathlib.PurePath("/foo/UserPlatformsPath"),
-      pathlib.PurePath("foo/bar"),
+      pathlib.PurePath("/foo/UserPlatformsPath/foo/bar"),
       False),
      # Match with previously installed platform
      ({compilesketches.CompileSketches.dependency_name_key: "foo:bar"},
       "[{\"ID\": \"foo:bar\", \"Installed\": \"1.2.3\"}]",
-      pathlib.PurePath("/foo/BoardManagerPlatformsPath"),
-      pathlib.PurePath("foo/hardware/bar/1.2.3"),
+      pathlib.PurePath("/foo/BoardManagerPlatformsPath/foo/hardware/bar/1.2.3"),
       True)]
 )
 def test_get_platform_installation_path(mocker,
                                         platform,
                                         command_data_stdout,
-                                        expected_installation_path_base,
-                                        expected_installation_path_platform,
+                                        expected_installation_path,
                                         expected_rmtree):
     class CommandData:
         def __init__(self, stdout):
@@ -728,8 +710,7 @@ def test_get_platform_installation_path(mocker,
     compile_sketches.board_manager_platforms_path = pathlib.PurePath("/foo/BoardManagerPlatformsPath")
 
     platform_installation_path = compile_sketches.get_platform_installation_path(platform=platform)
-    assert platform_installation_path.base == expected_installation_path_base
-    assert platform_installation_path.platform == expected_installation_path_platform
+    assert platform_installation_path == expected_installation_path
 
     run_arduino_cli_command_calls = [unittest.mock.call(compile_sketches, command=["core", "update-index"]),
                                      unittest.mock.call(compile_sketches, command=["core", "list", "--format", "json"])]
@@ -739,7 +720,7 @@ def test_get_platform_installation_path(mocker,
     if expected_rmtree is True:
         # noinspection PyUnresolvedReferences
         shutil.rmtree.assert_called_once_with(
-            path=platform_installation_path.base.joinpath(platform_installation_path.platform)
+            path=platform_installation_path
         )
     else:
         # noinspection PyUnresolvedReferences
@@ -756,14 +737,7 @@ def test_install_platforms_from_repository(mocker):
 
     git_ref = unittest.mock.sentinel.git_ref
 
-    class PlatformInstallationPath:
-        def __init__(self):
-            self.base = pathlib.PurePath()
-            self.platform = pathlib.PurePath()
-
-    platform_installation_path = PlatformInstallationPath()
-    platform_installation_path.base = pathlib.Path("/foo/PlatformInstallationPathParent")
-    platform_installation_path.platform = pathlib.Path("PlatformInstallationPathName")
+    platform_installation_path = pathlib.Path("/foo/PlatformInstallationPathParent/PlatformInstallationPathName")
 
     expected_source_path_list = [unittest.mock.sentinel.source_path, "."]
     expected_destination_name_list = [unittest.mock.sentinel.destination_name, None]
@@ -791,8 +765,8 @@ def test_install_platforms_from_repository(mocker):
                                url=platform[compilesketches.CompileSketches.dependency_source_url_key],
                                git_ref=git_ref,
                                source_path=expected_source_path,
-                               destination_parent_path=platform_installation_path.base,
-                               destination_name=platform_installation_path.platform)
+                               destination_parent_path=platform_installation_path.parent,
+                               destination_name=platform_installation_path.name)
         )
 
     compile_sketches.get_repository_dependency_ref.assert_has_calls(calls=get_repository_dependency_ref_calls)
@@ -817,14 +791,7 @@ def test_install_platforms_from_download(mocker):
         {compilesketches.CompileSketches.dependency_source_url_key: unittest.mock.sentinel.source_url2}
     ]
 
-    class PlatformInstallationPath:
-        def __init__(self):
-            self.base = pathlib.PurePath()
-            self.platform = pathlib.PurePath()
-
-    platform_installation_path = PlatformInstallationPath()
-    platform_installation_path.parent = pathlib.Path("/foo/PlatformInstallationPathParent")
-    platform_installation_path.name = pathlib.Path("PlatformInstallationPathName")
+    platform_installation_path = pathlib.Path("/foo/PlatformInstallationPathParent/PlatformInstallationPathName")
 
     expected_source_path_list = [unittest.mock.sentinel.source_path, "."]
 
@@ -844,8 +811,8 @@ def test_install_platforms_from_download(mocker):
         install_platforms_from_download_calls.append(
             unittest.mock.call(url=platform[compilesketches.CompileSketches.dependency_source_url_key],
                                source_path=expected_source_path,
-                               destination_parent_path=platform_installation_path.base,
-                               destination_name=platform_installation_path.platform)
+                               destination_parent_path=platform_installation_path.parent,
+                               destination_name=platform_installation_path.name)
         )
     compilesketches.install_from_download.assert_has_calls(calls=install_platforms_from_download_calls)
 

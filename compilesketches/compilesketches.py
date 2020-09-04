@@ -422,16 +422,11 @@ class CompileSketches:
 
             platform_installation_path = self.get_platform_installation_path(platform=platform)
 
-            # Create the parent path if it doesn't exist already. This must be the immediate parent, whereas
-            # get_platform_installation_path().platform will be multiple nested folders under the base path
-            platform_installation_path_parent = (
-                pathlib.Path(platform_installation_path.base, platform_installation_path.platform).parent
-            )
-            platform_installation_path_parent.mkdir(parents=True, exist_ok=True)
+            # Create the parent path if it doesn't exist already.
+            platform_installation_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Install the platform by creating a symlink
-            destination_path = platform_installation_path.base.joinpath(platform_installation_path.platform)
-            destination_path.symlink_to(target=source_path, target_is_directory=True)
+            platform_installation_path.symlink_to(target=source_path, target_is_directory=True)
 
     def get_platform_installation_path(self, platform):
         """Return the correct installation path for the given platform
@@ -439,20 +434,11 @@ class CompileSketches:
         Keyword arguments:
         platform -- dictionary defining the platform dependency
         """
-
-        class PlatformInstallationPath:
-            def __init__(self):
-                self.base = pathlib.PurePath()
-                self.platform = pathlib.PurePath()
-
-        platform_installation_path = PlatformInstallationPath()
-
         platform_vendor = platform[self.dependency_name_key].split(sep=":")[0]
         platform_architecture = platform[self.dependency_name_key].rsplit(sep=":", maxsplit=1)[1]
 
         # Default to installing to the sketchbook
-        platform_installation_path.base = self.user_platforms_path
-        platform_installation_path.platform = pathlib.PurePath(platform_vendor, platform_architecture)
+        platform_installation_path = self.user_platforms_path.joinpath(platform_vendor, platform_architecture)
 
         # I have no clue why this is needed, but arduino-cli core list fails if this isn't done first. The 3rd party
         # platforms are still shown in the list even if their index URLs are not specified to the command via the
@@ -464,16 +450,15 @@ class CompileSketches:
         for installed_platform in installed_platform_list:
             if installed_platform["ID"] == platform[self.dependency_name_key]:
                 # The platform has been installed via Board Manager, so do an overwrite
-                platform_installation_path.base = self.board_manager_platforms_path
-                platform_installation_path.platform = (
-                    pathlib.PurePath(platform_vendor,
-                                     "hardware",
-                                     platform_architecture,
-                                     installed_platform["Installed"])
+                platform_installation_path = (
+                    self.board_manager_platforms_path.joinpath(platform_vendor,
+                                                               "hardware",
+                                                               platform_architecture,
+                                                               installed_platform["Installed"])
                 )
 
                 # Remove the existing installation so it can be replaced by the installation function
-                shutil.rmtree(path=platform_installation_path.base.joinpath(platform_installation_path.platform))
+                shutil.rmtree(path=platform_installation_path)
 
                 break
 
@@ -500,8 +485,8 @@ class CompileSketches:
             self.install_from_repository(url=platform[self.dependency_source_url_key],
                                          git_ref=git_ref,
                                          source_path=source_path,
-                                         destination_parent_path=destination_path.base,
-                                         destination_name=destination_path.platform)
+                                         destination_parent_path=destination_path.parent,
+                                         destination_name=destination_path.name)
 
     def get_repository_dependency_ref(self, dependency):
         """Return the appropriate git ref value for a repository dependency
@@ -591,8 +576,8 @@ class CompileSketches:
 
             install_from_download(url=platform[self.dependency_source_url_key],
                                   source_path=source_path,
-                                  destination_parent_path=destination_path.base,
-                                  destination_name=destination_path.platform)
+                                  destination_parent_path=destination_path.parent,
+                                  destination_name=destination_path.name)
 
     def install_libraries(self):
         """Install Arduino libraries."""
