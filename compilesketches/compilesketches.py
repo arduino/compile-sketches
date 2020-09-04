@@ -422,11 +422,10 @@ class CompileSketches:
 
             platform_installation_path = self.get_platform_installation_path(platform=platform)
 
-            # Create the parent path if it doesn't exist already.
-            platform_installation_path.parent.mkdir(parents=True, exist_ok=True)
-
-            # Install the platform by creating a symlink
-            platform_installation_path.symlink_to(target=source_path, target_is_directory=True)
+            # Install the platform
+            install_from_path(source_path=source_path,
+                              destination_parent_path=platform_installation_path.parent,
+                              destination_name=platform_installation_path.name)
 
     def get_platform_installation_path(self, platform):
         """Return the correct installation path for the given platform
@@ -512,25 +511,17 @@ class CompileSketches:
         destination_name -- folder name to use for the installation. Set to None to use the repository name.
                             (default None)
         """
-        if destination_name is None:
-            if source_path.rstrip("/") == ".":
-                # Use the repository name
-                destination_name = url.rstrip("/").rsplit(sep="/", maxsplit=1)[1].rsplit(sep=".", maxsplit=1)[0]
-            else:
-                # Use the source path folder name
-                destination_name = pathlib.PurePath(source_path).name
+        if destination_name is None and source_path.rstrip("/") == ".":
+            # Use the repository name
+            destination_name = url.rstrip("/").rsplit(sep="/", maxsplit=1)[1].rsplit(sep=".", maxsplit=1)[0]
 
-        if source_path.rstrip("/") == ".":
-            # Clone directly to the target path
-            self.clone_repository(url=url, git_ref=git_ref,
-                                  destination_path=pathlib.PurePath(destination_parent_path, destination_name))
-        else:
-            # Clone to a temporary folder
-            with tempfile.TemporaryDirectory() as clone_folder:
-                self.clone_repository(url=url, git_ref=git_ref, destination_path=clone_folder)
-                # Install by moving the source folder
-                shutil.move(src=str(pathlib.PurePath(clone_folder, source_path)),
-                            dst=str(pathlib.PurePath(destination_parent_path, destination_name)))
+        # Clone to a temporary folder to allow installing from subfolders of repos
+        with tempfile.TemporaryDirectory() as clone_folder:
+            self.clone_repository(url=url, git_ref=git_ref, destination_path=clone_folder)
+            # Install to the final location
+            install_from_path(source_path=pathlib.Path(clone_folder, source_path),
+                              destination_parent_path=destination_parent_path,
+                              destination_name=destination_name)
 
     def clone_repository(self, url, git_ref, destination_path):
         """Clone a Git repository to a specified location and check out the specified ref
@@ -644,14 +635,11 @@ class CompileSketches:
                 destination_name = os.environ["GITHUB_REPOSITORY"].split(sep="/")[1]
             else:
                 # Use the existing folder name
-                destination_name = source_path.name
+                destination_name = None
 
-            # Create the parent path if it doesn't exist already
-            self.libraries_path.mkdir(parents=True, exist_ok=True)
-
-            # Install the library by creating a symlink in the sketchbook
-            library_symlink_path = self.libraries_path.joinpath(destination_name)
-            library_symlink_path.symlink_to(target=source_path, target_is_directory=True)
+            install_from_path(source_path=source_path,
+                              destination_parent_path=self.libraries_path,
+                              destination_name=destination_name)
 
     def install_libraries_from_repository(self, library_list):
         """Install libraries by cloning Git repositories
@@ -1281,6 +1269,29 @@ def get_list_from_multiformat_input(input_value):
     return input_list
 
 
+def install_from_path(source_path, destination_parent_path, destination_name=None):
+    """Copy the source path to the destination path.
+
+    Keyword arguments:
+    source_path -- path to install
+    destination_parent_path -- path under which to install
+    destination_name -- folder or filename name to use for the installation. Set to None to take the name from
+                        source_path. (default None)
+    """
+    if destination_name is None:
+        destination_name = source_path.name
+
+    # Create the parent path if it doesn't already exist
+    destination_parent_path.mkdir(parents=True, exist_ok=True)
+
+    destination_path = destination_parent_path.joinpath(destination_name)
+
+    if source_path.is_dir():
+        shutil.copytree(src=source_path, dst=destination_path)
+    else:
+        shutil.copy(src=source_path, dst=destination_path)
+
+
 def path_is_sketch(path):
     """Return whether the specified path is an Arduino sketch.
 
@@ -1349,15 +1360,9 @@ def install_from_download(url, source_path, destination_parent_path, destination
                 print("::error::Archive source path:", source_path, "not found")
                 sys.exit(1)
 
-            if destination_name is None:
-                destination_name = absolute_source_path.name
-
-            # Create the parent path if it doesn't already exist
-            destination_parent_path.mkdir(parents=True, exist_ok=True)
-
-            # Install by moving the source folder
-            shutil.move(src=str(absolute_source_path),
-                        dst=str(destination_parent_path.joinpath(destination_name)))
+            install_from_path(source_path=absolute_source_path,
+                              destination_parent_path=destination_parent_path,
+                              destination_name=destination_name)
 
 
 def get_archive_root_path(archive_extract_path):

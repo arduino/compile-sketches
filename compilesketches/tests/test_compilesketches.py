@@ -638,8 +638,7 @@ def test_install_platforms_from_path(capsys, mocker, path_exists, platform_list)
     mocker.patch("compilesketches.CompileSketches.get_platform_installation_path",
                  autospec=True,
                  return_value=platform_installation_path)
-    mocker.patch.object(pathlib.Path, "mkdir", autospec=True)
-    mocker.patch.object(pathlib.Path, "symlink_to", autospec=True)
+    mocker.patch("compilesketches.install_from_path", autospec=True)
 
     if not path_exists:
         with pytest.raises(expected_exception=SystemExit, match="1"):
@@ -655,24 +654,23 @@ def test_install_platforms_from_path(capsys, mocker, path_exists, platform_list)
         compile_sketches.install_platforms_from_path(platform_list=platform_list)
 
         get_platform_installation_path_calls = []
-        mkdir_calls = []
-        symlink_to_calls = []
+        install_from_path_calls = []
         for platform in platform_list:
             get_platform_installation_path_calls.append(unittest.mock.call(compile_sketches, platform=platform))
-            mkdir_calls.append(unittest.mock.call(platform_installation_path.parent, parents=True, exist_ok=True))
-            symlink_to_calls.append(
+            install_from_path_calls.append(
                 unittest.mock.call(
-                    platform_installation_path,
-                    target=compilesketches.absolute_path(
+                    source_path=compilesketches.absolute_path(
                         platform[compilesketches.CompileSketches.dependency_source_path_key]
                     ),
-                    target_is_directory=True
+                    destination_parent_path=platform_installation_path.parent,
+                    destination_name=platform_installation_path.name
                 )
             )
 
         # noinspection PyUnresolvedReferences
-        pathlib.Path.mkdir.assert_has_calls(calls=mkdir_calls)
-        pathlib.Path.symlink_to.assert_has_calls(calls=symlink_to_calls)
+        compile_sketches.get_platform_installation_path.assert_has_calls(calls=get_platform_installation_path_calls)
+        # noinspection PyUnresolvedReferences
+        compilesketches.install_from_path.assert_has_calls(calls=install_from_path_calls)
 
 
 @pytest.mark.parametrize(
@@ -937,12 +935,11 @@ def test_install_libraries_from_library_manager(mocker):
       ["FooRepoName"]),
      (True,
       [{compilesketches.CompileSketches.dependency_source_path_key: os.environ["GITHUB_WORKSPACE"] + "/Bar"}],
-      ["Bar"])]
+      [None])]
 )
 def test_install_libraries_from_path(capsys, monkeypatch, mocker, path_exists, library_list,
                                      expected_destination_name_list):
     libraries_path = pathlib.Path("/foo/LibrariesPath")
-    symlink_source_path = pathlib.Path("/foo/SymlinkSourcePath")
 
     monkeypatch.setenv("GITHUB_REPOSITORY", "foo/FooRepoName")
 
@@ -950,9 +947,7 @@ def test_install_libraries_from_path(capsys, monkeypatch, mocker, path_exists, l
     compile_sketches.libraries_path = libraries_path
 
     mocker.patch.object(pathlib.Path, "exists", autospec=True, return_value=path_exists)
-    mocker.patch.object(pathlib.Path, "mkdir", autospec=True)
-    mocker.patch.object(pathlib.Path, "joinpath", autospec=True, return_value=symlink_source_path)
-    mocker.patch.object(pathlib.Path, "symlink_to", autospec=True)
+    mocker.patch("compilesketches.install_from_path", autospec=True)
 
     if not path_exists:
         with pytest.raises(expected_exception=SystemExit, match="1"):
@@ -966,23 +961,20 @@ def test_install_libraries_from_path(capsys, monkeypatch, mocker, path_exists, l
     else:
         compile_sketches.install_libraries_from_path(library_list=library_list)
 
-        mkdir_calls = []
-        joinpath_calls = []
-        symlink_to_calls = []
+        install_from_path_calls = []
         for library, expected_destination_name in zip(library_list, expected_destination_name_list):
-            mkdir_calls.append(unittest.mock.call(libraries_path, parents=True, exist_ok=True))
-            joinpath_calls.append(unittest.mock.call(libraries_path, expected_destination_name))
-            symlink_to_calls.append(
-                unittest.mock.call(symlink_source_path,
-                                   target=compilesketches.absolute_path(
-                                       library[compilesketches.CompileSketches.dependency_source_path_key]),
-                                   target_is_directory=True))
+            install_from_path_calls.append(
+                unittest.mock.call(
+                    source_path=compilesketches.absolute_path(
+                        library[compilesketches.CompileSketches.dependency_source_path_key]
+                    ),
+                    destination_parent_path=libraries_path,
+                    destination_name=expected_destination_name
+                )
+            )
 
         # noinspection PyUnresolvedReferences
-        pathlib.Path.mkdir.assert_has_calls(calls=mkdir_calls)
-        # noinspection PyUnresolvedReferences
-        pathlib.Path.joinpath.assert_has_calls(calls=joinpath_calls)
-        pathlib.Path.symlink_to.assert_has_calls(calls=symlink_to_calls)
+        compilesketches.install_from_path.assert_has_calls(calls=install_from_path_calls)
 
 
 def test_install_libraries_from_repository(mocker):
@@ -1119,6 +1111,87 @@ def test_get_list_from_multiformat_input(input_value, expected_list, expected_wa
     input_list = compilesketches.get_list_from_multiformat_input(input_value=input_value)
     assert input_list.value == expected_list
     assert input_list.was_yaml_list == expected_was_yaml_list
+
+
+# noinspection PyUnresolvedReferences
+@pytest.mark.parametrize(
+    "source_path, destination_parent_path, destination_name, expected_destination_path",
+    [(pathlib.Path("foo/source-path"),
+      pathlib.Path("bar/destination-parent-path"),
+      None,
+      pathlib.Path("bar/destination-parent-path/source-path")),
+     (pathlib.Path("foo/source-path"),
+      pathlib.Path("bar/destination-parent-path"),
+      "destination-name",
+      pathlib.Path("bar/destination-parent-path/destination-name"))])
+@pytest.mark.parametrize("is_dir", [True, False])
+def test_install_from_path(mocker,
+                           source_path,
+                           destination_parent_path,
+                           destination_name,
+                           expected_destination_path,
+                           is_dir):
+    mocker.patch.object(pathlib.Path, "mkdir", autospec=True)
+    mocker.patch.object(pathlib.Path, "is_dir", autospec=True, return_value=is_dir)
+    mocker.patch("shutil.copytree", autospec=True)
+    mocker.patch("shutil.copy", autospec=True)
+
+    compilesketches.install_from_path(source_path=source_path, destination_parent_path=destination_parent_path,
+                                      destination_name=destination_name)
+    if is_dir:
+        shutil.copytree.assert_called_once_with(src=source_path, dst=expected_destination_path)
+    else:
+        shutil.copy.assert_called_once_with(src=source_path, dst=expected_destination_path)
+
+
+def test_install_from_path_functional(tmp_path):
+    source_path = tmp_path.joinpath("foo-source")
+    test_file_path = source_path.joinpath("foo-test-file")
+    destination_parent_path = tmp_path.joinpath("foo-destination-parent")
+
+    def prep_test_folders():
+        shutil.rmtree(path=source_path, ignore_errors=True)
+        source_path.mkdir(parents=True)
+        test_file_path.write_text("foo test file contents")
+        shutil.rmtree(path=destination_parent_path, ignore_errors=True)
+        # destination_parent_path is created by install_from_path()
+
+    # Test install of folder
+    # Test naming according to source
+    # Test existing destination_parent_path
+    prep_test_folders()
+    destination_parent_path.mkdir(parents=True)
+    compilesketches.install_from_path(source_path=source_path, destination_parent_path=destination_parent_path,
+                                      destination_name=None)
+    assert directories_are_same(left_directory=source_path,
+                                right_directory=destination_parent_path.joinpath(source_path.name))
+
+    # Test custom folder name
+    prep_test_folders()
+    destination_name = "foo-destination-name"
+    compilesketches.install_from_path(source_path=source_path,
+                                      destination_parent_path=destination_parent_path,
+                                      destination_name=destination_name)
+    assert directories_are_same(left_directory=source_path,
+                                right_directory=destination_parent_path.joinpath(destination_name))
+
+    # Test install of file
+    # Test naming according to source
+    prep_test_folders()
+    compilesketches.install_from_path(source_path=test_file_path,
+                                      destination_parent_path=destination_parent_path,
+                                      destination_name=None)
+    assert filecmp.cmp(f1=test_file_path,
+                       f2=destination_parent_path.joinpath(test_file_path.name))
+
+    # Test custom folder name
+    prep_test_folders()
+    destination_name = "foo-destination-name"
+    compilesketches.install_from_path(source_path=test_file_path,
+                                      destination_parent_path=destination_parent_path,
+                                      destination_name=destination_name)
+    assert filecmp.cmp(f1=test_file_path,
+                       f2=destination_parent_path.joinpath(destination_name))
 
 
 def test_path_is_sketch():
@@ -2156,10 +2229,10 @@ def test_get_archive_root_path(archive_extract_path, expected_archive_root_path)
                          [("https://example.com/foo/FooRepositoryName.git", ".", None, "FooRepositoryName"),
                           ("https://example.com/foo/FooRepositoryName.git/", "./examples", "FooDestinationName",
                            "FooDestinationName"),
-                          ("git://example.com/foo/FooRepositoryName", "examples", None, "examples")])
+                          ("git://example.com/foo/FooRepositoryName", "examples", None, None)])
 def test_install_from_repository(mocker, url, source_path, destination_name, expected_destination_name):
     git_ref = unittest.mock.sentinel.git_ref
-    destination_parent_path = pathlib.PurePath("/foo/DestinationParentPath")
+    destination_parent_path = unittest.mock.sentinel.destination_parent_path
     clone_path = pathlib.PurePath("/foo/ClonePath")
 
     # Stub
@@ -2176,7 +2249,7 @@ def test_install_from_repository(mocker, url, source_path, destination_name, exp
     mocker.patch("tempfile.TemporaryDirectory", autospec=True,
                  return_value=TemporaryDirectory(temporary_directory=clone_path))
     mocker.patch("compilesketches.CompileSketches.clone_repository", autospec=True)
-    mocker.patch("shutil.move", autospec=True)
+    mocker.patch("compilesketches.install_from_path", autospec=True)
 
     compile_sketches = get_compilesketches_object()
 
@@ -2186,21 +2259,17 @@ def test_install_from_repository(mocker, url, source_path, destination_name, exp
                                              destination_parent_path=destination_parent_path,
                                              destination_name=destination_name)
 
-    if source_path.rstrip("/") == ".":
-        compile_sketches.clone_repository.assert_called_once_with(compile_sketches,
-                                                                  url=url,
-                                                                  git_ref=git_ref,
-                                                                  destination_path=destination_parent_path.joinpath(
-                                                                      expected_destination_name))
-    else:
-        tempfile.TemporaryDirectory.assert_called_once()
-        compile_sketches.clone_repository.assert_called_once_with(compile_sketches,
-                                                                  url=url,
-                                                                  git_ref=git_ref,
-                                                                  destination_path=clone_path)
-        # noinspection PyUnresolvedReferences
-        shutil.move.assert_called_once_with(src=str(clone_path.joinpath(source_path)),
-                                            dst=str(destination_parent_path.joinpath(expected_destination_name)))
+    tempfile.TemporaryDirectory.assert_called_once()
+    compile_sketches.clone_repository.assert_called_once_with(compile_sketches,
+                                                              url=url,
+                                                              git_ref=git_ref,
+                                                              destination_path=clone_path)
+    # noinspection PyUnresolvedReferences
+    compilesketches.install_from_path.assert_called_once_with(
+        source_path=clone_path.joinpath(source_path),
+        destination_parent_path=destination_parent_path,
+        destination_name=expected_destination_name
+    )
 
 
 @pytest.mark.parametrize("git_ref", ["v1.0.2", "latest", None])
