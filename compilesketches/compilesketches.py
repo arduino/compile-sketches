@@ -210,7 +210,8 @@ class CompileSketches:
             url=arduino_cli_archive_download_url_prefix + arduino_cli_archive_file_name,
             # The Arduino CLI has no root folder, so just install the arduino-cli executable from the archive root
             source_path="arduino-cli",
-            destination_parent_path=self.arduino_cli_installation_path
+            destination_parent_path=self.arduino_cli_installation_path,
+            force=False
         )
 
         # Configure the location of the Arduino CLI user directory
@@ -424,20 +425,32 @@ class CompileSketches:
 
             # Install the platform
             install_from_path(source_path=source_path,
-                              destination_parent_path=platform_installation_path.parent,
-                              destination_name=platform_installation_path.name)
+                              destination_parent_path=platform_installation_path.path.parent,
+                              destination_name=platform_installation_path.path.name,
+                              force=platform_installation_path.is_overwrite)
 
     def get_platform_installation_path(self, platform):
-        """Return the correct installation path for the given platform
+        """Determines the correct installation path for the given platform and returns an object with the attributes:
+        path -- correct installation path for the platform (pathlib.Path() object)
+        is_overwrite -- whether there is an existing installation of the platform (True, False)
 
         Keyword arguments:
         platform -- dictionary defining the platform dependency
         """
+
+        class PlatformInstallationPath:
+            def __init__(self):
+                self.path = pathlib.Path()
+                self.is_overwrite = False
+
+        platform_installation_path = PlatformInstallationPath()
+
+        # Default to installing to the sketchbook
         platform_vendor = platform[self.dependency_name_key].split(sep=":")[0]
         platform_architecture = platform[self.dependency_name_key].rsplit(sep=":", maxsplit=1)[1]
 
         # Default to installing to the sketchbook
-        platform_installation_path = self.user_platforms_path.joinpath(platform_vendor, platform_architecture)
+        platform_installation_path.path = self.user_platforms_path.joinpath(platform_vendor, platform_architecture)
 
         # I have no clue why this is needed, but arduino-cli core list fails if this isn't done first. The 3rd party
         # platforms are still shown in the list even if their index URLs are not specified to the command via the
@@ -449,15 +462,13 @@ class CompileSketches:
         for installed_platform in installed_platform_list:
             if installed_platform["ID"] == platform[self.dependency_name_key]:
                 # The platform has been installed via Board Manager, so do an overwrite
-                platform_installation_path = (
+                platform_installation_path.path = (
                     self.board_manager_platforms_path.joinpath(platform_vendor,
                                                                "hardware",
                                                                platform_architecture,
                                                                installed_platform["Installed"])
                 )
-
-                # Remove the existing installation so it can be replaced by the installation function
-                shutil.rmtree(path=platform_installation_path)
+                platform_installation_path.is_overwrite = True
 
                 break
 
@@ -484,8 +495,9 @@ class CompileSketches:
             self.install_from_repository(url=platform[self.dependency_source_url_key],
                                          git_ref=git_ref,
                                          source_path=source_path,
-                                         destination_parent_path=destination_path.parent,
-                                         destination_name=destination_path.name)
+                                         destination_parent_path=destination_path.path.parent,
+                                         destination_name=destination_path.path.name,
+                                         force=destination_path.is_overwrite)
 
     def get_repository_dependency_ref(self, dependency):
         """Return the appropriate git ref value for a repository dependency
@@ -500,7 +512,13 @@ class CompileSketches:
 
         return git_ref
 
-    def install_from_repository(self, url, git_ref, source_path, destination_parent_path, destination_name=None):
+    def install_from_repository(self,
+                                url,
+                                git_ref,
+                                source_path,
+                                destination_parent_path,
+                                destination_name=None,
+                                force=False):
         """Install by cloning a repository
 
         Keyword arguments:
@@ -510,6 +528,7 @@ class CompileSketches:
         destination_parent_path -- path under which to install
         destination_name -- folder name to use for the installation. Set to None to use the repository name.
                             (default None)
+        force -- replace existing destination folder if present. (default False)
         """
         if destination_name is None and source_path.rstrip("/") == ".":
             # Use the repository name
@@ -521,7 +540,8 @@ class CompileSketches:
             # Install to the final location
             install_from_path(source_path=pathlib.Path(clone_folder, source_path),
                               destination_parent_path=destination_parent_path,
-                              destination_name=destination_name)
+                              destination_name=destination_name,
+                              force=force)
 
     def clone_repository(self, url, git_ref, destination_path):
         """Clone a Git repository to a specified location and check out the specified ref
@@ -567,8 +587,9 @@ class CompileSketches:
 
             install_from_download(url=platform[self.dependency_source_url_key],
                                   source_path=source_path,
-                                  destination_parent_path=destination_path.parent,
-                                  destination_name=destination_path.name)
+                                  destination_parent_path=destination_path.path.parent,
+                                  destination_name=destination_path.path.name,
+                                  force=destination_path.is_overwrite)
 
     def install_libraries(self):
         """Install Arduino libraries."""
@@ -587,6 +608,9 @@ class CompileSketches:
             # that behavior is retained when using the old input syntax
             library_list.path = [{self.dependency_source_path_key: os.environ["GITHUB_WORKSPACE"]}]
 
+        # Dependencies of Library Manager sourced libraries (as defined by the library's metadata file) are
+        # automatically installed. For this reason, LM-sources must be installed first so the library dependencies from
+        # other sources which were explicitly defined won't be replaced.
         if len(library_list.manager) > 0:
             self.install_libraries_from_library_manager(library_list=library_list.manager)
 
@@ -639,7 +663,8 @@ class CompileSketches:
 
             install_from_path(source_path=source_path,
                               destination_parent_path=self.libraries_path,
-                              destination_name=destination_name)
+                              destination_name=destination_name,
+                              force=True)
 
     def install_libraries_from_repository(self, library_list):
         """Install libraries by cloning Git repositories
@@ -669,7 +694,8 @@ class CompileSketches:
                                          git_ref=git_ref,
                                          source_path=source_path,
                                          destination_parent_path=self.libraries_path,
-                                         destination_name=destination_name)
+                                         destination_name=destination_name,
+                                         force=True)
 
     def install_libraries_from_download(self, library_list):
         """Install libraries by downloading them
@@ -692,7 +718,8 @@ class CompileSketches:
             install_from_download(url=library[self.dependency_source_url_key],
                                   source_path=source_path,
                                   destination_parent_path=self.libraries_path,
-                                  destination_name=destination_name)
+                                  destination_name=destination_name,
+                                  force=True)
 
     def find_sketches(self):
         """Return a list of all sketches under the paths specified in the sketch paths list recursively."""
@@ -1269,7 +1296,7 @@ def get_list_from_multiformat_input(input_value):
     return input_list
 
 
-def install_from_path(source_path, destination_parent_path, destination_name=None):
+def install_from_path(source_path, destination_parent_path, destination_name=None, force=False):
     """Copy the source path to the destination path.
 
     Keyword arguments:
@@ -1277,14 +1304,23 @@ def install_from_path(source_path, destination_parent_path, destination_name=Non
     destination_parent_path -- path under which to install
     destination_name -- folder or filename name to use for the installation. Set to None to take the name from
                         source_path. (default None)
+    force -- replace existing destination if present. (default False)
     """
     if destination_name is None:
         destination_name = source_path.name
 
+    destination_path = destination_parent_path.joinpath(destination_name)
+
+    if destination_path.exists():
+        if force:
+            # Clear existing folder
+            shutil.rmtree(path=destination_path)
+        else:
+            print("::error::Installation already exists:", destination_path)
+            sys.exit(1)
+
     # Create the parent path if it doesn't already exist
     destination_parent_path.mkdir(parents=True, exist_ok=True)
-
-    destination_path = destination_parent_path.joinpath(destination_name)
 
     if source_path.is_dir():
         shutil.copytree(src=source_path, dst=destination_path)
@@ -1321,7 +1357,7 @@ def list_to_string(list_input):
     return " ".join([str(item) for item in list_input])
 
 
-def install_from_download(url, source_path, destination_parent_path, destination_name=None):
+def install_from_download(url, source_path, destination_parent_path, destination_name=None, force=False):
     """Download an archive, extract, and install.
 
     Keyword arguments:
@@ -1330,6 +1366,7 @@ def install_from_download(url, source_path, destination_parent_path, destination
     destination_parent_path -- path under which to install
     destination_name -- folder name to use for the installation. Set to None to take the name from source_path.
                         (default None)
+    force -- replace existing destination folder if present. (default False)
     """
     destination_parent_path = pathlib.Path(destination_parent_path)
 
@@ -1362,7 +1399,8 @@ def install_from_download(url, source_path, destination_parent_path, destination
 
             install_from_path(source_path=absolute_source_path,
                               destination_parent_path=destination_parent_path,
-                              destination_name=destination_name)
+                              destination_name=destination_name,
+                              force=force)
 
 
 def get_archive_root_path(archive_extract_path):

@@ -354,7 +354,9 @@ def test_install_arduino_cli(mocker):
     compilesketches.install_from_download.assert_called_once_with(
         url="https://downloads.arduino.cc/arduino-cli/arduino-cli_" + cli_version + "_Linux_64bit.tar.gz",
         source_path="arduino-cli",
-        destination_parent_path=arduino_cli_installation_path)
+        destination_parent_path=arduino_cli_installation_path,
+        force=False
+    )
 
     assert os.environ["ARDUINO_DIRECTORIES_USER"] == str(arduino_cli_user_directory_path)
     assert os.environ["ARDUINO_DIRECTORIES_DATA"] == str(arduino_cli_data_directory_path)
@@ -630,7 +632,13 @@ def test_get_manager_dependency_name(dependency, expected_name):
      (True, [{compilesketches.CompileSketches.dependency_source_path_key: pathlib.Path("Foo")}])]
 )
 def test_install_platforms_from_path(capsys, mocker, path_exists, platform_list):
-    platform_installation_path = pathlib.Path("/foo/PlatformInstallationPathParent/PlatformInstallationPathName")
+    class PlatformInstallationPath:
+        def __init__(self):
+            self.path = pathlib.PurePath()
+            self.is_overwrite = False
+
+    platform_installation_path = PlatformInstallationPath()
+    platform_installation_path.path = pathlib.Path("/foo/PlatformInstallationPathParent/PlatformInstallationPathName")
 
     compile_sketches = get_compilesketches_object()
 
@@ -662,8 +670,9 @@ def test_install_platforms_from_path(capsys, mocker, path_exists, platform_list)
                     source_path=compilesketches.absolute_path(
                         platform[compilesketches.CompileSketches.dependency_source_path_key]
                     ),
-                    destination_parent_path=platform_installation_path.parent,
-                    destination_name=platform_installation_path.name
+                    destination_parent_path=platform_installation_path.path.parent,
+                    destination_name=platform_installation_path.path.name,
+                    force=platform_installation_path.is_overwrite
                 )
             )
 
@@ -676,24 +685,20 @@ def test_install_platforms_from_path(capsys, mocker, path_exists, platform_list)
 @pytest.mark.parametrize(
     "platform,"
     "command_data_stdout,"
-    "expected_installation_path,"
-    "expected_rmtree",
+    "expected_installation_path",
     # No match to previously installed platforms
     [({compilesketches.CompileSketches.dependency_name_key: "foo:bar"},
       "[{\"ID\": \"asdf:zxcv\"}]",
-      pathlib.PurePath("/foo/UserPlatformsPath/foo/bar"),
-      False),
+      pathlib.PurePath("/foo/UserPlatformsPath/foo/bar")),
      # Match with previously installed platform
      ({compilesketches.CompileSketches.dependency_name_key: "foo:bar"},
       "[{\"ID\": \"foo:bar\", \"Installed\": \"1.2.3\"}]",
-      pathlib.PurePath("/foo/BoardManagerPlatformsPath/foo/hardware/bar/1.2.3"),
-      True)]
+      pathlib.PurePath("/foo/BoardManagerPlatformsPath/foo/hardware/bar/1.2.3"))]
 )
 def test_get_platform_installation_path(mocker,
                                         platform,
                                         command_data_stdout,
-                                        expected_installation_path,
-                                        expected_rmtree):
+                                        expected_installation_path):
     class CommandData:
         def __init__(self, stdout):
             self.stdout = stdout
@@ -701,28 +706,17 @@ def test_get_platform_installation_path(mocker,
     command_data = CommandData(stdout=command_data_stdout)
 
     mocker.patch("compilesketches.CompileSketches.run_arduino_cli_command", autospec=True, return_value=command_data)
-    mocker.patch("shutil.rmtree", autospec=True)
 
     compile_sketches = get_compilesketches_object()
     compile_sketches.user_platforms_path = pathlib.PurePath("/foo/UserPlatformsPath")
     compile_sketches.board_manager_platforms_path = pathlib.PurePath("/foo/BoardManagerPlatformsPath")
 
     platform_installation_path = compile_sketches.get_platform_installation_path(platform=platform)
-    assert platform_installation_path == expected_installation_path
+    assert platform_installation_path.path == expected_installation_path
 
     run_arduino_cli_command_calls = [unittest.mock.call(compile_sketches, command=["core", "update-index"]),
                                      unittest.mock.call(compile_sketches, command=["core", "list", "--format", "json"])]
     compilesketches.CompileSketches.run_arduino_cli_command.assert_has_calls(calls=run_arduino_cli_command_calls)
-
-    # noinspection PyUnresolvedReferences
-    if expected_rmtree is True:
-        # noinspection PyUnresolvedReferences
-        shutil.rmtree.assert_called_once_with(
-            path=platform_installation_path
-        )
-    else:
-        # noinspection PyUnresolvedReferences
-        shutil.rmtree.assert_not_called()
 
 
 def test_install_platforms_from_repository(mocker):
@@ -735,7 +729,13 @@ def test_install_platforms_from_repository(mocker):
 
     git_ref = unittest.mock.sentinel.git_ref
 
-    platform_installation_path = pathlib.Path("/foo/PlatformInstallationPathParent/PlatformInstallationPathName")
+    class PlatformInstallationPath:
+        def __init__(self):
+            self.path = pathlib.PurePath()
+            self.is_overwrite = False
+
+    platform_installation_path = PlatformInstallationPath()
+    platform_installation_path.path = pathlib.Path("/foo/PlatformInstallationPathParent/PlatformInstallationPathName")
 
     expected_source_path_list = [unittest.mock.sentinel.source_path, "."]
     expected_destination_name_list = [unittest.mock.sentinel.destination_name, None]
@@ -763,8 +763,9 @@ def test_install_platforms_from_repository(mocker):
                                url=platform[compilesketches.CompileSketches.dependency_source_url_key],
                                git_ref=git_ref,
                                source_path=expected_source_path,
-                               destination_parent_path=platform_installation_path.parent,
-                               destination_name=platform_installation_path.name)
+                               destination_parent_path=platform_installation_path.path.parent,
+                               destination_name=platform_installation_path.path.name,
+                               force=platform_installation_path.is_overwrite)
         )
 
     compile_sketches.get_repository_dependency_ref.assert_has_calls(calls=get_repository_dependency_ref_calls)
@@ -789,7 +790,13 @@ def test_install_platforms_from_download(mocker):
         {compilesketches.CompileSketches.dependency_source_url_key: unittest.mock.sentinel.source_url2}
     ]
 
-    platform_installation_path = pathlib.Path("/foo/PlatformInstallationPathParent/PlatformInstallationPathName")
+    class PlatformInstallationPath:
+        def __init__(self):
+            self.path = pathlib.PurePath()
+            self.is_overwrite = False
+
+    platform_installation_path = PlatformInstallationPath()
+    platform_installation_path.path = pathlib.Path("/foo/PlatformInstallationPathParent/PlatformInstallationPathName")
 
     expected_source_path_list = [unittest.mock.sentinel.source_path, "."]
 
@@ -809,8 +816,9 @@ def test_install_platforms_from_download(mocker):
         install_platforms_from_download_calls.append(
             unittest.mock.call(url=platform[compilesketches.CompileSketches.dependency_source_url_key],
                                source_path=expected_source_path,
-                               destination_parent_path=platform_installation_path.parent,
-                               destination_name=platform_installation_path.name)
+                               destination_parent_path=platform_installation_path.path.parent,
+                               destination_name=platform_installation_path.path.name,
+                               force=platform_installation_path.is_overwrite)
         )
     compilesketches.install_from_download.assert_has_calls(calls=install_platforms_from_download_calls)
 
@@ -969,7 +977,8 @@ def test_install_libraries_from_path(capsys, monkeypatch, mocker, path_exists, l
                         library[compilesketches.CompileSketches.dependency_source_path_key]
                     ),
                     destination_parent_path=libraries_path,
-                    destination_name=expected_destination_name
+                    destination_name=expected_destination_name,
+                    force=True
                 )
             )
 
@@ -1007,7 +1016,8 @@ def test_install_libraries_from_repository(mocker):
                                git_ref=git_ref,
                                source_path=expected_source_path,
                                destination_parent_path=compile_sketches.libraries_path,
-                               destination_name=expected_destination_name)
+                               destination_name=expected_destination_name,
+                               force=True)
         )
 
     compile_sketches.get_repository_dependency_ref.assert_has_calls(calls=get_repository_dependency_ref_calls)
@@ -1038,7 +1048,8 @@ def test_install_libraries_from_download(mocker):
             unittest.mock.call(url=library[compilesketches.CompileSketches.dependency_source_url_key],
                                source_path=expected_source_path,
                                destination_parent_path=compilesketches.CompileSketches.libraries_path,
-                               destination_name=expected_destination_name)
+                               destination_name=expected_destination_name,
+                               force=True)
         )
     compilesketches.install_from_download.assert_has_calls(calls=install_libraries_from_download_calls)
 
@@ -1124,24 +1135,49 @@ def test_get_list_from_multiformat_input(input_value, expected_list, expected_wa
       pathlib.Path("bar/destination-parent-path"),
       "destination-name",
       pathlib.Path("bar/destination-parent-path/destination-name"))])
+@pytest.mark.parametrize("exists", [True, False])
+@pytest.mark.parametrize("force", [True, False])
 @pytest.mark.parametrize("is_dir", [True, False])
-def test_install_from_path(mocker,
+def test_install_from_path(capsys,
+                           mocker,
                            source_path,
                            destination_parent_path,
                            destination_name,
                            expected_destination_path,
+                           exists,
+                           force,
                            is_dir):
+    mocker.patch.object(pathlib.Path, "exists", autospec=True, return_value=exists)
+    mocker.patch("shutil.rmtree", autospec=True)
     mocker.patch.object(pathlib.Path, "mkdir", autospec=True)
     mocker.patch.object(pathlib.Path, "is_dir", autospec=True, return_value=is_dir)
     mocker.patch("shutil.copytree", autospec=True)
     mocker.patch("shutil.copy", autospec=True)
 
-    compilesketches.install_from_path(source_path=source_path, destination_parent_path=destination_parent_path,
-                                      destination_name=destination_name)
-    if is_dir:
-        shutil.copytree.assert_called_once_with(src=source_path, dst=expected_destination_path)
+    if exists and not force:
+        with pytest.raises(expected_exception=SystemExit, match="1"):
+            compilesketches.install_from_path(source_path=source_path,
+                                              destination_parent_path=destination_parent_path,
+                                              destination_name=destination_name,
+                                              force=force)
+        assert capsys.readouterr().out.strip() == (
+            "::error::Installation already exists: "
+            + str(expected_destination_path)
+        )
     else:
-        shutil.copy.assert_called_once_with(src=source_path, dst=expected_destination_path)
+        compilesketches.install_from_path(source_path=source_path,
+                                          destination_parent_path=destination_parent_path,
+                                          destination_name=destination_name,
+                                          force=force)
+        if exists and force:
+            shutil.rmtree.assert_called_once_with(path=expected_destination_path)
+        else:
+            shutil.rmtree.assert_not_called()
+
+        if is_dir:
+            shutil.copytree.assert_called_once_with(src=source_path, dst=expected_destination_path)
+        else:
+            shutil.copy.assert_called_once_with(src=source_path, dst=expected_destination_path)
 
 
 def test_install_from_path_functional(tmp_path):
@@ -2233,6 +2269,7 @@ def test_get_archive_root_path(archive_extract_path, expected_archive_root_path)
 def test_install_from_repository(mocker, url, source_path, destination_name, expected_destination_name):
     git_ref = unittest.mock.sentinel.git_ref
     destination_parent_path = unittest.mock.sentinel.destination_parent_path
+    force = unittest.mock.sentinel.force
     clone_path = pathlib.PurePath("/foo/ClonePath")
 
     # Stub
@@ -2257,7 +2294,8 @@ def test_install_from_repository(mocker, url, source_path, destination_name, exp
                                              git_ref=git_ref,
                                              source_path=source_path,
                                              destination_parent_path=destination_parent_path,
-                                             destination_name=destination_name)
+                                             destination_name=destination_name,
+                                             force=force)
 
     tempfile.TemporaryDirectory.assert_called_once()
     compile_sketches.clone_repository.assert_called_once_with(compile_sketches,
@@ -2268,7 +2306,8 @@ def test_install_from_repository(mocker, url, source_path, destination_name, exp
     compilesketches.install_from_path.assert_called_once_with(
         source_path=clone_path.joinpath(source_path),
         destination_parent_path=destination_parent_path,
-        destination_name=expected_destination_name
+        destination_name=expected_destination_name,
+        force=force
     )
 
 
