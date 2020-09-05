@@ -206,7 +206,7 @@ class CompileSketches:
         arduino_cli_archive_download_url_prefix = "https://downloads.arduino.cc/arduino-cli/"
         arduino_cli_archive_file_name = "arduino-cli_" + self.cli_version + "_Linux_64bit.tar.gz"
 
-        install_from_download(
+        self.install_from_download(
             url=arduino_cli_archive_download_url_prefix + arduino_cli_archive_file_name,
             # The Arduino CLI has no root folder, so just install the arduino-cli executable from the archive root
             source_path="arduino-cli",
@@ -223,6 +223,51 @@ class CompileSketches:
         """Print log output when in verbose mode"""
         if self.verbose:
             print(*print_arguments)
+
+    def install_from_download(self, url, source_path, destination_parent_path, destination_name=None, force=False):
+        """Download an archive, extract, and install.
+
+        Keyword arguments:
+        url -- URL to download the archive from
+        source_path -- path relative to the root folder of the archive to install.
+        destination_parent_path -- path under which to install
+        destination_name -- folder name to use for the installation. Set to None to take the name from source_path.
+                            (default None)
+        force -- replace existing destination folder if present. (default False)
+        """
+        destination_parent_path = pathlib.Path(destination_parent_path)
+
+        # Create temporary folder for the download
+        with tempfile.TemporaryDirectory("-compilesketches-download_folder") as download_folder:
+            download_file_path = pathlib.PurePath(download_folder, url.rsplit(sep="/", maxsplit=1)[1])
+
+            # https://stackoverflow.com/a/38358646
+            with open(file=str(download_file_path), mode="wb") as out_file:
+                with contextlib.closing(thing=urllib.request.urlopen(url=url)) as file_pointer:
+                    block_size = 1024 * 8
+                    while True:
+                        block = file_pointer.read(block_size)
+                        if not block:
+                            break
+                        out_file.write(block)
+
+            # Create temporary folder for the extraction
+            with tempfile.TemporaryDirectory("-compilesketches-extract_folder") as extract_folder:
+                # Extract archive
+                shutil.unpack_archive(filename=str(download_file_path), extract_dir=extract_folder)
+
+                archive_root_path = get_archive_root_path(extract_folder)
+
+                absolute_source_path = pathlib.Path(archive_root_path, source_path).resolve()
+
+                if not absolute_source_path.exists():
+                    print("::error::Archive source path:", source_path, "not found")
+                    sys.exit(1)
+
+                self.install_from_path(source_path=absolute_source_path,
+                                       destination_parent_path=destination_parent_path,
+                                       destination_name=destination_name,
+                                       force=force)
 
     def install_platforms(self):
         """Install Arduino boards platforms."""
@@ -424,10 +469,10 @@ class CompileSketches:
             platform_installation_path = self.get_platform_installation_path(platform=platform)
 
             # Install the platform
-            install_from_path(source_path=source_path,
-                              destination_parent_path=platform_installation_path.path.parent,
-                              destination_name=platform_installation_path.path.name,
-                              force=platform_installation_path.is_overwrite)
+            self.install_from_path(source_path=source_path,
+                                   destination_parent_path=platform_installation_path.path.parent,
+                                   destination_name=platform_installation_path.path.name,
+                                   force=platform_installation_path.is_overwrite)
 
     def get_platform_installation_path(self, platform):
         """Determines the correct installation path for the given platform and returns an object with the attributes:
@@ -473,6 +518,38 @@ class CompileSketches:
                 break
 
         return platform_installation_path
+
+    def install_from_path(self, source_path, destination_parent_path, destination_name=None, force=False):
+        """Copy the source path to the destination path.
+
+        Keyword arguments:
+        source_path -- path to install
+        destination_parent_path -- path under which to install
+        destination_name -- folder or filename name to use for the installation. Set to None to take the name from
+                            source_path. (default None)
+        force -- replace existing destination if present. (default False)
+        """
+        if destination_name is None:
+            destination_name = source_path.name
+
+        destination_path = destination_parent_path.joinpath(destination_name)
+
+        if destination_path.exists():
+            if force:
+                # Clear existing folder
+                self.verbose_print("Overwriting installation at:", destination_path)
+                shutil.rmtree(path=destination_path)
+            else:
+                print("::error::Installation already exists:", destination_path)
+                sys.exit(1)
+
+        # Create the parent path if it doesn't already exist
+        destination_parent_path.mkdir(parents=True, exist_ok=True)
+
+        if source_path.is_dir():
+            shutil.copytree(src=source_path, dst=destination_path)
+        else:
+            shutil.copy(src=source_path, dst=destination_path)
 
     def install_platforms_from_repository(self, platform_list):
         """Install libraries by cloning Git repositories
@@ -538,10 +615,10 @@ class CompileSketches:
         with tempfile.TemporaryDirectory() as clone_folder:
             self.clone_repository(url=url, git_ref=git_ref, destination_path=clone_folder)
             # Install to the final location
-            install_from_path(source_path=pathlib.Path(clone_folder, source_path),
-                              destination_parent_path=destination_parent_path,
-                              destination_name=destination_name,
-                              force=force)
+            self.install_from_path(source_path=pathlib.Path(clone_folder, source_path),
+                                   destination_parent_path=destination_parent_path,
+                                   destination_name=destination_name,
+                                   force=force)
 
     def clone_repository(self, url, git_ref, destination_path):
         """Clone a Git repository to a specified location and check out the specified ref
@@ -585,11 +662,11 @@ class CompileSketches:
 
             destination_path = self.get_platform_installation_path(platform=platform)
 
-            install_from_download(url=platform[self.dependency_source_url_key],
-                                  source_path=source_path,
-                                  destination_parent_path=destination_path.path.parent,
-                                  destination_name=destination_path.path.name,
-                                  force=destination_path.is_overwrite)
+            self.install_from_download(url=platform[self.dependency_source_url_key],
+                                       source_path=source_path,
+                                       destination_parent_path=destination_path.path.parent,
+                                       destination_name=destination_path.path.name,
+                                       force=destination_path.is_overwrite)
 
     def install_libraries(self):
         """Install Arduino libraries."""
@@ -661,10 +738,10 @@ class CompileSketches:
                 # Use the existing folder name
                 destination_name = None
 
-            install_from_path(source_path=source_path,
-                              destination_parent_path=self.libraries_path,
-                              destination_name=destination_name,
-                              force=True)
+            self.install_from_path(source_path=source_path,
+                                   destination_parent_path=self.libraries_path,
+                                   destination_name=destination_name,
+                                   force=True)
 
     def install_libraries_from_repository(self, library_list):
         """Install libraries by cloning Git repositories
@@ -715,11 +792,11 @@ class CompileSketches:
             else:
                 destination_name = None
 
-            install_from_download(url=library[self.dependency_source_url_key],
-                                  source_path=source_path,
-                                  destination_parent_path=self.libraries_path,
-                                  destination_name=destination_name,
-                                  force=True)
+            self.install_from_download(url=library[self.dependency_source_url_key],
+                                       source_path=source_path,
+                                       destination_parent_path=self.libraries_path,
+                                       destination_name=destination_name,
+                                       force=True)
 
     def find_sketches(self):
         """Return a list of all sketches under the paths specified in the sketch paths list recursively."""
@@ -1296,38 +1373,6 @@ def get_list_from_multiformat_input(input_value):
     return input_list
 
 
-def install_from_path(source_path, destination_parent_path, destination_name=None, force=False):
-    """Copy the source path to the destination path.
-
-    Keyword arguments:
-    source_path -- path to install
-    destination_parent_path -- path under which to install
-    destination_name -- folder or filename name to use for the installation. Set to None to take the name from
-                        source_path. (default None)
-    force -- replace existing destination if present. (default False)
-    """
-    if destination_name is None:
-        destination_name = source_path.name
-
-    destination_path = destination_parent_path.joinpath(destination_name)
-
-    if destination_path.exists():
-        if force:
-            # Clear existing folder
-            shutil.rmtree(path=destination_path)
-        else:
-            print("::error::Installation already exists:", destination_path)
-            sys.exit(1)
-
-    # Create the parent path if it doesn't already exist
-    destination_parent_path.mkdir(parents=True, exist_ok=True)
-
-    if source_path.is_dir():
-        shutil.copytree(src=source_path, dst=destination_path)
-    else:
-        shutil.copy(src=source_path, dst=destination_path)
-
-
 def path_is_sketch(path):
     """Return whether the specified path is an Arduino sketch.
 
@@ -1355,52 +1400,6 @@ def path_is_sketch(path):
 def list_to_string(list_input):
     """Cast the list items to string and join them, then return the resulting string"""
     return " ".join([str(item) for item in list_input])
-
-
-def install_from_download(url, source_path, destination_parent_path, destination_name=None, force=False):
-    """Download an archive, extract, and install.
-
-    Keyword arguments:
-    url -- URL to download the archive from
-    source_path -- path relative to the root folder of the archive to install.
-    destination_parent_path -- path under which to install
-    destination_name -- folder name to use for the installation. Set to None to take the name from source_path.
-                        (default None)
-    force -- replace existing destination folder if present. (default False)
-    """
-    destination_parent_path = pathlib.Path(destination_parent_path)
-
-    # Create temporary folder for the download
-    with tempfile.TemporaryDirectory("-compilesketches-download_folder") as download_folder:
-        download_file_path = pathlib.PurePath(download_folder, url.rsplit(sep="/", maxsplit=1)[1])
-
-        # https://stackoverflow.com/a/38358646
-        with open(file=str(download_file_path), mode="wb") as out_file:
-            with contextlib.closing(thing=urllib.request.urlopen(url=url)) as file_pointer:
-                block_size = 1024 * 8
-                while True:
-                    block = file_pointer.read(block_size)
-                    if not block:
-                        break
-                    out_file.write(block)
-
-        # Create temporary folder for the extraction
-        with tempfile.TemporaryDirectory("-compilesketches-extract_folder") as extract_folder:
-            # Extract archive
-            shutil.unpack_archive(filename=str(download_file_path), extract_dir=extract_folder)
-
-            archive_root_path = get_archive_root_path(extract_folder)
-
-            absolute_source_path = pathlib.Path(archive_root_path, source_path).resolve()
-
-            if not absolute_source_path.exists():
-                print("::error::Archive source path:", source_path, "not found")
-                sys.exit(1)
-
-            install_from_path(source_path=absolute_source_path,
-                              destination_parent_path=destination_parent_path,
-                              destination_name=destination_name,
-                              force=force)
 
 
 def get_archive_root_path(archive_extract_path):
