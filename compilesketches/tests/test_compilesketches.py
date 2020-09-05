@@ -926,10 +926,22 @@ def test_install_libraries_from_library_manager(mocker):
 
     compile_sketches.install_libraries_from_library_manager(library_list=library_list)
 
-    lib_install_command = ["lib", "install"] + [library["name"] for library in library_list]
-    compile_sketches.run_arduino_cli_command.assert_called_once_with(compile_sketches,
-                                                                     command=lib_install_command,
-                                                                     enable_output=run_command_output_level)
+    lib_install_base_command = ["lib", "install"]
+
+    run_arduino_cli_command_calls = []
+    for library in library_list:
+        lib_install_command = lib_install_base_command.copy()
+        lib_install_command.append(library["name"])
+        run_arduino_cli_command_calls.append(
+            unittest.mock.call(
+                compile_sketches,
+                command=lib_install_command,
+                enable_output=run_command_output_level
+            )
+        )
+
+    # noinspection PyUnresolvedReferences
+    compile_sketches.run_arduino_cli_command.assert_has_calls(calls=run_arduino_cli_command_calls)
 
 
 @pytest.mark.parametrize(

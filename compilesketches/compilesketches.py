@@ -706,9 +706,15 @@ class CompileSketches:
         Keyword arguments:
         library_list -- list of dictionaries defining the dependencies
         """
-        lib_install_command = ["lib", "install"]
-        lib_install_command.extend([self.get_manager_dependency_name(library) for library in library_list])
-        self.run_arduino_cli_command(command=lib_install_command, enable_output=self.get_run_command_output_level())
+        lib_install_base_command = ["lib", "install"]
+        # `arduino-cli lib install` fails if one of the libraries in the list has a dependency on another, but an
+        # earlier version of the dependency is specified in the list. The solution is to install one library at a time
+        # (even though `arduino-cli lib install` supports installing multiple libraries at once). This also allows the
+        # user to control which version is installed in the end by the order of the list passed via the libraries input.
+        for library in library_list:
+            lib_install_command = lib_install_base_command.copy()
+            lib_install_command.append(self.get_manager_dependency_name(library))
+            self.run_arduino_cli_command(command=lib_install_command, enable_output=self.get_run_command_output_level())
 
     def install_libraries_from_path(self, library_list):
         """Install libraries from local paths
