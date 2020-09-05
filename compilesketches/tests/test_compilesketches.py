@@ -810,17 +810,17 @@ def test_install_platforms_from_download(mocker):
     compile_sketches.install_platforms_from_download(platform_list=platform_list)
 
     get_platform_installation_path_calls = []
-    install_platforms_from_download_calls = []
+    install_from_download_calls = []
     for platform, expected_source_path, in zip(platform_list, expected_source_path_list):
         get_platform_installation_path_calls.append(unittest.mock.call(compile_sketches, platform=platform))
-        install_platforms_from_download_calls.append(
+        install_from_download_calls.append(
             unittest.mock.call(url=platform[compilesketches.CompileSketches.dependency_source_url_key],
                                source_path=expected_source_path,
                                destination_parent_path=platform_installation_path.path.parent,
                                destination_name=platform_installation_path.path.name,
                                force=platform_installation_path.is_overwrite)
         )
-    compilesketches.install_from_download.assert_has_calls(calls=install_platforms_from_download_calls)
+    compilesketches.install_from_download.assert_has_calls(calls=install_from_download_calls)
 
 
 @pytest.mark.parametrize(
