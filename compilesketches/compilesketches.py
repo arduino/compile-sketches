@@ -557,7 +557,8 @@ class CompileSketches:
         """
         if git_ref is None:
             # Shallow clone is only possible if using the tip of the branch
-            clone_arguments = {"depth": 1}
+            # Use `None` as value for `git clone` options with no argument
+            clone_arguments = {"depth": 1, "shallow-submodules": None, "recurse-submodules": True}
         else:
             clone_arguments = {}
         cloned_repository = git.Repo.clone_from(url=url, to_path=destination_path, **clone_arguments)
@@ -573,6 +574,7 @@ class CompileSketches:
 
             # checkout ref
             cloned_repository.git.checkout(git_ref)
+            cloned_repository.git.submodule("update", "--init", "--recursive", "--recommend-shallow")
 
     def install_platforms_from_download(self, platform_list):
         """Install libraries by downloading them
