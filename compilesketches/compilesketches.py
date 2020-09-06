@@ -813,7 +813,7 @@ class CompileSketches:
             previous_compilation_result = self.compile_sketch(sketch_path=compilation_result.sketch)
 
             # git checkout the head ref to return the repository to its previous state
-            repository.git.checkout(original_git_ref)
+            repository.git.checkout(original_git_ref, recurse_submodules=True)
 
             previous_sizes = self.get_sizes_from_output(compilation_result=previous_compilation_result)
 
@@ -940,11 +940,15 @@ class CompileSketches:
 
         # git fetch the deltas base ref
         origin_remote = repository.remotes["origin"]
-        origin_remote.fetch(refspec=self.deltas_base_ref, verbose=self.verbose, no_tags=True, prune=True,
-                            depth=1)
+        origin_remote.fetch(refspec=self.deltas_base_ref,
+                            verbose=self.verbose,
+                            no_tags=True,
+                            prune=True,
+                            depth=1,
+                            recurse_submodules=True)
 
         # git checkout the deltas base ref
-        repository.git.checkout(self.deltas_base_ref)
+        repository.git.checkout(self.deltas_base_ref, recurse_submodules=True)
 
     def get_sizes_report(self, current_sizes, previous_sizes):
         """Return a list containing all memory usage data assembled.

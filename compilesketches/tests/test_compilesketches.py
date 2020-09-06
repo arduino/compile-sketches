@@ -1267,7 +1267,7 @@ def test_get_sketch_report(mocker, do_size_deltas_report):
         git.Repo.assert_called_once_with(path=os.environ["GITHUB_WORKSPACE"])
         compile_sketches.checkout_deltas_base_ref.assert_called_once()
         compile_sketches.compile_sketch.assert_called_once_with(compile_sketches, sketch_path=compilation_result.sketch)
-        Repo.checkout.assert_called_once_with(original_git_ref)
+        Repo.checkout.assert_called_once_with(original_git_ref, recurse_submodules=True)
         get_sizes_from_output_calls.append(
             unittest.mock.call(compile_sketches, compilation_result=previous_compilation_result))
         expected_previous_sizes = sizes_list[1]
@@ -1549,9 +1549,11 @@ def test_checkout_deltas_base_ref(monkeypatch, mocker):
     git.Repo.assert_called_once_with(path=os.environ["GITHUB_WORKSPACE"])
     Repo.fetch.assert_called_once_with(refspec=deltas_base_ref,
                                        verbose=compile_sketches.verbose,
-                                       no_tags=True, prune=True,
-                                       depth=1)
-    Repo.checkout.assert_called_once_with(deltas_base_ref)
+                                       no_tags=True,
+                                       prune=True,
+                                       depth=1,
+                                       recurse_submodules=True)
+    Repo.checkout.assert_called_once_with(deltas_base_ref, recurse_submodules=True)
 
 
 def test_get_sizes_report(mocker):
