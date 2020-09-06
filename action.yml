@@ -25,7 +25,7 @@ inputs:
   github-token:
     description: 'GitHub access token used to get information from the GitHub API. Only needed if you are using the size deltas report feature with a private repository.'
     default: ''
-  enable-size-deltas-report:
+  enable-deltas-report:
     description: 'Set to true to cause the action to determine the change in memory usage of the compiled sketches between the head and base refs of a PR and the immediate parent commit of a push'
     default: false
 runs:

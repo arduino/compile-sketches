@@ -28,6 +28,11 @@ def main():
               "sketches-report-path instead.")
         os.environ["INPUT_SKETCHES-REPORT-PATH"] = os.environ["INPUT_SIZE-DELTAS-REPORT-FOLDER-NAME"]
 
+    if "INPUT_ENABLE-SIZE-DELTAS-REPORT" in os.environ:
+        print("::warning::The enable-size-deltas-report input is deprecated. Use the equivalent input: "
+              "enable-deltas-report instead.")
+        os.environ["INPUT_ENABLE-DELTAS-REPORT"] = os.environ["INPUT_ENABLE-SIZE-DELTAS-REPORT"]
+
     if "INPUT_ENABLE-SIZE-TRENDS-REPORT" in os.environ:
         print("::warning::The size trends report feature has been moved to a dedicated action. See the documentation "
               "at https://github.com/arduino/actions/tree/report-size-trends-action/libraries/report-size-trends")
@@ -40,7 +45,7 @@ def main():
         sketch_paths=os.environ["INPUT_SKETCH-PATHS"],
         verbose=os.environ["INPUT_VERBOSE"],
         github_token=os.environ["INPUT_GITHUB-TOKEN"],
-        enable_size_deltas_report=os.environ["INPUT_ENABLE-SIZE-DELTAS-REPORT"],
+        enable_deltas_report=os.environ["INPUT_ENABLE-DELTAS-REPORT"],
         sketches_report_path=os.environ["INPUT_SKETCHES-REPORT-PATH"]
     )
 
@@ -60,7 +65,7 @@ class CompileSketches:
                     recursively for sketches.
     verbose -- set to "true" for verbose output ("true", "false")
     github_token -- GitHub access token
-    enable_size_deltas_report -- set to "true" to cause the action to determine the change in memory usage
+    enable_deltas_report -- set to "true" to cause the action to determine the change in memory usage
                                  ("true", "false")
     sketches_report_path -- folder to save the sketches report to
     """
@@ -106,7 +111,7 @@ class CompileSketches:
     latest_release_indicator = "latest"
 
     def __init__(self, cli_version, fqbn_arg, platforms, libraries, sketch_paths, verbose, github_token,
-                 enable_size_deltas_report, sketches_report_path):
+                 enable_deltas_report, sketches_report_path):
         """Process, store, and validate the action's inputs."""
         self.cli_version = cli_version
 
@@ -129,13 +134,13 @@ class CompileSketches:
         else:
             self.github_api = github.Github(login_or_token=github_token)
 
-        self.enable_size_deltas_report = parse_boolean_input(boolean_input=enable_size_deltas_report)
-        # The enable-size-deltas-report input has a default value so it should always be either True or False
-        if self.enable_size_deltas_report is None:
-            print("::error::Invalid value for enable-size-deltas-report input")
+        self.enable_deltas_report = parse_boolean_input(boolean_input=enable_deltas_report)
+        # The enable-deltas-report input has a default value so it should always be either True or False
+        if self.enable_deltas_report is None:
+            print("::error::Invalid value for enable-deltas-report input")
             sys.exit(1)
 
-        if self.enable_size_deltas_report:
+        if self.enable_deltas_report:
             self.deltas_base_ref = self.get_deltas_base_ref()
         else:
             # If deltas reports are not enabled, there is no use for the base ref and it could result in an GitHub API
@@ -882,7 +887,7 @@ class CompileSketches:
         """
         current_sizes = self.get_sizes_from_output(compilation_result=compilation_result)
         previous_sizes = None
-        if self.do_size_deltas_report(compilation_result=compilation_result, current_sizes=current_sizes):
+        if self.do_deltas_report(compilation_result=compilation_result, current_sizes=current_sizes):
             # Get data for the sketch at the base ref
             # Get the head ref
             repository = git.Repo(path=os.environ["GITHUB_WORKSPACE"])
@@ -1003,7 +1008,7 @@ class CompileSketches:
 
         return size_data
 
-    def do_size_deltas_report(self, compilation_result, current_sizes):
+    def do_deltas_report(self, compilation_result, current_sizes):
         """Return whether size deltas reporting is enabled.
 
         Keyword arguments:
@@ -1011,7 +1016,7 @@ class CompileSketches:
         current_sizes -- memory usage data from the compilation
         """
         return (
-            self.enable_size_deltas_report
+            self.enable_deltas_report
             and compilation_result.success
             and any(size.get(self.ReportKeys.absolute) != self.not_applicable_indicator for
                     size in current_sizes)
