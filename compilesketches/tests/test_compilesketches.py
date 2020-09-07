@@ -79,103 +79,156 @@ def test_directories_are_same():
     ) is False
 
 
-@pytest.mark.parametrize("use_size_report_sketch", [True, False])
-@pytest.mark.parametrize("use_enable_size_deltas_report, expected_enable_deltas_report",
-                         [(True, "FooEnableSizeDeltasReport"),
-                          (False, "FooEnableDeltasReport")])
-@pytest.mark.parametrize("use_size_deltas_report_folder_name, expected_sketches_report_path",
-                         [(True, "FooSizeDeltasReportFolderName"),
-                          (False, "FooSketchesReportPath")])
-@pytest.mark.parametrize("use_enable_size_trends_report", [True, False])
-def test_main(capsys,
-              monkeypatch,
-              mocker,
-              use_size_report_sketch,
-              use_enable_size_deltas_report,
-              expected_enable_deltas_report,
-              use_size_deltas_report_folder_name,
-              expected_sketches_report_path,
-              use_enable_size_trends_report):
-    cli_version = "1.0.0"
-    fqbn_arg = "foo:bar:baz"
-    platforms = "- name: FooVendor:BarArchitecture"
-    libraries = "foo libraries"
-    sketch_paths = "foo/Sketch bar/OtherSketch"
-    verbose = "true"
-    github_token = "FooGitHubToken"
-    enable_size_deltas_report = "FooEnableSizeDeltasReport"
-    enable_deltas_report = "FooEnableDeltasReport"
-    sketches_report_path = "FooSketchesReportPath"
-    size_deltas_report_folder_name = "FooSizeDeltasReportFolderName"
+@pytest.fixture
+def setup_action_inputs(monkeypatch):
+    class ActionInputs:
+        cli_version = "1.0.0"
+        fqbn_arg = "foo:bar:baz"
+        platforms = "- name: FooVendor:BarArchitecture"
+        libraries = "foo libraries"
+        sketch_paths = "foo/Sketch bar/OtherSketch"
+        verbose = "true"
+        github_token = "FooGitHubToken"
+        enable_size_deltas_report = "FooEnableSizeDeltasReport"
+        enable_deltas_report = "FooEnableDeltasReport"
+        sketches_report_path = "FooSketchesReportPath"
+        size_deltas_report_folder_name = "FooSizeDeltasReportFolderName"
 
+    monkeypatch.setenv("INPUT_CLI-VERSION", ActionInputs.cli_version)
+    monkeypatch.setenv("INPUT_FQBN", ActionInputs.fqbn_arg)
+    monkeypatch.setenv("INPUT_PLATFORMS", ActionInputs.platforms)
+    monkeypatch.setenv("INPUT_LIBRARIES", ActionInputs.libraries)
+    monkeypatch.setenv("INPUT_SKETCH-PATHS", ActionInputs.sketch_paths)
+    monkeypatch.setenv("INPUT_VERBOSE", ActionInputs.verbose)
+    monkeypatch.setenv("INPUT_GITHUB-TOKEN", ActionInputs.github_token)
+    monkeypatch.setenv("INPUT_ENABLE-DELTAS-REPORT", ActionInputs.enable_deltas_report)
+    monkeypatch.setenv("INPUT_SKETCHES-REPORT-PATH", ActionInputs.sketches_report_path)
+
+    return ActionInputs()
+
+
+@pytest.fixture
+def stub_compilesketches_object(mocker):
     class CompileSketches:
         def compile_sketches(self):
             pass  # pragma: no cover
 
-    monkeypatch.setenv("INPUT_CLI-VERSION", cli_version)
-    monkeypatch.setenv("INPUT_FQBN", fqbn_arg)
-    monkeypatch.setenv("INPUT_PLATFORMS", platforms)
-    monkeypatch.setenv("INPUT_LIBRARIES", libraries)
-    monkeypatch.setenv("INPUT_SKETCH-PATHS", sketch_paths)
-    monkeypatch.setenv("INPUT_GITHUB-TOKEN", github_token)
-    monkeypatch.setenv("INPUT_VERBOSE", verbose)
-    if use_size_report_sketch:
-        monkeypatch.setenv("INPUT_SIZE-REPORT-SKETCH", "foo")
-    if use_enable_size_deltas_report:
-        monkeypatch.setenv("INPUT_ENABLE-SIZE-DELTAS-REPORT", enable_size_deltas_report)
-    monkeypatch.setenv("INPUT_ENABLE-DELTAS-REPORT", enable_deltas_report)
-    monkeypatch.setenv("INPUT_SKETCHES-REPORT-PATH", sketches_report_path)
-    if use_size_deltas_report_folder_name:
-        monkeypatch.setenv("INPUT_SIZE-DELTAS-REPORT-FOLDER-NAME", size_deltas_report_folder_name)
-    if use_enable_size_trends_report:
-        monkeypatch.setenv("INPUT_ENABLE-SIZE-TRENDS-REPORT", "true")
-
     mocker.patch("compilesketches.CompileSketches", autospec=True, return_value=CompileSketches())
     mocker.patch.object(CompileSketches, "compile_sketches")
+
+
+@pytest.mark.parametrize("use_size_report_sketch", [True, False])
+def test_main_size_report_sketch_deprecation_warning(capsys, monkeypatch, setup_action_inputs,
+                                                     stub_compilesketches_object, use_size_report_sketch):
+    if use_size_report_sketch:
+        monkeypatch.setenv("INPUT_SIZE-REPORT-SKETCH", "foo")
 
     compilesketches.main()
 
     expected_output = ""
     if use_size_report_sketch:
         expected_output = "::warning::The size-report-sketch input is no longer used"
-    if use_size_deltas_report_folder_name:
-        if expected_output != "":
-            expected_output = expected_output + "\n"
-        expected_output = (
-            expected_output
-            + "::warning::The size-deltas-report-folder-name input is deprecated. Use the equivalent input: "
-              "sketches-report-path instead."
-        )
-    if use_enable_size_deltas_report:
-        if expected_output != "":
-            expected_output = expected_output + "\n"
-        expected_output = (
-            expected_output
-            + "::warning::The enable-size-deltas-report input is deprecated. Use the equivalent input: "
-              "enable-deltas-report instead."
-        )
+
+    assert capsys.readouterr().out.strip() == expected_output
+
+
+@pytest.mark.parametrize("use_enable_size_trends_report", [True, False])
+def test_main_enable_size_trends_report_deprecation_warning(capsys, monkeypatch, setup_action_inputs,
+                                                            stub_compilesketches_object, use_enable_size_trends_report):
     if use_enable_size_trends_report:
-        if expected_output != "":
-            expected_output = expected_output + "\n"
+        monkeypatch.setenv("INPUT_ENABLE-SIZE-TRENDS-REPORT", "true")
+
+    compilesketches.main()
+
+    expected_output = ""
+    if use_enable_size_trends_report:
         expected_output = (
             expected_output
             + "::warning::The size trends report feature has been moved to a dedicated action. See the "
               "documentation at "
               "https://github.com/arduino/actions/tree/report-size-trends-action/libraries/report-size-trends"
         )
+
     assert capsys.readouterr().out.strip() == expected_output
 
+
+@pytest.mark.parametrize("use_size_deltas_report_folder_name", [True, False])
+def test_main_size_deltas_report_folder_name_deprecation(capsys, monkeypatch, setup_action_inputs,
+                                                         stub_compilesketches_object,
+                                                         use_size_deltas_report_folder_name):
+    size_deltas_report_folder_name = "foo-size-deltas-report-folder-name"
+    if use_size_deltas_report_folder_name:
+        monkeypatch.setenv("INPUT_SIZE-DELTAS-REPORT-FOLDER-NAME", size_deltas_report_folder_name)
+
+    compilesketches.main()
+
+    expected_output = ""
+    if use_size_deltas_report_folder_name:
+        expected_output = (
+            expected_output
+            + "::warning::The size-deltas-report-folder-name input is deprecated. Use the equivalent input: "
+              "sketches-report-path instead."
+        )
+
+    assert capsys.readouterr().out.strip() == expected_output
+
+    if use_size_deltas_report_folder_name:
+        expected_sketches_report_path = size_deltas_report_folder_name
+    else:
+        expected_sketches_report_path = setup_action_inputs.sketches_report_path
+
+    assert os.environ["INPUT_SKETCHES-REPORT-PATH"] == expected_sketches_report_path
+
+
+@pytest.mark.parametrize("use_enable_size_deltas_report", [True, False])
+def test_main_enable_size_deltas_report_deprecation(capsys, monkeypatch, setup_action_inputs,
+                                                    stub_compilesketches_object, use_enable_size_deltas_report):
+    enable_size_deltas_report = "foo-enable-size-deltas-report"
+    if use_enable_size_deltas_report:
+        monkeypatch.setenv("INPUT_ENABLE-SIZE-DELTAS-REPORT", enable_size_deltas_report)
+
+    compilesketches.main()
+
+    expected_output = ""
+    if use_enable_size_deltas_report:
+        expected_output = (
+            expected_output
+            + "::warning::The enable-size-deltas-report input is deprecated. Use the equivalent input: "
+              "enable-deltas-report instead."
+        )
+
+    assert capsys.readouterr().out.strip() == expected_output
+
+    if use_enable_size_deltas_report:
+        expected_enable_deltas_report = enable_size_deltas_report
+    else:
+        expected_enable_deltas_report = setup_action_inputs.enable_deltas_report
+
+    assert os.environ["INPUT_ENABLE-DELTAS-REPORT"] == expected_enable_deltas_report
+
+
+def test_main(mocker, setup_action_inputs):
+    class CompileSketches:
+        def compile_sketches(self):
+            pass  # pragma: no cover
+
+    mocker.patch("compilesketches.CompileSketches", autospec=True, return_value=CompileSketches())
+    mocker.patch.object(CompileSketches, "compile_sketches")
+
+    compilesketches.main()
+
     compilesketches.CompileSketches.assert_called_once_with(
-        cli_version=cli_version,
-        fqbn_arg=fqbn_arg,
-        platforms=platforms,
-        libraries=libraries,
-        sketch_paths=sketch_paths,
-        verbose=verbose,
-        github_token=github_token,
-        enable_deltas_report=expected_enable_deltas_report,
-        sketches_report_path=expected_sketches_report_path
+        cli_version=setup_action_inputs.cli_version,
+        fqbn_arg=setup_action_inputs.fqbn_arg,
+        platforms=setup_action_inputs.platforms,
+        libraries=setup_action_inputs.libraries,
+        sketch_paths=setup_action_inputs.sketch_paths,
+        verbose=setup_action_inputs.verbose,
+        github_token=setup_action_inputs.github_token,
+        enable_deltas_report=setup_action_inputs.enable_deltas_report,
+        sketches_report_path=setup_action_inputs.sketches_report_path
     )
+
     CompileSketches.compile_sketches.assert_called_once()
 
 
