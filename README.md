@@ -118,7 +118,7 @@ GitHub access token used to get information from the GitHub API. Only needed for
 
 ### `enable-deltas-report`
 
-Set to `true` to cause the action to determine the change in memory usage of the compiled sketches. If the workflow is triggered by a `pull_request` event, the comparison is between the pull request branch and the tip of the pull request's base branch. If the workflow is triggered by a `push` event, the comparison is between the pushed commit and its immediate parent. This may be used with the [`arduino/actions/libraries/report-size-deltas` action](https://github.com/arduino/actions/tree/master/libraries/report-size-deltas). Default `false`.
+Set to `true` to cause the action to determine the change in memory usage and compiler warnings of the compiled sketches. If the workflow is triggered by a `pull_request` event, the comparison is between the pull request branch and the tip of the pull request's base branch. If the workflow is triggered by a `push` event, the comparison is between the pushed commit and its immediate parent. This may be used with the [`arduino/actions/libraries/report-size-deltas` action](https://github.com/arduino/actions/tree/master/libraries/report-size-deltas). Default `false`.
 
 ## Example usage
 
@@ -133,7 +133,7 @@ Only compiling examples:
         version: 1.1.3
 ```
 
-Storing the memory usage change report as a [workflow artifact](https://help.github.com/en/actions/configuring-and-managing-workflows/persisting-workflow-data-using-artifacts):
+Storing the sketches compilation report report as a [workflow artifact](https://help.github.com/en/actions/configuring-and-managing-workflows/persisting-workflow-data-using-artifacts):
 ```yaml
 - uses: arduino/actions/libraries/compile-examples@master
   with:

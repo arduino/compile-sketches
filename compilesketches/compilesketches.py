@@ -92,6 +92,7 @@ class CompileSketches:
         commit_url = "commit_url"
         compilation_success = "compilation_success"
         sizes = "sizes"
+        warnings = "warnings"
         name = "name"
         absolute = "absolute"
         relative = "relative"
@@ -886,8 +887,13 @@ class CompileSketches:
         compilation_result -- object returned by compile_sketch()
         """
         current_sizes = self.get_sizes_from_output(compilation_result=compilation_result)
+        current_warning_count = self.get_warning_count_from_output(compilation_result=compilation_result)
+
         previous_sizes = None
-        if self.do_deltas_report(compilation_result=compilation_result, current_sizes=current_sizes):
+        previous_warning_count = None
+        if self.do_deltas_report(compilation_result=compilation_result,
+                                 current_sizes=current_sizes,
+                                 current_warnings=current_warning_count):
             # Get data for the sketch at the base ref
             # Get the head ref
             repository = git.Repo(path=os.environ["GITHUB_WORKSPACE"])
@@ -904,13 +910,16 @@ class CompileSketches:
             repository.git.checkout(original_git_ref, recurse_submodules=True)
 
             previous_sizes = self.get_sizes_from_output(compilation_result=previous_compilation_result)
+            previous_warning_count = self.get_warning_count_from_output(compilation_result=previous_compilation_result)
 
         # Add global data for sketch to report
         sketch_report = {
             self.ReportKeys.name: str(path_relative_to_workspace(path=compilation_result.sketch)),
             self.ReportKeys.compilation_success: compilation_result.success,
             self.ReportKeys.sizes: self.get_sizes_report(current_sizes=current_sizes,
-                                                         previous_sizes=previous_sizes)
+                                                         previous_sizes=previous_sizes),
+            self.ReportKeys.warnings: self.get_warnings_report(current_warnings=current_warning_count,
+                                                               previous_warnings=previous_warning_count)
         }
 
         return sketch_report
@@ -1008,18 +1017,37 @@ class CompileSketches:
 
         return size_data
 
-    def do_deltas_report(self, compilation_result, current_sizes):
+    def get_warning_count_from_output(self, compilation_result):
+        """Parse the stdout from the compilation process and return the number of compiler warnings. Since the
+        information is likely not relevant in that case, "N/A" is returned if compilation failed.
+
+        Keyword arguments:
+        compilation_result -- object returned by compile_sketch()
+        """
+        if compilation_result.success is True:
+            compiler_warning_regex = ":[0-9]+:[0-9]+: warning:"
+            warning_count = len(re.findall(pattern=compiler_warning_regex, string=compilation_result.output))
+        else:
+            warning_count = self.not_applicable_indicator
+
+        return warning_count
+
+    def do_deltas_report(self, compilation_result, current_sizes, current_warnings):
         """Return whether size deltas reporting is enabled.
 
         Keyword arguments:
         compilation_result -- object returned by compile_sketch()
         current_sizes -- memory usage data from the compilation
+        current_warnings -- compiler warning count
         """
         return (
             self.enable_deltas_report
             and compilation_result.success
-            and any(size.get(self.ReportKeys.absolute) != self.not_applicable_indicator for
+            and (
+                any(size.get(self.ReportKeys.absolute) != self.not_applicable_indicator for
                     size in current_sizes)
+                or current_warnings != self.not_applicable_indicator
+            )
         )
 
     def checkout_deltas_base_ref(self):
@@ -1112,6 +1140,42 @@ class CompileSketches:
 
         return size_report
 
+    def get_warnings_report(self, current_warnings, previous_warnings):
+        """Return a dictionary containing the compiler warning counts.
+
+        Keyword arguments:
+        current_warnings -- compiler warning count at the head ref
+        previous_warnings -- compiler warning count at the base ref, or None if the size deltas feature is not enabled
+        """
+        warnings_report = {
+            self.ReportKeys.current: {
+                self.ReportKeys.absolute: current_warnings,
+            }
+        }
+
+        if previous_warnings is not None:
+            # Deltas reports are enabled
+            # Calculate the change in the warnings count
+            if (
+                current_warnings == self.not_applicable_indicator
+                or previous_warnings == self.not_applicable_indicator
+            ):
+                warnings_delta = self.not_applicable_indicator
+            else:
+                warnings_delta = current_warnings - previous_warnings
+
+            # Print the warning count change to the log
+            print("Change in compiler warning count:", warnings_delta)
+
+            warnings_report[self.ReportKeys.previous] = {
+                self.ReportKeys.absolute: previous_warnings
+            }
+            warnings_report[self.ReportKeys.delta] = {
+                self.ReportKeys.absolute: warnings_delta
+            }
+
+        return warnings_report
+
     def get_sketches_report(self, sketch_report_list):
         """Return the dictionary containing data on all sketch compilations for each board
 
@@ -1140,6 +1204,10 @@ class CompileSketches:
         sizes_summary_report = self.get_sizes_summary_report(sketch_report_list=sketch_report_list)
         if sizes_summary_report:
             sketches_report[self.ReportKeys.boards][0][self.ReportKeys.sizes] = sizes_summary_report
+
+        warnings_summary_report = self.get_warnings_summary_report(sketch_report_list=sketch_report_list)
+        if warnings_summary_report:
+            sketches_report[self.ReportKeys.boards][0][self.ReportKeys.warnings] = warnings_summary_report
 
         return sketches_report
 
@@ -1240,6 +1308,48 @@ class CompileSketches:
                                 )
 
         return sizes_summary_report
+
+    def get_warnings_summary_report(self, sketch_report_list):
+        """Return a dictionary containing a summary of the compilation warnings count for all sketch compilations.
+
+        Keyword arguments:
+        sketch_report_list -- list of reports from each sketch compilation
+        """
+        summary_report_minimum = None
+        summary_report_maximum = None
+        for sketch_report in sketch_report_list:
+            if self.ReportKeys.delta in sketch_report[self.ReportKeys.warnings]:
+                sketch_report_delta = (
+                    sketch_report[self.ReportKeys.warnings][self.ReportKeys.delta][self.ReportKeys.absolute]
+                )
+
+                if (
+                    summary_report_minimum is None
+                    or summary_report_minimum == self.not_applicable_indicator
+                    or summary_report_minimum > sketch_report_delta
+                ):
+                    summary_report_minimum = sketch_report_delta
+
+                if (
+                    summary_report_maximum is None
+                    or summary_report_maximum == self.not_applicable_indicator
+                    or summary_report_maximum < sketch_report_delta
+                ):
+                    summary_report_maximum = sketch_report_delta
+
+        if summary_report_minimum is not None:
+            warnings_summary_report = {
+                self.ReportKeys.delta: {
+                    self.ReportKeys.absolute: {
+                        self.ReportKeys.minimum: summary_report_minimum,
+                        self.ReportKeys.maximum: summary_report_maximum
+                    }
+                }
+            }
+        else:
+            warnings_summary_report = {}
+
+        return warnings_summary_report
 
     def create_sketches_report_file(self, sketches_report):
         """Write the report for the report sketch to a file.
