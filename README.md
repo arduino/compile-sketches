@@ -118,7 +118,11 @@ GitHub access token used to get information from the GitHub API. Only needed for
 
 ### `enable-deltas-report`
 
-Set to `true` to cause the action to determine the change in memory usage and compiler warnings of the compiled sketches. If the workflow is triggered by a `pull_request` event, the comparison is between the pull request branch and the tip of the pull request's base branch. If the workflow is triggered by a `push` event, the comparison is between the pushed commit and its immediate parent. This may be used with the [`arduino/actions/libraries/report-size-deltas` action](https://github.com/arduino/actions/tree/master/libraries/report-size-deltas). Default `false`.
+Set to `true` to cause the action to determine the change in memory usage and compiler warnings of the compiled sketches. If the workflow is triggered by a `pull_request` event, the comparison is between the pull request branch and the tip of the pull request's base branch. If the workflow is triggered by a `push` event, the comparison is between the pushed commit and its immediate parent. The deltas will be displayed in the GitHub Actions build log. This may be used with the [`arduino/actions/libraries/report-size-deltas` action](https://github.com/arduino/actions/tree/master/libraries/report-size-deltas). Default `false`.
+
+### `enable-warnings-report`
+
+Set to `true` to cause the action to record the compiler warning count for each sketch compilation in the sketches report. Default `false`.
 
 ## Example usage
 

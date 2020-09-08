@@ -46,6 +46,7 @@ def main():
         verbose=os.environ["INPUT_VERBOSE"],
         github_token=os.environ["INPUT_GITHUB-TOKEN"],
         enable_deltas_report=os.environ["INPUT_ENABLE-DELTAS-REPORT"],
+        enable_warnings_report=os.environ["INPUT_ENABLE-WARNINGS-REPORT"],
         sketches_report_path=os.environ["INPUT_SKETCHES-REPORT-PATH"]
     )
 
@@ -66,6 +67,8 @@ class CompileSketches:
     verbose -- set to "true" for verbose output ("true", "false")
     github_token -- GitHub access token
     enable_deltas_report -- set to "true" to cause the action to determine the change in memory usage
+                                 ("true", "false")
+    enable_warnings_report -- set to "true" to cause the action to add compiler warning count to the sketches report
                                  ("true", "false")
     sketches_report_path -- folder to save the sketches report to
     """
@@ -112,7 +115,7 @@ class CompileSketches:
     latest_release_indicator = "latest"
 
     def __init__(self, cli_version, fqbn_arg, platforms, libraries, sketch_paths, verbose, github_token,
-                 enable_deltas_report, sketches_report_path):
+                 enable_deltas_report, enable_warnings_report, sketches_report_path):
         """Process, store, and validate the action's inputs."""
         self.cli_version = cli_version
 
@@ -139,6 +142,12 @@ class CompileSketches:
         # The enable-deltas-report input has a default value so it should always be either True or False
         if self.enable_deltas_report is None:
             print("::error::Invalid value for enable-deltas-report input")
+            sys.exit(1)
+
+        self.enable_warnings_report = parse_boolean_input(boolean_input=enable_warnings_report)
+        # The enable-deltas-report input has a default value so it should always be either True or False
+        if self.enable_warnings_report is None:
+            print("::error::Invalid value for enable-warnings-report input")
             sys.exit(1)
 
         if self.enable_deltas_report:
@@ -191,7 +200,9 @@ class CompileSketches:
 
         sketch_list = self.find_sketches()
         for sketch in sketch_list:
-            compilation_result = self.compile_sketch(sketch_path=sketch)
+            # It's necessary to clear the cache between each compilation to get a true compiler warning count, otherwise
+            # only the first sketch compilation's warning count would reflect warnings from cached code
+            compilation_result = self.compile_sketch(sketch_path=sketch, clean_build_cache=self.enable_warnings_report)
             if not compilation_result.success:
                 all_compilations_successful = False
 
@@ -851,7 +862,7 @@ class CompileSketches:
 
         return sketch_list
 
-    def compile_sketch(self, sketch_path):
+    def compile_sketch(self, sketch_path, clean_build_cache):
         """Compile the specified sketch and returns an object containing the result:
         sketch -- the sketch path relative to the workspace
         success -- the success of the compilation (True, False)
@@ -859,8 +870,13 @@ class CompileSketches:
 
         Keyword arguments:
         sketch_path -- path of the sketch to compile
+        clean_build_cache -- whether to delete cached compiled from previous compilations before compiling
         """
         compilation_command = ["compile", "--warnings", "all", "--fqbn", self.fqbn, sketch_path]
+
+        if clean_build_cache:
+            for cache_path in pathlib.Path("/tmp").glob(pattern="arduino*"):
+                shutil.rmtree(path=cache_path)
 
         compilation_data = self.run_arduino_cli_command(
             command=compilation_command, enable_output=self.RunCommandOutput.NONE, exit_on_failure=False)
@@ -887,8 +903,10 @@ class CompileSketches:
         compilation_result -- object returned by compile_sketch()
         """
         current_sizes = self.get_sizes_from_output(compilation_result=compilation_result)
-        current_warning_count = self.get_warning_count_from_output(compilation_result=compilation_result)
-
+        if self.enable_warnings_report:
+            current_warning_count = self.get_warning_count_from_output(compilation_result=compilation_result)
+        else:
+            current_warning_count = None
         previous_sizes = None
         previous_warning_count = None
         if self.do_deltas_report(compilation_result=compilation_result,
@@ -904,13 +922,17 @@ class CompileSketches:
 
             # Compile the sketch again
             print("Compiling previous version of sketch to determine memory usage change")
-            previous_compilation_result = self.compile_sketch(sketch_path=compilation_result.sketch)
+            previous_compilation_result = self.compile_sketch(sketch_path=compilation_result.sketch,
+                                                              clean_build_cache=self.enable_warnings_report)
 
             # git checkout the head ref to return the repository to its previous state
             repository.git.checkout(original_git_ref, recurse_submodules=True)
 
             previous_sizes = self.get_sizes_from_output(compilation_result=previous_compilation_result)
-            previous_warning_count = self.get_warning_count_from_output(compilation_result=previous_compilation_result)
+            if self.enable_warnings_report:
+                previous_warning_count = (
+                    self.get_warning_count_from_output(compilation_result=previous_compilation_result)
+                )
 
         # Add global data for sketch to report
         sketch_report = {
@@ -918,9 +940,12 @@ class CompileSketches:
             self.ReportKeys.compilation_success: compilation_result.success,
             self.ReportKeys.sizes: self.get_sizes_report(current_sizes=current_sizes,
                                                          previous_sizes=previous_sizes),
-            self.ReportKeys.warnings: self.get_warnings_report(current_warnings=current_warning_count,
-                                                               previous_warnings=previous_warning_count)
         }
+        if self.enable_warnings_report:
+            sketch_report[self.ReportKeys.warnings] = (
+                self.get_warnings_report(current_warnings=current_warning_count,
+                                         previous_warnings=previous_warning_count)
+            )
 
         return sketch_report
 
@@ -1046,7 +1071,10 @@ class CompileSketches:
             and (
                 any(size.get(self.ReportKeys.absolute) != self.not_applicable_indicator for
                     size in current_sizes)
-                or current_warnings != self.not_applicable_indicator
+                or (
+                    current_warnings is not None
+                    and current_warnings != self.not_applicable_indicator
+                )
             )
         )
 
@@ -1318,7 +1346,10 @@ class CompileSketches:
         summary_report_minimum = None
         summary_report_maximum = None
         for sketch_report in sketch_report_list:
-            if self.ReportKeys.delta in sketch_report[self.ReportKeys.warnings]:
+            if (
+                self.ReportKeys.warnings in sketch_report
+                and self.ReportKeys.delta in sketch_report[self.ReportKeys.warnings]
+            ):
                 sketch_report_delta = (
                     sketch_report[self.ReportKeys.warnings][self.ReportKeys.delta][self.ReportKeys.absolute]
                 )

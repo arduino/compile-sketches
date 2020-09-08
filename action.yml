@@ -28,6 +28,10 @@ inputs:
   enable-deltas-report:
     description: 'Set to true to cause the action to determine the change in memory usage and compiler warnings of the compiled sketches between the head and base refs of a PR and the immediate parent commit of a push'
     default: false
+  enable-warnings-report:
+    description: 'Set to true to cause the action to record the compiler warning count for each sketch compilation in the sketches report'
+    default: false
+
 runs:
   using: 'docker'
   image: 'Dockerfile'
