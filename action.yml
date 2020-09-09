@@ -1,4 +1,4 @@
-name: 'Arduino Libraries - Compile Examples'
+name: 'Compile Arduino Sketches'
 description: 'Compiles all the examples included in the library'
 inputs:
   cli-version:
