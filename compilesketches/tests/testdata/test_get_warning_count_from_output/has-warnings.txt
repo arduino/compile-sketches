@@ -1,0 +1,324 @@
+In file included from /github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/PropertyContainer.h:25:0,
+                 from /github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/CBORDecoder.h:29,
+                 from /github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.h:32,
+                 from /tmp/arduino-sketch-0CD64181F5310E3579165DCB549C8EEE/sketch/thingProperties.h:1,
+                 from /github/workspace/examples/ArduinoIoTCloud-Advanced/ArduinoIoTCloud-Advanced.ino:14:
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/types/automation/CloudTelevision.h: In member function 'virtual void CloudTelevision::setAttributesFromCloud()':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/types/automation/CloudTelevision.h:229:39: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+       setAttribute((int&)_cloud_value.pbc);
+                                       ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/Property.h:45:42: note: in definition of macro 'setAttribute'
+ #define setAttribute(x) setAttributeReal(x, getAttributeName(#x, '.'))
+                                          ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/types/automation/CloudTelevision.h:230:39: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+       setAttribute((int&)_cloud_value.inp);
+                                       ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/Property.h:45:42: note: in definition of macro 'setAttribute'
+ #define setAttribute(x) setAttributeReal(x, getAttributeName(#x, '.'))
+                                          ^
+In file included from /tmp/arduino-sketch-0CD64181F5310E3579165DCB549C8EEE/sketch/thingProperties.h:1:0,
+                 from /github/workspace/examples/ArduinoIoTCloud-Advanced/ArduinoIoTCloud-Advanced.ino:14:
+/tmp/arduino-sketch-0CD64181F5310E3579165DCB549C8EEE/sketch/thingProperties.h: In function 'void initProperties()':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.h:100:64: warning: 'void ArduinoIoTCloudClass::addPropertyReal(bool&, String, permissionType, long int, void (*)(), float, void (*)(Property&))' is deprecated: Use addProperty(property, Permission::ReadWrite) instead. [-Wdeprecated-declarations]
+ #define addProperty( v, ...) addPropertyReal(v, #v, __VA_ARGS__)
+                                                                ^
+/tmp/arduino-sketch-0CD64181F5310E3579165DCB549C8EEE/sketch/thingProperties.h:21:16: note: in expansion of macro 'addProperty'
+   ArduinoCloud.addProperty(switchButton, WRITE, ON_CHANGE, onSwitchButtonChange);
+                ^~~~~~~~~~~
+In file included from /tmp/arduino-sketch-0CD64181F5310E3579165DCB549C8EEE/sketch/thingProperties.h:1:0,
+                 from /github/workspace/examples/ArduinoIoTCloud-Advanced/ArduinoIoTCloud-Advanced.ino:14:
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.h:107:10: note: declared here
+     void addPropertyReal(bool& property, String name, permissionType permission_type = READWRITE, long seconds = ON_CHANGE, void(*fn)(void) = NULL, float minDelta = 0.0f, void(*synFn)(Property & property) = CLOUD_WINS) __attribute__((deprecated("Use addProperty(property, Permission::ReadWrite) instead.")));
+          ^~~~~~~~~~~~~~~
+In file included from /tmp/arduino-sketch-0CD64181F5310E3579165DCB549C8EEE/sketch/thingProperties.h:1:0,
+                 from /github/workspace/examples/ArduinoIoTCloud-Advanced/ArduinoIoTCloud-Advanced.ino:14:
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.h:100:64: warning: 'void ArduinoIoTCloudClass::addPropertyReal(Property&, String, permissionType, long int, void (*)(), float, void (*)(Property&))' is deprecated: Use addProperty(property, Permission::ReadWrite) instead. [-Wdeprecated-declarations]
+ #define addProperty( v, ...) addPropertyReal(v, #v, __VA_ARGS__)
+                                                                ^
+/tmp/arduino-sketch-0CD64181F5310E3579165DCB549C8EEE/sketch/thingProperties.h:22:16: note: in expansion of macro 'addProperty'
+   ArduinoCloud.addProperty(location, READ, ON_CHANGE);
+                ^~~~~~~~~~~
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.h:106:10: note: declared here
+     void addPropertyReal(Property& property, String name, permissionType permission_type = READWRITE, long seconds = ON_CHANGE, void(*fn)(void) = NULL, float minDelta = 0.0f, void(*synFn)(Property & property) = CLOUD_WINS) __attribute__((deprecated("Use addProperty(property, Permission::ReadWrite) instead.")));
+          ^~~~~~~~~~~~~~~
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.h:100:64: warning: 'void ArduinoIoTCloudClass::addPropertyReal(Property&, String, permissionType, long int, void (*)(), float, void (*)(Property&))' is deprecated: Use addProperty(property, Permission::ReadWrite) instead. [-Wdeprecated-declarations]
+ #define addProperty( v, ...) addPropertyReal(v, #v, __VA_ARGS__)
+                                                                ^
+/tmp/arduino-sketch-0CD64181F5310E3579165DCB549C8EEE/sketch/thingProperties.h:23:16: note: in expansion of macro 'addProperty'
+   ArduinoCloud.addProperty(color, READWRITE, ON_CHANGE, onColorChange);
+                ^~~~~~~~~~~
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.h:106:10: note: declared here
+     void addPropertyReal(Property& property, String name, permissionType permission_type = READWRITE, long seconds = ON_CHANGE, void(*fn)(void) = NULL, float minDelta = 0.0f, void(*synFn)(Property & property) = CLOUD_WINS) __attribute__((deprecated("Use addProperty(property, Permission::ReadWrite) instead.")));
+          ^~~~~~~~~~~~~~~
+In file included from /github/home/Arduino/libraries/Arduino_ConnectionHandler/src/Arduino_ConnectionHandler.cpp:22:0:
+/github/home/Arduino/libraries/Arduino_ConnectionHandler/src/Arduino_ConnectionHandler.h: In constructor 'ConnectionHandler::ConnectionHandler(bool)':
+/github/home/Arduino/libraries/Arduino_ConnectionHandler/src/Arduino_ConnectionHandler.h:209:28: warning: 'ConnectionHandler::_current_net_connection_state' will be initialized after [-Wreorder]
+     NetworkConnectionState _current_net_connection_state;
+                            ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/github/home/Arduino/libraries/Arduino_ConnectionHandler/src/Arduino_ConnectionHandler.h:208:19: warning:   'long unsigned int ConnectionHandler::_lastConnectionTickTime' [-Wreorder]
+     unsigned long _lastConnectionTickTime;
+                   ^~~~~~~~~~~~~~~~~~~~~~~
+/github/home/Arduino/libraries/Arduino_ConnectionHandler/src/Arduino_ConnectionHandler.cpp:28:1: warning:   when initialized here [-Wreorder]
+ ConnectionHandler::ConnectionHandler(bool const keep_alive)
+ ^~~~~~~~~~~~~~~~~
+In file included from /github/home/Arduino/libraries/Arduino_ConnectionHandler/src/Arduino_ConnectionHandler.h:22:0,
+                 from /github/home/Arduino/libraries/Arduino_ConnectionHandler/src/Arduino_WiFiConnectionHandler.h:25,
+                 from /github/home/Arduino/libraries/Arduino_ConnectionHandler/src/Arduino_WiFiConnectionHandler.cpp:22:
+/github/home/Arduino/libraries/Arduino_ConnectionHandler/src/Arduino_WiFiConnectionHandler.cpp: In member function 'virtual NetworkConnectionState WiFiConnectionHandler::update_handleInit()':
+/github/home/Arduino/libraries/WiFi101/src/WiFi101.h:24:38: warning: comparison with string literal results in unspecified behavior [-Waddress]
+ #define WIFI_FIRMWARE_LATEST_MODEL_B "19.6.1"
+                                      ^
+/github/home/Arduino/libraries/WiFi101/src/WiFi101.h:27:32: note: in expansion of macro 'WIFI_FIRMWARE_LATEST_MODEL_B'
+ #define WIFI_FIRMWARE_REQUIRED WIFI_FIRMWARE_LATEST_MODEL_B
+                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/github/home/Arduino/libraries/Arduino_ConnectionHandler/src/Arduino_ConnectionHandler.h:29:42: note: in expansion of macro 'WIFI_FIRMWARE_REQUIRED'
+   #define WIFI_FIRMWARE_VERSION_REQUIRED WIFI_FIRMWARE_REQUIRED
+                                          ^~~~~~~~~~~~~~~~~~~~~~
+/github/home/Arduino/libraries/Arduino_ConnectionHandler/src/Arduino_WiFiConnectionHandler.cpp:69:32: note: in expansion of macro 'WIFI_FIRMWARE_VERSION_REQUIRED'
+   if (WiFi.firmwareVersion() < WIFI_FIRMWARE_VERSION_REQUIRED)
+                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /github/home/.arduino15/packages/arduino/tools/CMSIS-Atmel/1.2.0/CMSIS/Device/ATMEL/samd21/include/samd21.h:69:0,
+                 from /github/home/.arduino15/packages/arduino/tools/CMSIS-Atmel/1.2.0/CMSIS/Device/ATMEL/samd.h:105,
+                 from /github/home/.arduino15/packages/arduino/tools/CMSIS-Atmel/1.2.0/CMSIS/Device/ATMEL/sam.h:540,
+                 from /github/home/.arduino15/packages/arduino/hardware/samd/1.8.8/cores/arduino/Arduino.h:48,
+                 from /github/home/Arduino/libraries/WiFi101/src/utility/WiFiSocket.h:28,
+                 from /github/home/Arduino/libraries/WiFi101/src/WiFi.cpp:36:
+/github/home/.arduino15/packages/arduino/tools/CMSIS-Atmel/1.2.0/CMSIS/Device/ATMEL/samd21/include/samd21g18a.h:226:0: warning: "LITTLE_ENDIAN" redefined
+ #define LITTLE_ENDIAN          1
+ 
+In file included from /github/home/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/arm-none-eabi/include/sys/types.h:67:0,
+                 from /github/home/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/arm-none-eabi/include/time.h:28,
+                 from /github/home/Arduino/libraries/WiFi101/src/WiFi.cpp:28:
+/github/home/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/arm-none-eabi/include/machine/endian.h:17:0: note: this is the location of the previous definition
+ #define LITTLE_ENDIAN _LITTLE_ENDIAN
+ 
+/github/home/Arduino/libraries/WiFi101/src/WiFi.cpp: In member function 'char* WiFiClass::firmwareVersion()':
+/github/home/Arduino/libraries/WiFi101/src/WiFi.cpp:343:7: warning: '%d' directive writing between 1 and 3 bytes into a region of size between 1 and 5 [-Wformat-overflow=]
+ char* WiFiClass::firmwareVersion()
+       ^~~~~~~~~
+/github/home/Arduino/libraries/WiFi101/src/WiFi.cpp:343:7: note: directive argument in the range [0, 255]
+/github/home/Arduino/libraries/WiFi101/src/WiFi.cpp:356:10: note: 'sprintf' output between 6 and 12 bytes into a destination of size 9
+   sprintf(_version, "%d.%d.%d", rev.u8FirmwareMajor, rev.u8FirmwareMinor, rev.u8FirmwarePatch);
+   ~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/github/home/Arduino/libraries/Arduino_DebugUtils/src/Arduino_DebugUtils.cpp: In member function 'void Arduino_DebugUtils::print(int, const __FlashStringHelper*, ...)':
+/github/home/Arduino/libraries/Arduino_DebugUtils/src/Arduino_DebugUtils.cpp:86:3: warning: second parameter of 'va_start' not last named argument [-Wvarargs]
+   va_start(args, fmt_str.c_str());
+   ^~~~~~~~
+In file included from /github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/PropertyContainer.h:25:0,
+                 from /github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/CBORDecoder.h:29,
+                 from /github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.h:32,
+                 from /github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp:22:
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/types/automation/CloudTelevision.h: In member function 'virtual void CloudTelevision::setAttributesFromCloud()':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/types/automation/CloudTelevision.h:229:39: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+       setAttribute((int&)_cloud_value.pbc);
+                                       ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/Property.h:45:42: note: in definition of macro 'setAttribute'
+ #define setAttribute(x) setAttributeReal(x, getAttributeName(#x, '.'))
+                                          ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/types/automation/CloudTelevision.h:230:39: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+       setAttribute((int&)_cloud_value.inp);
+                                       ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/Property.h:45:42: note: in definition of macro 'setAttribute'
+ #define setAttribute(x) setAttributeReal(x, getAttributeName(#x, '.'))
+                                          ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp: In member function 'void ArduinoIoTCloudClass::addPropertyReal(Property&, String, permissionType, long int, void (*)(), float, void (*)(Property&))':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp:52:84: warning: 'void ArduinoIoTCloudClass::addPropertyReal(Property&, String, int, permissionType, long int, void (*)(), float, void (*)(Property&))' is deprecated: Use addProperty(property, Permission::ReadWrite) instead. [-Wdeprecated-declarations]
+   addPropertyReal(property, name, -1, permission_type, seconds, fn, minDelta, synFn);
+                                                                                    ^
+In file included from /github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp:22:0:
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.h:124:10: note: declared here
+     void addPropertyReal(Property& property, String name, int tag, permissionType permission_type = READWRITE, long seconds = ON_CHANGE, void(*fn)(void) = NULL, float minDelta = 0.0f, void(*synFn)(Property & property) = CLOUD_WINS) __attribute__((deprecated("Use addProperty(property, Permission::ReadWrite) instead.")));
+          ^~~~~~~~~~~~~~~
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp: In member function 'void ArduinoIoTCloudClass::addPropertyReal(bool&, String, permissionType, long int, void (*)(), float, void (*)(Property&))':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp:85:84: warning: 'void ArduinoIoTCloudClass::addPropertyReal(bool&, String, int, permissionType, long int, void (*)(), float, void (*)(Property&))' is deprecated: Use addProperty(property, Permission::ReadWrite) instead. [-Wdeprecated-declarations]
+   addPropertyReal(property, name, -1, permission_type, seconds, fn, minDelta, synFn);
+                                                                                    ^
+In file included from /github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp:22:0:
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.h:125:10: note: declared here
+     void addPropertyReal(bool& property, String name, int tag, permissionType permission_type = READWRITE, long seconds = ON_CHANGE, void(*fn)(void) = NULL, float minDelta = 0.0f, void(*synFn)(Property & property) = CLOUD_WINS) __attribute__((deprecated("Use addProperty(property, Permission::ReadWrite) instead.")));
+          ^~~~~~~~~~~~~~~
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp: In member function 'void ArduinoIoTCloudClass::addPropertyReal(bool&, String, int, permissionType, long int, void (*)(), float, void (*)(Property&))':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp:91:79: warning: 'void ArduinoIoTCloudClass::addPropertyReal(Property&, String, int, permissionType, long int, void (*)(), float, void (*)(Property&))' is deprecated: Use addProperty(property, Permission::ReadWrite) instead. [-Wdeprecated-declarations]
+   addPropertyReal(*p, name, tag, permission_type, seconds, fn, minDelta, synFn);
+                                                                               ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp:55:6: note: declared here
+ void ArduinoIoTCloudClass::addPropertyReal(Property& property, String name, int tag, permissionType permission_type, long seconds, void(*fn)(void), float minDelta, void(*synFn)(Property & property))
+      ^~~~~~~~~~~~~~~~~~~~
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp: In member function 'void ArduinoIoTCloudClass::addPropertyReal(float&, String, permissionType, long int, void (*)(), float, void (*)(Property&))':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp:107:84: warning: 'void ArduinoIoTCloudClass::addPropertyReal(float&, String, int, permissionType, long int, void (*)(), float, void (*)(Property&))' is deprecated: Use addProperty(property, Permission::ReadWrite) instead. [-Wdeprecated-declarations]
+   addPropertyReal(property, name, -1, permission_type, seconds, fn, minDelta, synFn);
+                                                                                    ^
+In file included from /github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp:22:0:
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.h:126:10: note: declared here
+     void addPropertyReal(float& property, String name, int tag, permissionType permission_type = READWRITE, long seconds = ON_CHANGE, void(*fn)(void) = NULL, float minDelta = 0.0f, void(*synFn)(Property & property) = CLOUD_WINS) __attribute__((deprecated("Use addProperty(property, Permission::ReadWrite) instead.")));
+          ^~~~~~~~~~~~~~~
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp: In member function 'void ArduinoIoTCloudClass::addPropertyReal(float&, String, int, permissionType, long int, void (*)(), float, void (*)(Property&))':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp:113:79: warning: 'void ArduinoIoTCloudClass::addPropertyReal(Property&, String, int, permissionType, long int, void (*)(), float, void (*)(Property&))' is deprecated: Use addProperty(property, Permission::ReadWrite) instead. [-Wdeprecated-declarations]
+   addPropertyReal(*p, name, tag, permission_type, seconds, fn, minDelta, synFn);
+                                                                               ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp:55:6: note: declared here
+ void ArduinoIoTCloudClass::addPropertyReal(Property& property, String name, int tag, permissionType permission_type, long seconds, void(*fn)(void), float minDelta, void(*synFn)(Property & property))
+      ^~~~~~~~~~~~~~~~~~~~
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp: In member function 'void ArduinoIoTCloudClass::addPropertyReal(int&, String, permissionType, long int, void (*)(), float, void (*)(Property&))':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp:129:84: warning: 'void ArduinoIoTCloudClass::addPropertyReal(int&, String, int, permissionType, long int, void (*)(), float, void (*)(Property&))' is deprecated: Use addProperty(property, Permission::ReadWrite) instead. [-Wdeprecated-declarations]
+   addPropertyReal(property, name, -1, permission_type, seconds, fn, minDelta, synFn);
+                                                                                    ^
+In file included from /github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp:22:0:
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.h:127:10: note: declared here
+     void addPropertyReal(int& property, String name, int tag, permissionType permission_type = READWRITE, long seconds = ON_CHANGE, void(*fn)(void) = NULL, float minDelta = 0.0, void(*synFn)(Property & property) = CLOUD_WINS) __attribute__((deprecated("Use addProperty(property, Permission::ReadWrite) instead.")));
+          ^~~~~~~~~~~~~~~
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp: In member function 'void ArduinoIoTCloudClass::addPropertyReal(int&, String, int, permissionType, long int, void (*)(), float, void (*)(Property&))':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp:135:79: warning: 'void ArduinoIoTCloudClass::addPropertyReal(Property&, String, int, permissionType, long int, void (*)(), float, void (*)(Property&))' is deprecated: Use addProperty(property, Permission::ReadWrite) instead. [-Wdeprecated-declarations]
+   addPropertyReal(*p, name, tag, permission_type, seconds, fn, minDelta, synFn);
+                                                                               ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp:55:6: note: declared here
+ void ArduinoIoTCloudClass::addPropertyReal(Property& property, String name, int tag, permissionType permission_type, long seconds, void(*fn)(void), float minDelta, void(*synFn)(Property & property))
+      ^~~~~~~~~~~~~~~~~~~~
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp: In member function 'void ArduinoIoTCloudClass::addPropertyReal(String&, String, permissionType, long int, void (*)(), float, void (*)(Property&))':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp:151:84: warning: 'void ArduinoIoTCloudClass::addPropertyReal(String&, String, int, permissionType, long int, void (*)(), float, void (*)(Property&))' is deprecated: Use addProperty(property, Permission::ReadWrite) instead. [-Wdeprecated-declarations]
+   addPropertyReal(property, name, -1, permission_type, seconds, fn, minDelta, synFn);
+                                                                                    ^
+In file included from /github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp:22:0:
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.h:128:10: note: declared here
+     void addPropertyReal(String& property, String name, int tag, permissionType permission_type = READWRITE, long seconds = ON_CHANGE, void(*fn)(void) = NULL, float minDelta = 0.0f, void(*synFn)(Property & property) = CLOUD_WINS) __attribute__((deprecated("Use addProperty(property, Permission::ReadWrite) instead.")));
+          ^~~~~~~~~~~~~~~
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp: In member function 'void ArduinoIoTCloudClass::addPropertyReal(String&, String, int, permissionType, long int, void (*)(), float, void (*)(Property&))':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp:157:79: warning: 'void ArduinoIoTCloudClass::addPropertyReal(Property&, String, int, permissionType, long int, void (*)(), float, void (*)(Property&))' is deprecated: Use addProperty(property, Permission::ReadWrite) instead. [-Wdeprecated-declarations]
+   addPropertyReal(*p, name, tag, permission_type, seconds, fn, minDelta, synFn);
+                                                                               ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.cpp:55:6: note: declared here
+ void ArduinoIoTCloudClass::addPropertyReal(Property& property, String name, int tag, permissionType permission_type, long seconds, void(*fn)(void), float minDelta, void(*synFn)(Property & property))
+      ^~~~~~~~~~~~~~~~~~~~
+In file included from /github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/PropertyContainer.h:25:0,
+                 from /github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/CBORDecoder.h:29,
+                 from /github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloud.h:32,
+                 from /github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloudTCP.h:27,
+                 from /github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloudTCP.cpp:25:
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/types/automation/CloudTelevision.h: In member function 'virtual void CloudTelevision::setAttributesFromCloud()':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/types/automation/CloudTelevision.h:229:39: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+       setAttribute((int&)_cloud_value.pbc);
+                                       ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/Property.h:45:42: note: in definition of macro 'setAttribute'
+ #define setAttribute(x) setAttributeReal(x, getAttributeName(#x, '.'))
+                                          ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/types/automation/CloudTelevision.h:230:39: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+       setAttribute((int&)_cloud_value.inp);
+                                       ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/Property.h:45:42: note: in definition of macro 'setAttribute'
+ #define setAttribute(x) setAttributeReal(x, getAttributeName(#x, '.'))
+                                          ^
+In file included from /github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloudTCP.cpp:28:0:
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/tls/utility/CryptoUtil.h: In copy constructor 'CryptoUtil::CryptoUtil(const CryptoUtil&)':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/tls/utility/CryptoUtil.h:60:33: warning: unused parameter 'other' [-Wunused-parameter]
+   CryptoUtil(CryptoUtil const & other) { }
+                                 ^~~~~
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloudTCP.cpp: In member function 'ArduinoIoTCloudTCP::State ArduinoIoTCloudTCP::handle_SyncTime()':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/ArduinoIoTCloudTCP.cpp:208:23: warning: unused variable 'internal_posix_time' [-Wunused-variable]
+   unsigned long const internal_posix_time = _time_service.getTime();
+                       ^~~~~~~~~~~~~~~~~~~
+In file included from /github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/PropertyContainer.h:25:0,
+                 from /github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/CBOREncoder.h:25,
+                 from /github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/CBOREncoder.cpp:22:
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/types/automation/CloudTelevision.h: In member function 'virtual void CloudTelevision::setAttributesFromCloud()':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/types/automation/CloudTelevision.h:229:39: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+       setAttribute((int&)_cloud_value.pbc);
+                                       ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/Property.h:45:42: note: in definition of macro 'setAttribute'
+ #define setAttribute(x) setAttributeReal(x, getAttributeName(#x, '.'))
+                                          ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/types/automation/CloudTelevision.h:230:39: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+       setAttribute((int&)_cloud_value.inp);
+                                       ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/Property.h:45:42: note: in definition of macro 'setAttribute'
+ #define setAttribute(x) setAttributeReal(x, getAttributeName(#x, '.'))
+                                          ^
+In file included from /github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/PropertyContainer.h:25:0,
+                 from /github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/CBORDecoder.h:29,
+                 from /github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/CBORDecoder.cpp:28:
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/types/automation/CloudTelevision.h: In member function 'virtual void CloudTelevision::setAttributesFromCloud()':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/types/automation/CloudTelevision.h:229:39: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+       setAttribute((int&)_cloud_value.pbc);
+                                       ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/Property.h:45:42: note: in definition of macro 'setAttribute'
+ #define setAttribute(x) setAttributeReal(x, getAttributeName(#x, '.'))
+                                          ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/types/automation/CloudTelevision.h:230:39: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+       setAttribute((int&)_cloud_value.inp);
+                                       ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/../property/Property.h:45:42: note: in definition of macro 'setAttribute'
+ #define setAttribute(x) setAttributeReal(x, getAttributeName(#x, '.'))
+                                          ^
+/github/home/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/arm-none-eabi/include/stdio.h: In function 'open_memstream':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/lib/tinycbor/src/open_memstream.c:108:1: warning: control reaches end of non-void function [-Wreturn-type]
+ }
+ ^
+At top level:
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/lib/tinycbor/src/open_memstream.c:77:12: warning: 'close_buffer' defined but not used [-Wunused-function]
+ static int close_buffer(void *cookie)
+            ^~~~~~~~~~~~
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/cbor/lib/tinycbor/src/open_memstream.c:52:16: warning: 'write_to_buffer' defined but not used [-Wunused-function]
+ static RetType write_to_buffer(void *cookie, const char *data, LenType len)
+                ^~~~~~~~~~~~~~~
+In file included from /github/home/Arduino/libraries/ArduinoIoTCloud/src/property/PropertyContainer.h:25:0,
+                 from /github/home/Arduino/libraries/ArduinoIoTCloud/src/property/PropertyContainer.cpp:22:
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/property/types/automation/CloudTelevision.h: In member function 'virtual void CloudTelevision::setAttributesFromCloud()':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/property/types/automation/CloudTelevision.h:229:39: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+       setAttribute((int&)_cloud_value.pbc);
+                                       ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/property/Property.h:45:42: note: in definition of macro 'setAttribute'
+ #define setAttribute(x) setAttributeReal(x, getAttributeName(#x, '.'))
+                                          ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/property/types/automation/CloudTelevision.h:230:39: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+       setAttribute((int&)_cloud_value.inp);
+                                       ^
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/property/Property.h:45:42: note: in definition of macro 'setAttribute'
+ #define setAttribute(x) setAttributeReal(x, getAttributeName(#x, '.'))
+                                          ^
+In file included from /github/home/Arduino/libraries/ArduinoIoTCloud/src/tls/BearSSLClient.cpp:35:0:
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/tls/BearSSLClient.h: In constructor 'BearSSLClient::BearSSLClient(Client*, const br_x509_trust_anchor*, int, GetTimeCallbackFunc)':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/tls/BearSSLClient.h:95:8: warning: 'BearSSLClient::_noSNI' will be initialized after [-Wreorder]
+   bool _noSNI;
+        ^~~~~~
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/tls/BearSSLClient.h:93:23: warning:   'long unsigned int (* BearSSLClient::_get_time_func)()' [-Wreorder]
+   GetTimeCallbackFunc _get_time_func;
+                       ^~~~~~~~~~~~~~
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/tls/BearSSLClient.cpp:39:1: warning:   when initialized here [-Wreorder]
+ BearSSLClient::BearSSLClient(Client* client, const br_x509_trust_anchor* myTAs, int myNumTAs, GetTimeCallbackFunc func) :
+ ^~~~~~~~~~~~~
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/tls/profile/aiotc_profile.c: In function 'aiotc_client_profile_init':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/tls/profile/aiotc_profile.c:54:7: warning: unused variable 'id' [-Wunused-variable]
+   int id;
+       ^~
+In file included from /github/home/Arduino/libraries/ArduinoIoTCloud/src/tls/utility/CryptoUtil.cpp:22:0:
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/tls/utility/CryptoUtil.h: In copy constructor 'CryptoUtil::CryptoUtil(const CryptoUtil&)':
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/tls/utility/CryptoUtil.h:60:33: warning: unused parameter 'other' [-Wunused-parameter]
+   CryptoUtil(CryptoUtil const & other) { }
+                                 ^~~~~
+In file included from /github/home/Arduino/libraries/ArduinoIoTCloud/src/utility/time/NTPUtils.cpp:25:0:
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/utility/time/NTPUtils.h:57:53: warning: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+   static char constexpr *    NTP_TIME_SERVER      = "time.arduino.cc";
+                                                     ^~~~~~~~~~~~~~~~~
+In file included from /github/home/Arduino/libraries/ArduinoIoTCloud/src/utility/time/TimeService.cpp:26:0:
+/github/home/Arduino/libraries/ArduinoIoTCloud/src/utility/time/NTPUtils.h:57:53: warning: ISO C++ forbids converting a string constant to 'char*' [-Wwrite-strings]
+   static char constexpr *    NTP_TIME_SERVER      = "time.arduino.cc";
+                                                     ^~~~~~~~~~~~~~~~~
+In file included from /github/home/.arduino15/packages/arduino/tools/CMSIS-Atmel/1.2.0/CMSIS/Device/ATMEL/samd21/include/samd21.h:69:0,
+                 from /github/home/.arduino15/packages/arduino/tools/CMSIS-Atmel/1.2.0/CMSIS/Device/ATMEL/samd.h:105,
+                 from /github/home/.arduino15/packages/arduino/tools/CMSIS-Atmel/1.2.0/CMSIS/Device/ATMEL/sam.h:540,
+                 from /github/home/.arduino15/packages/arduino/hardware/samd/1.8.8/cores/arduino/Arduino.h:48,
+                 from /github/home/Arduino/libraries/RTCZero/src/RTCZero.h:23,
+                 from /github/home/Arduino/libraries/RTCZero/src/RTCZero.cpp:22:
+/github/home/.arduino15/packages/arduino/tools/CMSIS-Atmel/1.2.0/CMSIS/Device/ATMEL/samd21/include/samd21g18a.h:226:0: warning: "LITTLE_ENDIAN" redefined
+ #define LITTLE_ENDIAN          1
+ 
+In file included from /github/home/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/arm-none-eabi/include/sys/types.h:67:0,
+                 from /github/home/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/arm-none-eabi/include/time.h:28,
+                 from /github/home/Arduino/libraries/RTCZero/src/RTCZero.cpp:20:
+/github/home/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/arm-none-eabi/include/machine/endian.h:17:0: note: this is the location of the previous definition
+ #define LITTLE_ENDIAN _LITTLE_ENDIAN
+ 
+/github/home/Arduino/libraries/RTCZero/src/RTCZero.cpp: In member function 'void RTCZero::begin(bool)':
+/github/home/Arduino/libraries/RTCZero/src/RTCZero.cpp:96:26: warning: 'oldTime.RTC_MODE2_CLOCK_Type::reg' may be used uninitialized in this function [-Wmaybe-uninitialized]
+     RTC->MODE2.CLOCK.reg = oldTime.reg;
+Sketch uses 134184 bytes (51%) of program storage space. Maximum is 262144 bytes.
+Global variables use 23208 bytes (70%) of dynamic memory, leaving 9560 bytes for local variables. Maximum is 32768 bytes.

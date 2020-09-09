@@ -114,11 +114,15 @@ Path in which to save a JSON formatted file containing data from the sketch comp
 
 ### `github-token`
 
-GitHub access token used to get information from the GitHub API. Only needed for private repositories with `enable-size-deltas-report` set to `true`. It will be convenient to use [`${{ secrets.GITHUB_TOKEN }}`](https://help.github.com/en/actions/configuring-and-managing-workflows/authenticating-with-the-github_token). Default `""`.
+GitHub access token used to get information from the GitHub API. Only needed for private repositories with `enable-deltas-report` set to `true`. It will be convenient to use [`${{ secrets.GITHUB_TOKEN }}`](https://help.github.com/en/actions/configuring-and-managing-workflows/authenticating-with-the-github_token). Default `""`.
 
-### `enable-size-deltas-report`
+### `enable-deltas-report`
 
-Set to `true` to cause the action to determine the change in memory usage of the compiled sketches. If the workflow is triggered by a `pull_request` event, the comparison is between the pull request branch and the tip of the pull request's base branch. If the workflow is triggered by a `push` event, the comparison is between the pushed commit and its immediate parent. This may be used with the [`arduino/actions/libraries/report-size-deltas` action](https://github.com/arduino/actions/tree/master/libraries/report-size-deltas). Default `false`.
+Set to `true` to cause the action to determine the change in memory usage and compiler warnings of the compiled sketches. If the workflow is triggered by a `pull_request` event, the comparison is between the pull request branch and the tip of the pull request's base branch. If the workflow is triggered by a `push` event, the comparison is between the pushed commit and its immediate parent. The deltas will be displayed in the GitHub Actions build log. This may be used with the [`arduino/actions/libraries/report-size-deltas` action](https://github.com/arduino/actions/tree/master/libraries/report-size-deltas). Default `false`.
+
+### `enable-warnings-report`
+
+Set to `true` to cause the action to record the compiler warning count for each sketch compilation in the sketches report. Default `false`.
 
 ## Example usage
 
@@ -133,11 +137,11 @@ Only compiling examples:
         version: 1.1.3
 ```
 
-Storing the memory usage change report as a [workflow artifact](https://help.github.com/en/actions/configuring-and-managing-workflows/persisting-workflow-data-using-artifacts):
+Storing the sketches compilation report report as a [workflow artifact](https://help.github.com/en/actions/configuring-and-managing-workflows/persisting-workflow-data-using-artifacts):
 ```yaml
 - uses: arduino/actions/libraries/compile-examples@master
   with:
-    enable-size-deltas-report: true
+    enable-deltas-report: true
 - if: github.event_name == 'pull_request'
   uses: actions/upload-artifact@v1
   with:

@@ -29,7 +29,8 @@ def get_compilesketches_object(
     github_token="",
     github_api=unittest.mock.sentinel.github_api,
     deltas_base_ref="foodeltasbaseref",
-    enable_size_deltas_report="false",
+    enable_deltas_report="false",
+    enable_warnings_report="false",
     sketches_report_path="foo report_folder_name"
 ):
     with unittest.mock.patch("compilesketches.CompileSketches.get_deltas_base_ref",
@@ -42,7 +43,8 @@ def get_compilesketches_object(
                                                                  sketch_paths=sketch_paths,
                                                                  verbose=verbose,
                                                                  github_token=github_token,
-                                                                 enable_size_deltas_report=enable_size_deltas_report,
+                                                                 enable_deltas_report=enable_deltas_report,
+                                                                 enable_warnings_report=enable_warnings_report,
                                                                  sketches_report_path=sketches_report_path)
 
     compilesketches_object.github_api = github_api
@@ -79,87 +81,159 @@ def test_directories_are_same():
     ) is False
 
 
-@pytest.mark.parametrize("use_size_report_sketch", [True, False])
-@pytest.mark.parametrize("use_size_deltas_report_folder_name, expected_sketches_report_path",
-                         [(True, "FooSizeDeltasReportFolderName"),
-                          (False, "FooSketchesReportPath")])
-@pytest.mark.parametrize("use_enable_size_trends_report", [True, False])
-def test_main(capsys,
-              monkeypatch,
-              mocker,
-              use_size_report_sketch,
-              use_size_deltas_report_folder_name,
-              expected_sketches_report_path,
-              use_enable_size_trends_report):
-    cli_version = "1.0.0"
-    fqbn_arg = "foo:bar:baz"
-    platforms = "- name: FooVendor:BarArchitecture"
-    libraries = "foo libraries"
-    sketch_paths = "foo/Sketch bar/OtherSketch"
-    verbose = "true"
-    github_token = "FooGitHubToken"
-    enable_size_deltas_report = "true"
-    sketches_report_path = "FooSketchesReportPath"
-    size_deltas_report_folder_name = "FooSizeDeltasReportFolderName"
+@pytest.fixture
+def setup_action_inputs(monkeypatch):
+    class ActionInputs:
+        cli_version = "1.0.0"
+        fqbn_arg = "foo:bar:baz"
+        platforms = "- name: FooVendor:BarArchitecture"
+        libraries = "foo libraries"
+        sketch_paths = "foo/Sketch bar/OtherSketch"
+        verbose = "true"
+        github_token = "FooGitHubToken"
+        enable_size_deltas_report = "FooEnableSizeDeltasReport"
+        enable_deltas_report = "FooEnableDeltasReport"
+        enable_warnings_report = "FooEnableWarningsReport"
+        sketches_report_path = "FooSketchesReportPath"
+        size_deltas_report_folder_name = "FooSizeDeltasReportFolderName"
 
+    monkeypatch.setenv("INPUT_CLI-VERSION", ActionInputs.cli_version)
+    monkeypatch.setenv("INPUT_FQBN", ActionInputs.fqbn_arg)
+    monkeypatch.setenv("INPUT_PLATFORMS", ActionInputs.platforms)
+    monkeypatch.setenv("INPUT_LIBRARIES", ActionInputs.libraries)
+    monkeypatch.setenv("INPUT_SKETCH-PATHS", ActionInputs.sketch_paths)
+    monkeypatch.setenv("INPUT_VERBOSE", ActionInputs.verbose)
+    monkeypatch.setenv("INPUT_GITHUB-TOKEN", ActionInputs.github_token)
+    monkeypatch.setenv("INPUT_ENABLE-DELTAS-REPORT", ActionInputs.enable_deltas_report)
+    monkeypatch.setenv("INPUT_ENABLE-WARNINGS-REPORT", ActionInputs.enable_warnings_report)
+    monkeypatch.setenv("INPUT_SKETCHES-REPORT-PATH", ActionInputs.sketches_report_path)
+
+    return ActionInputs()
+
+
+@pytest.fixture
+def stub_compilesketches_object(mocker):
     class CompileSketches:
         def compile_sketches(self):
             pass  # pragma: no cover
 
-    monkeypatch.setenv("INPUT_CLI-VERSION", cli_version)
-    monkeypatch.setenv("INPUT_FQBN", fqbn_arg)
-    monkeypatch.setenv("INPUT_PLATFORMS", platforms)
-    monkeypatch.setenv("INPUT_LIBRARIES", libraries)
-    monkeypatch.setenv("INPUT_SKETCH-PATHS", sketch_paths)
-    monkeypatch.setenv("INPUT_GITHUB-TOKEN", github_token)
-    monkeypatch.setenv("INPUT_VERBOSE", verbose)
-    if use_size_report_sketch:
-        monkeypatch.setenv("INPUT_SIZE-REPORT-SKETCH", "foo")
-    monkeypatch.setenv("INPUT_ENABLE-SIZE-DELTAS-REPORT", enable_size_deltas_report)
-    monkeypatch.setenv("INPUT_SKETCHES-REPORT-PATH", sketches_report_path)
-    if use_size_deltas_report_folder_name:
-        monkeypatch.setenv("INPUT_SIZE-DELTAS-REPORT-FOLDER-NAME", size_deltas_report_folder_name)
-    if use_enable_size_trends_report:
-        monkeypatch.setenv("INPUT_ENABLE-SIZE-TRENDS-REPORT", "true")
-
     mocker.patch("compilesketches.CompileSketches", autospec=True, return_value=CompileSketches())
     mocker.patch.object(CompileSketches, "compile_sketches")
+
+
+@pytest.mark.parametrize("use_size_report_sketch", [True, False])
+def test_main_size_report_sketch_deprecation_warning(capsys, monkeypatch, setup_action_inputs,
+                                                     stub_compilesketches_object, use_size_report_sketch):
+    if use_size_report_sketch:
+        monkeypatch.setenv("INPUT_SIZE-REPORT-SKETCH", "foo")
 
     compilesketches.main()
 
     expected_output = ""
     if use_size_report_sketch:
         expected_output = "::warning::The size-report-sketch input is no longer used"
-    if use_size_deltas_report_folder_name:
-        if expected_output != "":
-            expected_output = expected_output + "\n"
-        expected_output = (
-            expected_output
-            + "::warning::The size-deltas-report-folder-name input is deprecated. Use the equivalent input: "
-              "sketches-report-path instead."
-        )
+
+    assert capsys.readouterr().out.strip() == expected_output
+
+
+@pytest.mark.parametrize("use_enable_size_trends_report", [True, False])
+def test_main_enable_size_trends_report_deprecation_warning(capsys, monkeypatch, setup_action_inputs,
+                                                            stub_compilesketches_object, use_enable_size_trends_report):
     if use_enable_size_trends_report:
-        if expected_output != "":
-            expected_output = expected_output + "\n"
+        monkeypatch.setenv("INPUT_ENABLE-SIZE-TRENDS-REPORT", "true")
+
+    compilesketches.main()
+
+    expected_output = ""
+    if use_enable_size_trends_report:
         expected_output = (
             expected_output
             + "::warning::The size trends report feature has been moved to a dedicated action. See the "
               "documentation at "
               "https://github.com/arduino/actions/tree/report-size-trends-action/libraries/report-size-trends"
         )
+
     assert capsys.readouterr().out.strip() == expected_output
 
+
+@pytest.mark.parametrize("use_size_deltas_report_folder_name", [True, False])
+def test_main_size_deltas_report_folder_name_deprecation(capsys, monkeypatch, setup_action_inputs,
+                                                         stub_compilesketches_object,
+                                                         use_size_deltas_report_folder_name):
+    size_deltas_report_folder_name = "foo-size-deltas-report-folder-name"
+    if use_size_deltas_report_folder_name:
+        monkeypatch.setenv("INPUT_SIZE-DELTAS-REPORT-FOLDER-NAME", size_deltas_report_folder_name)
+
+    compilesketches.main()
+
+    expected_output = ""
+    if use_size_deltas_report_folder_name:
+        expected_output = (
+            expected_output
+            + "::warning::The size-deltas-report-folder-name input is deprecated. Use the equivalent input: "
+              "sketches-report-path instead."
+        )
+
+    assert capsys.readouterr().out.strip() == expected_output
+
+    if use_size_deltas_report_folder_name:
+        expected_sketches_report_path = size_deltas_report_folder_name
+    else:
+        expected_sketches_report_path = setup_action_inputs.sketches_report_path
+
+    assert os.environ["INPUT_SKETCHES-REPORT-PATH"] == expected_sketches_report_path
+
+
+@pytest.mark.parametrize("use_enable_size_deltas_report", [True, False])
+def test_main_enable_size_deltas_report_deprecation(capsys, monkeypatch, setup_action_inputs,
+                                                    stub_compilesketches_object, use_enable_size_deltas_report):
+    enable_size_deltas_report = "foo-enable-size-deltas-report"
+    if use_enable_size_deltas_report:
+        monkeypatch.setenv("INPUT_ENABLE-SIZE-DELTAS-REPORT", enable_size_deltas_report)
+
+    compilesketches.main()
+
+    expected_output = ""
+    if use_enable_size_deltas_report:
+        expected_output = (
+            expected_output
+            + "::warning::The enable-size-deltas-report input is deprecated. Use the equivalent input: "
+              "enable-deltas-report instead."
+        )
+
+    assert capsys.readouterr().out.strip() == expected_output
+
+    if use_enable_size_deltas_report:
+        expected_enable_deltas_report = enable_size_deltas_report
+    else:
+        expected_enable_deltas_report = setup_action_inputs.enable_deltas_report
+
+    assert os.environ["INPUT_ENABLE-DELTAS-REPORT"] == expected_enable_deltas_report
+
+
+def test_main(mocker, setup_action_inputs):
+    class CompileSketches:
+        def compile_sketches(self):
+            pass  # pragma: no cover
+
+    mocker.patch("compilesketches.CompileSketches", autospec=True, return_value=CompileSketches())
+    mocker.patch.object(CompileSketches, "compile_sketches")
+
+    compilesketches.main()
+
     compilesketches.CompileSketches.assert_called_once_with(
-        cli_version=cli_version,
-        fqbn_arg=fqbn_arg,
-        platforms=platforms,
-        libraries=libraries,
-        sketch_paths=sketch_paths,
-        verbose=verbose,
-        github_token=github_token,
-        enable_size_deltas_report=enable_size_deltas_report,
-        sketches_report_path=expected_sketches_report_path
+        cli_version=setup_action_inputs.cli_version,
+        fqbn_arg=setup_action_inputs.fqbn_arg,
+        platforms=setup_action_inputs.platforms,
+        libraries=setup_action_inputs.libraries,
+        sketch_paths=setup_action_inputs.sketch_paths,
+        verbose=setup_action_inputs.verbose,
+        github_token=setup_action_inputs.github_token,
+        enable_deltas_report=setup_action_inputs.enable_deltas_report,
+        enable_warnings_report=setup_action_inputs.enable_warnings_report,
+        sketches_report_path=setup_action_inputs.sketches_report_path
     )
+
     CompileSketches.compile_sketches.assert_called_once()
 
 
@@ -175,7 +249,8 @@ def test_compilesketches():
     verbose = "false"
     github_token = "fooGitHubToken"
     expected_deltas_base_ref = unittest.mock.sentinel.deltas_base_ref
-    enable_size_deltas_report = "true"
+    enable_deltas_report = "true"
+    enable_warnings_report = "true"
     sketches_report_path = "FooSketchesReportFolder"
 
     with unittest.mock.patch("compilesketches.CompileSketches.get_deltas_base_ref",
@@ -189,7 +264,8 @@ def test_compilesketches():
             sketch_paths=sketch_paths,
             verbose=verbose,
             github_token=github_token,
-            enable_size_deltas_report=enable_size_deltas_report,
+            enable_deltas_report=enable_deltas_report,
+            enable_warnings_report=enable_warnings_report,
             sketches_report_path=sketches_report_path
         )
 
@@ -201,15 +277,20 @@ def test_compilesketches():
     assert compile_sketches.sketch_paths == expected_sketch_paths_list
     assert compile_sketches.verbose is False
     assert compile_sketches.deltas_base_ref == expected_deltas_base_ref
-    assert compile_sketches.enable_size_deltas_report is True
+    assert compile_sketches.enable_deltas_report is True
+    assert compile_sketches.enable_warnings_report is True
     assert compile_sketches.sketches_report_path == pathlib.PurePath(sketches_report_path)
 
-    # Test invalid enable_size_deltas_report value
+    # Test invalid enable_deltas_report value
     with pytest.raises(expected_exception=SystemExit, match="1"):
-        get_compilesketches_object(enable_size_deltas_report="fooInvalidEnableSizeDeltasBoolean")
+        get_compilesketches_object(enable_deltas_report="fooInvalidEnableSizeDeltasBoolean")
+
+    # Test invalid enable_deltas_report value
+    with pytest.raises(expected_exception=SystemExit, match="1"):
+        get_compilesketches_object(enable_warnings_report="fooInvalidEnableWarningsReportBoolean")
 
     # Test deltas_base_ref when size deltas report is disabled
-    compile_sketches = get_compilesketches_object(enable_size_deltas_report="false")
+    compile_sketches = get_compilesketches_object(enable_deltas_report="false")
     assert compile_sketches.deltas_base_ref is None
 
 
@@ -280,12 +361,16 @@ def test_get_parent_commit_ref(mocker):
     git.Repo.assert_called_once_with(path=os.environ["GITHUB_WORKSPACE"])
 
 
+@pytest.mark.parametrize("enable_warnings_report, expected_clean_build_cache",
+                         [("true", True),
+                          ("false", False)])
 @pytest.mark.parametrize("compilation_success_list, expected_success",
                          [([True, True, True], True),
                           ([False, True, True], False),
                           ([True, False, True], False),
                           ([True, True, False], False)])
-def test_compile_sketches(mocker, compilation_success_list, expected_success):
+def test_compile_sketches(mocker, enable_warnings_report, expected_clean_build_cache, compilation_success_list,
+                          expected_success):
     sketch_list = [unittest.mock.sentinel.sketch1, unittest.mock.sentinel.sketch2, unittest.mock.sentinel.sketch3]
 
     compilation_result_list = []
@@ -294,7 +379,7 @@ def test_compile_sketches(mocker, compilation_success_list, expected_success):
     sketch_report = unittest.mock.sentinel.sketch_report
     sketches_report = unittest.mock.sentinel.sketch_report_from_sketches_report
 
-    compile_sketches = get_compilesketches_object()
+    compile_sketches = get_compilesketches_object(enable_warnings_report=enable_warnings_report)
 
     mocker.patch("compilesketches.CompileSketches.install_arduino_cli", autospec=True)
     mocker.patch("compilesketches.CompileSketches.install_platforms", autospec=True)
@@ -321,8 +406,11 @@ def test_compile_sketches(mocker, compilation_success_list, expected_success):
     get_sketch_report_calls = []
     sketch_report_list = []
     for sketch, compilation_result in zip(sketch_list, compilation_result_list):
-        compile_sketch_calls.append(unittest.mock.call(compile_sketches, sketch_path=sketch))
-        get_sketch_report_calls.append(unittest.mock.call(compile_sketches, compilation_result=compilation_result))
+        compile_sketch_calls.append(unittest.mock.call(compile_sketches,
+                                                       sketch_path=sketch,
+                                                       clean_build_cache=expected_clean_build_cache))
+        get_sketch_report_calls.append(unittest.mock.call(compile_sketches,
+                                                          compilation_result=compilation_result))
         sketch_report_list.append(sketch_report)
     compile_sketches.compile_sketch.assert_has_calls(calls=compile_sketch_calls)
     compile_sketches.get_sketch_report.assert_has_calls(calls=get_sketch_report_calls)
@@ -1276,11 +1364,14 @@ def test_path_is_sketch():
         path=test_data_path.joinpath("NoSketches", "NotSketch")) is False
 
 
+@pytest.mark.parametrize("clean_build_cache", [True, False])
 @pytest.mark.parametrize("returncode, expected_success", [(1, False),
                                                           (0, True)])
-def test_compile_sketch(capsys, mocker, returncode, expected_success):
+def test_compile_sketch(capsys, mocker, clean_build_cache, returncode, expected_success):
     stdout = unittest.mock.sentinel.stdout
     sketch_path = pathlib.Path("FooSketch", "FooSketch.ino").resolve()
+
+    build_cache_paths = [unittest.mock.sentinel.build_cache_paths1, unittest.mock.sentinel.build_cache_paths2]
 
     # Stub
     class CompilationData:
@@ -1293,10 +1384,21 @@ def test_compile_sketch(capsys, mocker, returncode, expected_success):
 
     mocker.patch("compilesketches.CompileSketches.run_arduino_cli_command", autospec=True,
                  return_value=CompilationData())
+    mocker.patch.object(pathlib.Path, "glob", autospec=True, return_value=build_cache_paths)
+    mocker.patch("shutil.rmtree", autospec=True)
 
     compilation_result = compile_sketches.compile_sketch(
-        sketch_path=sketch_path
+        sketch_path=sketch_path,
+        clean_build_cache=clean_build_cache
     )
+
+    if clean_build_cache:
+        rmtree_calls = []
+        for build_cache_path in build_cache_paths:
+            rmtree_calls.append(unittest.mock.call(path=build_cache_path))
+
+        # noinspection PyUnresolvedReferences
+        shutil.rmtree.assert_has_calls(calls=rmtree_calls)
 
     expected_stdout = (
         "::group::Compiling sketch: " + str(compilesketches.path_relative_to_workspace(path=sketch_path)) + "\n"
@@ -1312,10 +1414,13 @@ def test_compile_sketch(capsys, mocker, returncode, expected_success):
     assert compilation_result.output == stdout
 
 
-@pytest.mark.parametrize("do_size_deltas_report", [True, False])
-def test_get_sketch_report(mocker, do_size_deltas_report):
+# noinspection PyUnresolvedReferences
+@pytest.mark.parametrize("enable_warnings_report", ["true", "false"])
+@pytest.mark.parametrize("do_deltas_report", [True, False])
+def test_get_sketch_report(mocker, enable_warnings_report, do_deltas_report):
     original_git_ref = unittest.mock.sentinel.original_git_ref
     sizes_list = [unittest.mock.sentinel.sketch_report_list1, unittest.mock.sentinel.sketch_report_list2]
+    warning_count_list = [unittest.mock.sentinel.warning_count_list1, unittest.mock.sentinel.warning_count_list2]
     sketch = "/foo/SketchName"
     success = unittest.mock.sentinel.success
 
@@ -1328,6 +1433,7 @@ def test_get_sketch_report(mocker, do_size_deltas_report):
 
     previous_compilation_result = unittest.mock.sentinel.previous_compilation_result
     sizes_report = unittest.mock.sentinel.sizes_report
+    warnings_report = unittest.mock.sentinel.warnings_report
 
     # Stub
     class Repo:
@@ -1341,50 +1447,84 @@ def test_get_sketch_report(mocker, do_size_deltas_report):
         def checkout(self):
             pass  # pragma: no cover
 
-    compile_sketches = get_compilesketches_object()
+    compile_sketches = get_compilesketches_object(enable_warnings_report=enable_warnings_report)
 
     mocker.patch("compilesketches.CompileSketches.get_sizes_from_output", autospec=True,
                  side_effect=sizes_list)
-    mocker.patch("compilesketches.CompileSketches.do_size_deltas_report", autospec=True,
-                 return_value=do_size_deltas_report)
+    mocker.patch("compilesketches.CompileSketches.get_warning_count_from_output", autospec=True,
+                 side_effect=warning_count_list)
+    mocker.patch("compilesketches.CompileSketches.do_deltas_report", autospec=True,
+                 return_value=do_deltas_report)
     mocker.patch("git.Repo", autospec=True, return_value=Repo())
     mocker.patch("compilesketches.CompileSketches.checkout_deltas_base_ref", autospec=True)
     mocker.patch("compilesketches.CompileSketches.compile_sketch", autospec=True,
                  return_value=previous_compilation_result)
     mocker.patch.object(Repo, "checkout")
     mocker.patch("compilesketches.CompileSketches.get_sizes_report", autospec=True, return_value=sizes_report)
+    mocker.patch("compilesketches.CompileSketches.get_warnings_report", autospec=True, return_value=warnings_report)
 
     sketch_report = compile_sketches.get_sketch_report(compilation_result=compilation_result)
 
     get_sizes_from_output_calls = [unittest.mock.call(compile_sketches, compilation_result=compilation_result)]
-    compilesketches.CompileSketches.do_size_deltas_report.assert_called_once_with(compile_sketches,
-                                                                                  compilation_result=compilation_result,
-                                                                                  current_sizes=sizes_list[0])
-    if do_size_deltas_report:
+    if enable_warnings_report == "true":
+        get_warning_count_from_output_calls = [
+            unittest.mock.call(compile_sketches, compilation_result=compilation_result)]
+    else:
+        get_warning_count_from_output_calls = []
+
+    if enable_warnings_report == "true":
+        expected_current_warnings = warning_count_list[0]
+    else:
+        expected_current_warnings = None
+    # noinspection PyUnresolvedReferences
+    compilesketches.CompileSketches.do_deltas_report.assert_called_once_with(compile_sketches,
+                                                                             compilation_result=compilation_result,
+                                                                             current_sizes=sizes_list[0],
+                                                                             current_warnings=expected_current_warnings)
+    if do_deltas_report:
         git.Repo.assert_called_once_with(path=os.environ["GITHUB_WORKSPACE"])
         compile_sketches.checkout_deltas_base_ref.assert_called_once()
-        compile_sketches.compile_sketch.assert_called_once_with(compile_sketches, sketch_path=compilation_result.sketch)
+        compile_sketches.compile_sketch.assert_called_once_with(compile_sketches,
+                                                                sketch_path=compilation_result.sketch,
+                                                                clean_build_cache=(enable_warnings_report == "true"))
         Repo.checkout.assert_called_once_with(original_git_ref, recurse_submodules=True)
         get_sizes_from_output_calls.append(
             unittest.mock.call(compile_sketches, compilation_result=previous_compilation_result))
+        if enable_warnings_report == "true":
+            get_warning_count_from_output_calls.append(
+                unittest.mock.call(compile_sketches, compilation_result=previous_compilation_result))
         expected_previous_sizes = sizes_list[1]
+        expected_previous_warnings = warning_count_list[1]
 
     else:
         expected_previous_sizes = None
+        expected_previous_warnings = None
 
     compilesketches.CompileSketches.get_sizes_from_output.assert_has_calls(
         calls=get_sizes_from_output_calls)
+    compilesketches.CompileSketches.get_warning_count_from_output.assert_has_calls(
+        calls=get_warning_count_from_output_calls)
 
     compile_sketches.get_sizes_report.assert_called_once_with(compile_sketches,
                                                               current_sizes=sizes_list[0],
                                                               previous_sizes=expected_previous_sizes)
-    assert sketch_report == {
+
+    if enable_warnings_report == "true":
+        # noinspection PyUnresolvedReferences
+        compile_sketches.get_warnings_report.assert_called_once_with(compile_sketches,
+                                                                     current_warnings=warning_count_list[0],
+                                                                     previous_warnings=expected_previous_warnings)
+
+    expected_sketch_report = {
         compile_sketches.ReportKeys.name: (
             str(compilesketches.path_relative_to_workspace(path=compilation_result.sketch))
         ),
         compile_sketches.ReportKeys.compilation_success: compilation_result.success,
-        compile_sketches.ReportKeys.sizes: sizes_report
+        compile_sketches.ReportKeys.sizes: sizes_report,
     }
+    if enable_warnings_report == "true":
+        expected_sketch_report[compile_sketches.ReportKeys.warnings] = warnings_report
+    assert sketch_report == expected_sketch_report
 
 
 @pytest.mark.parametrize(
@@ -1576,26 +1716,62 @@ def test_get_size_data_from_output(capsys, compilation_output, memory_type, size
 
 
 @pytest.mark.parametrize(
-    "enable_size_deltas_report,"
+    "compilation_success, test_compilation_output_filename, expected_warning_count",
+    [(True,
+      pathlib.Path("test_get_warning_count_from_output", "has-warnings.txt"),
+      45),
+     (True,
+      pathlib.Path("test_get_warning_count_from_output", "no-warnings.txt"),
+      0),
+     (False,
+      pathlib.Path("test_get_warning_count_from_output", "has-warnings.txt"),
+      get_compilesketches_object().not_applicable_indicator)])
+def test_get_warning_count_from_output(compilation_success, test_compilation_output_filename, expected_warning_count):
+    compile_sketches = get_compilesketches_object()
+
+    with open(file=test_data_path.joinpath(test_compilation_output_filename),
+              mode='r',
+              encoding="utf-8") as test_compilation_output_file:
+        class CompilationResult:
+            success = compilation_success
+            output = test_compilation_output_file.read()
+
+    assert compile_sketches.get_warning_count_from_output(CompilationResult()) == expected_warning_count
+
+
+@pytest.mark.parametrize(
+    "enable_deltas_report,"
     "compilation_success,"
     "current_sizes,"
-    "do_size_deltas_report_expected",
+    "current_warnings,"
+    "do_deltas_report_expected",
     [("true",
       True,
       [{compilesketches.CompileSketches.ReportKeys.name: "foo",
         compilesketches.CompileSketches.ReportKeys.absolute: 24},
        {compilesketches.CompileSketches.ReportKeys.name: "bar",
         compilesketches.CompileSketches.ReportKeys.absolute: compilesketches.CompileSketches.not_applicable_indicator}],
+      compilesketches.CompileSketches.not_applicable_indicator,
+      True),
+     ("true",
+      True,
+      [{compilesketches.CompileSketches.ReportKeys.name: "foo",
+        compilesketches.CompileSketches.ReportKeys.absolute: compilesketches.CompileSketches.not_applicable_indicator},
+       {compilesketches.CompileSketches.ReportKeys.name: "bar",
+        compilesketches.CompileSketches.ReportKeys.absolute: compilesketches.CompileSketches.not_applicable_indicator}],
+      42,
       True),
      ("false",
       True,
       [{compilesketches.CompileSketches.ReportKeys.name: "foo",
         compilesketches.CompileSketches.ReportKeys.absolute: 24}],
+      True,
       False),
      ("true",
       False,
       [{compilesketches.CompileSketches.ReportKeys.name: "foo",
         compilesketches.CompileSketches.ReportKeys.absolute: 24}],
+      42,
       False),
      ("true",
       True,
@@ -1603,21 +1779,33 @@ def test_get_size_data_from_output(capsys, compilation_output, memory_type, size
         compilesketches.CompileSketches.ReportKeys.absolute: compilesketches.CompileSketches.not_applicable_indicator},
        {compilesketches.CompileSketches.ReportKeys.name: "bar",
         compilesketches.CompileSketches.ReportKeys.absolute: compilesketches.CompileSketches.not_applicable_indicator}],
-      False)]
+      compilesketches.CompileSketches.not_applicable_indicator,
+      False),
+     ("true",
+      True,
+      [{compilesketches.CompileSketches.ReportKeys.name: "foo",
+        compilesketches.CompileSketches.ReportKeys.absolute: compilesketches.CompileSketches.not_applicable_indicator},
+       {compilesketches.CompileSketches.ReportKeys.name: "bar",
+        compilesketches.CompileSketches.ReportKeys.absolute: compilesketches.CompileSketches.not_applicable_indicator}],
+      None,
+      False)
+     ]
 )
-def test_do_size_deltas_report(monkeypatch,
-                               enable_size_deltas_report,
-                               compilation_success,
-                               current_sizes,
-                               do_size_deltas_report_expected):
-    compile_sketches = get_compilesketches_object(enable_size_deltas_report=enable_size_deltas_report)
+def test_do_deltas_report(monkeypatch,
+                          enable_deltas_report,
+                          compilation_success,
+                          current_sizes,
+                          current_warnings,
+                          do_deltas_report_expected):
+    compile_sketches = get_compilesketches_object(enable_deltas_report=enable_deltas_report)
 
     compilation_result = type("CompilationResult", (),
                               {"sketch": "/foo/SketchName",
                                "success": compilation_success,
                                "output": "foo compilation output"})
-    assert compile_sketches.do_size_deltas_report(compilation_result=compilation_result,
-                                                  current_sizes=current_sizes) == do_size_deltas_report_expected
+    assert compile_sketches.do_deltas_report(compilation_result=compilation_result,
+                                             current_sizes=current_sizes,
+                                             current_warnings=current_warnings) == do_deltas_report_expected
 
 
 def test_checkout_deltas_base_ref(monkeypatch, mocker):
@@ -1635,7 +1823,7 @@ def test_checkout_deltas_base_ref(monkeypatch, mocker):
         def checkout(self):
             pass  # pragma: no cover
 
-    compile_sketches = get_compilesketches_object(enable_size_deltas_report="true", deltas_base_ref=deltas_base_ref)
+    compile_sketches = get_compilesketches_object(enable_deltas_report="true", deltas_base_ref=deltas_base_ref)
 
     mocker.patch("git.Repo", autospec=True, return_value=Repo())
     mocker.patch.object(Repo, "fetch")
@@ -1764,6 +1952,53 @@ def test_get_size_report(capsys,
     assert size_report == expected_size_report
 
 
+@pytest.mark.parametrize(
+    "current_warnings, previous_warnings, expected_report",
+    [(42,
+      None,
+      {
+          compilesketches.CompileSketches.ReportKeys.current: {
+              compilesketches.CompileSketches.ReportKeys.absolute: 42
+          }
+      }),
+     (42,
+      compilesketches.CompileSketches.not_applicable_indicator,
+      {
+          compilesketches.CompileSketches.ReportKeys.current: {
+              compilesketches.CompileSketches.ReportKeys.absolute: 42
+          },
+          compilesketches.CompileSketches.ReportKeys.previous: {
+              compilesketches.CompileSketches.ReportKeys.absolute: (
+                  compilesketches.CompileSketches.not_applicable_indicator
+              )
+          },
+          compilesketches.CompileSketches.ReportKeys.delta: {
+              compilesketches.CompileSketches.ReportKeys.absolute: (
+                  compilesketches.CompileSketches.not_applicable_indicator
+              )
+          }
+      }),
+     (42,
+      43,
+      {
+          compilesketches.CompileSketches.ReportKeys.current: {
+              compilesketches.CompileSketches.ReportKeys.absolute: 42
+          },
+          compilesketches.CompileSketches.ReportKeys.previous: {
+              compilesketches.CompileSketches.ReportKeys.absolute: 43
+          },
+          compilesketches.CompileSketches.ReportKeys.delta: {
+              compilesketches.CompileSketches.ReportKeys.absolute: -1
+          }
+      })])
+def test_get_warnings_report(current_warnings, previous_warnings, expected_report):
+    compile_sketches = get_compilesketches_object()
+    assert compile_sketches.get_warnings_report(
+        current_warnings=current_warnings,
+        previous_warnings=previous_warnings
+    ) == expected_report
+
+
 def test_get_sketches_report(monkeypatch, mocker):
     github_repository = "fooRepository/fooOwner"
     fqbn_arg = "arduino:avr:uno"
@@ -1774,11 +2009,16 @@ def test_get_sketches_report(monkeypatch, mocker):
     mocker.patch("compilesketches.get_head_commit_hash", autospec=True, return_value=current_git_ref)
 
     sizes_summary_report = unittest.mock.sentinel.sizes_summary_report
+    warnings_summary_report = unittest.mock.sentinel.warnings_summary_report
     sketch_report_list = unittest.mock.sentinel.sketch_report_list
 
     mocker.patch("compilesketches.CompileSketches.get_sizes_summary_report",
                  autospec=True,
                  return_value=sizes_summary_report)
+
+    mocker.patch("compilesketches.CompileSketches.get_warnings_summary_report",
+                 autospec=True,
+                 return_value=warnings_summary_report)
 
     compile_sketches = get_compilesketches_object(fqbn_arg=fqbn_arg)
 
@@ -1792,6 +2032,7 @@ def test_get_sketches_report(monkeypatch, mocker):
             {
                 compilesketches.CompileSketches.ReportKeys.board: compile_sketches.fqbn,
                 compilesketches.CompileSketches.ReportKeys.sizes: sizes_summary_report,
+                compilesketches.CompileSketches.ReportKeys.warnings: warnings_summary_report,
                 compilesketches.CompileSketches.ReportKeys.sketches: sketch_report_list
             }
         ]
@@ -1800,8 +2041,13 @@ def test_get_sketches_report(monkeypatch, mocker):
     compile_sketches.get_sizes_summary_report.assert_called_once_with(compile_sketches,
                                                                       sketch_report_list=sketch_report_list)
 
+    # noinspection PyUnresolvedReferences
+    compile_sketches.get_warnings_summary_report.assert_called_once_with(compile_sketches,
+                                                                         sketch_report_list=sketch_report_list)
+
     # Test no summary report data (size deltas not enabled)
     compilesketches.CompileSketches.get_sizes_summary_report.return_value = []
+    compilesketches.CompileSketches.get_warnings_summary_report.return_value = {}
 
     assert compile_sketches.get_sketches_report(sketch_report_list=sketch_report_list) == {
         compilesketches.CompileSketches.ReportKeys.commit_hash: current_git_ref,
@@ -2105,6 +2351,73 @@ def test_get_sizes_summary_report():
 
     assert compile_sketches.get_sizes_summary_report(sketch_report_list=sketch_report_list) == (
         expected_sizes_summary_report
+    )
+
+
+def test_get_warnings_summary_report():
+    compile_sketches = get_compilesketches_object()
+
+    sketch_report_list = [
+        {
+            compilesketches.CompileSketches.ReportKeys.warnings: {
+                compilesketches.CompileSketches.ReportKeys.delta: {
+                    compilesketches.CompileSketches.ReportKeys.absolute: 42
+                }
+            },
+        },
+        {
+            compilesketches.CompileSketches.ReportKeys.warnings: {
+                compilesketches.CompileSketches.ReportKeys.delta: {
+                    compilesketches.CompileSketches.ReportKeys.absolute: 3
+                }
+            }
+        }
+    ]
+
+    expected_warnings_summary_report = {
+        compilesketches.CompileSketches.ReportKeys.delta: {
+            compilesketches.CompileSketches.ReportKeys.absolute: {
+                compilesketches.CompileSketches.ReportKeys.minimum: 3,
+                compilesketches.CompileSketches.ReportKeys.maximum: 42
+            }
+        }
+    }
+
+    assert compile_sketches.get_warnings_summary_report(sketch_report_list=sketch_report_list) == (
+        expected_warnings_summary_report
+    )
+
+    # Test with deltas disabled
+    sketch_report_list = [
+        {
+            compilesketches.CompileSketches.ReportKeys.warnings: {
+                compilesketches.CompileSketches.ReportKeys.current: {
+                    compilesketches.CompileSketches.ReportKeys.absolute: 42
+                }
+            },
+        },
+        {
+            compilesketches.CompileSketches.ReportKeys.warnings: {
+                compilesketches.CompileSketches.ReportKeys.current: {
+                    compilesketches.CompileSketches.ReportKeys.absolute: 3
+                }
+            }
+        }
+    ]
+
+    expected_warnings_summary_report = {}
+
+    assert compile_sketches.get_warnings_summary_report(sketch_report_list=sketch_report_list) == (
+        expected_warnings_summary_report
+    )
+
+    # Test with warnings report disabled
+    sketch_report_list = [{}, {}]
+
+    expected_warnings_summary_report = {}
+
+    assert compile_sketches.get_warnings_summary_report(sketch_report_list=sketch_report_list) == (
+        expected_warnings_summary_report
     )
 
 
