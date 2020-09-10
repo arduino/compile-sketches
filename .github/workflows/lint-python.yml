@@ -1,0 +1,50 @@
+name: Lint Python code
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/lint-python.yml'
+      - 'compilesketches/**.py'
+
+  push:
+    paths:
+      - '.github/workflows/lint-python.yml'
+      - 'compilesketches/**.py'
+
+  # Scheduled trigger checks for workflow failures resulting from updates to the linting tools
+  schedule:
+    # run every Tuesday at 3 AM UTC
+    - cron: "0 3 * * 2"
+
+  # workflow_dispatch event allows the workflow to be triggered manually
+  # See: https://docs.github.com/en/actions/reference/events-that-trigger-workflows#workflow_dispatch
+  workflow_dispatch:
+
+  # repository_dispatch event allows the workflow to be triggered via the GitHub API
+  # See: https://docs.github.com/en/actions/reference/events-that-trigger-workflows#repository_dispatch
+  repository_dispatch:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: '3.8.5'
+
+      - name: Install flake8
+        run: |
+          python -m pip install --upgrade pip
+          pip install --quiet flake8
+          pip install --quiet pep8-naming
+
+      - name: Lint with flake8
+        env:
+          PYTHON_PROJECT_PATH: ${GITHUB_WORKSPACE}/compilesketches
+        run: |
+          flake8 --config "${{ env.PYTHON_PROJECT_PATH }}/.flake8" --show-source "${{ env.PYTHON_PROJECT_PATH }}"
