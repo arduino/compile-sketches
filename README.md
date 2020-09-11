@@ -45,7 +45,7 @@ platforms: |
 ##### Boards Manager
 
 Keys:
-- **`name`** - (**required**) platform name in the form of `VENDOR:ARCHITECTURE`.
+- **`name`** - (**required**) platform name in the form of `VENDOR:ARCHITECTURE` (e.g., `arduino:avr`).
 - **`version`** - version of the platform to install.
   - **Default**: the latest version.
 - **`source-url`** - Boards Manager URL of the platform.
@@ -55,13 +55,13 @@ Keys:
 
 Keys:
 - **`source-path`** - (**required**) path to install as a platform. Relative paths are assumed to be relative to the root of the repository.
-- **`name`** - (**required**) platform name in the form of `VENDOR:ARCHITECTURE`.
+- **`name`** - (**required**) platform name in the form of `VENDOR:ARCHITECTURE` (e.g., `arduino:avr`).
 
 ##### Repository
 
 Keys:
 - **`source-url`** - (**required**) URL to clone the repository from. It must start with `git://` or end with `.git`.
-- **`name`** -  (**required**) platform name in the form of `VENDOR:ARCHITECTURE`.
+- **`name`** -  (**required**) platform name in the form of `VENDOR:ARCHITECTURE` (e.g., `arduino:avr`).
 - **`version`** - [Git ref](https://git-scm.com/book/en/v2/Git-Internals-Git-References) of the repository to checkout. The special version name `latest` will cause the latest tag to be used.
   - **Default**: the repository is checked out to the tip of the default branch.
 - **`source-path`** - path to install as a platform. Paths are relative to the root of the repository.
@@ -71,7 +71,7 @@ Keys:
 
 Keys:
 - **`source-url`** -  (**required**) download URL for the archive (e.g., `https://github.com/arduino/ArduinoCore-avr/archive/master.zip`).
-- **`name`** -  (**required**) platform name in the form of `VENDOR:ARCHITECTURE`.
+- **`name`** -  (**required**) platform name in the form of `VENDOR:ARCHITECTURE` (e.g., `arduino:avr`).
 - **`source-path`** - path to install as a platform. Paths are relative to the root folder of the archive, or the root of the archive if it has no root folder.
   - **Default**: root folder of the archive.
 
