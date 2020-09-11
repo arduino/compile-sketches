@@ -133,7 +133,7 @@ Set to `true` to cause the action to record the compiler warning count for each 
 
 Only compiling examples:
 ```yaml
-- uses: arduino/compile-sketches@master
+- uses: arduino/compile-sketches@main
   with:
     fqbn: 'arduino:avr:uno'
     libraries: |
@@ -144,7 +144,7 @@ Only compiling examples:
 
 Storing the sketches compilation report report as a [workflow artifact](https://help.github.com/en/actions/configuring-and-managing-workflows/persisting-workflow-data-using-artifacts):
 ```yaml
-- uses: arduino/compile-sketches@master
+- uses: arduino/compile-sketches@main
   with:
     enable-deltas-report: true
 - if: github.event_name == 'pull_request'
