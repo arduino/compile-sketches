@@ -81,6 +81,7 @@ class CompileSketches:
     not_applicable_indicator = "N/A"
     relative_size_report_decimal_places = 2
 
+    temporary_directory = tempfile.TemporaryDirectory(prefix="compilesketches-")
     arduino_cli_installation_path = pathlib.Path.home().joinpath("bin")
     arduino_cli_user_directory_path = pathlib.Path.home().joinpath("Arduino")
     arduino_cli_data_directory_path = pathlib.Path.home().joinpath(".arduino15")
@@ -254,7 +255,7 @@ class CompileSketches:
         """
         destination_parent_path = pathlib.Path(destination_parent_path)
 
-        # Create temporary folder for the download
+        # Create temporary folder with function duration for the download
         with tempfile.TemporaryDirectory("-compilesketches-download_folder") as download_folder:
             download_file_path = pathlib.PurePath(download_folder, url.rsplit(sep="/", maxsplit=1)[1])
 
@@ -268,23 +269,24 @@ class CompileSketches:
                             break
                         out_file.write(block)
 
-            # Create temporary folder for the extraction
-            with tempfile.TemporaryDirectory("-compilesketches-extract_folder") as extract_folder:
-                # Extract archive
-                shutil.unpack_archive(filename=str(download_file_path), extract_dir=extract_folder)
+            # Create temporary folder with script run duration for the extraction
+            extract_folder = tempfile.mkdtemp(dir=self.temporary_directory.name, prefix="install_from_download-")
 
-                archive_root_path = get_archive_root_path(extract_folder)
+            # Extract archive
+            shutil.unpack_archive(filename=str(download_file_path), extract_dir=extract_folder)
 
-                absolute_source_path = pathlib.Path(archive_root_path, source_path).resolve()
+            archive_root_path = get_archive_root_path(extract_folder)
 
-                if not absolute_source_path.exists():
-                    print("::error::Archive source path:", source_path, "not found")
-                    sys.exit(1)
+            absolute_source_path = pathlib.Path(archive_root_path, source_path).resolve()
 
-                self.install_from_path(source_path=absolute_source_path,
-                                       destination_parent_path=destination_parent_path,
-                                       destination_name=destination_name,
-                                       force=force)
+            if not absolute_source_path.exists():
+                print("::error::Archive source path:", source_path, "not found")
+                sys.exit(1)
+
+            self.install_from_path(source_path=absolute_source_path,
+                                   destination_parent_path=destination_parent_path,
+                                   destination_name=destination_name,
+                                   force=force)
 
     def install_platforms(self):
         """Install Arduino boards platforms."""
@@ -537,7 +539,7 @@ class CompileSketches:
         return platform_installation_path
 
     def install_from_path(self, source_path, destination_parent_path, destination_name=None, force=False):
-        """Copy the source path to the destination path.
+        """Create a symlink to the source path in the destination path.
 
         Keyword arguments:
         source_path -- path to install
@@ -563,10 +565,7 @@ class CompileSketches:
         # Create the parent path if it doesn't already exist
         destination_parent_path.mkdir(parents=True, exist_ok=True)
 
-        if source_path.is_dir():
-            shutil.copytree(src=source_path, dst=destination_path)
-        else:
-            shutil.copy(src=source_path, dst=destination_path)
+        destination_path.symlink_to(target=source_path, target_is_directory=source_path.is_dir())
 
     def install_platforms_from_repository(self, platform_list):
         """Install libraries by cloning Git repositories
@@ -628,14 +627,14 @@ class CompileSketches:
             # Use the repository name
             destination_name = url.rstrip("/").rsplit(sep="/", maxsplit=1)[1].rsplit(sep=".", maxsplit=1)[0]
 
-        # Clone to a temporary folder to allow installing from subfolders of repos
-        with tempfile.TemporaryDirectory() as clone_folder:
-            self.clone_repository(url=url, git_ref=git_ref, destination_path=clone_folder)
-            # Install to the final location
-            self.install_from_path(source_path=pathlib.Path(clone_folder, source_path),
-                                   destination_parent_path=destination_parent_path,
-                                   destination_name=destination_name,
-                                   force=force)
+        # Clone to a temporary folder with script run duration to allow installing from subfolders of repos
+        clone_folder = tempfile.mkdtemp(dir=self.temporary_directory.name, prefix="install_from_repository-")
+        self.clone_repository(url=url, git_ref=git_ref, destination_path=clone_folder)
+        # Install to the final location
+        self.install_from_path(source_path=pathlib.Path(clone_folder, source_path),
+                               destination_parent_path=destination_parent_path,
+                               destination_name=destination_name,
+                               force=force)
 
     def clone_repository(self, url, git_ref, destination_path):
         """Clone a Git repository to a specified location and check out the specified ref

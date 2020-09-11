@@ -1252,14 +1252,15 @@ def test_install_from_path(capsys,
                            exists,
                            force,
                            is_dir):
+    is_dir = unittest.mock.sentinel.is_dir
+
     compile_sketches = get_compilesketches_object()
 
     mocker.patch.object(pathlib.Path, "exists", autospec=True, return_value=exists)
     mocker.patch("shutil.rmtree", autospec=True)
     mocker.patch.object(pathlib.Path, "mkdir", autospec=True)
     mocker.patch.object(pathlib.Path, "is_dir", autospec=True, return_value=is_dir)
-    mocker.patch("shutil.copytree", autospec=True)
-    mocker.patch("shutil.copy", autospec=True)
+    mocker.patch.object(pathlib.Path, "symlink_to", autospec=True)
 
     if exists and not force:
         with pytest.raises(expected_exception=SystemExit, match="1"):
@@ -1281,10 +1282,8 @@ def test_install_from_path(capsys,
         else:
             shutil.rmtree.assert_not_called()
 
-        if is_dir:
-            shutil.copytree.assert_called_once_with(src=source_path, dst=expected_destination_path)
-        else:
-            shutil.copy.assert_called_once_with(src=source_path, dst=expected_destination_path)
+        pathlib.Path.symlink_to.assert_called_once_with(expected_destination_path, target=source_path,
+                                                        target_is_directory=is_dir)
 
 
 def test_install_from_path_functional(tmp_path):
@@ -2610,19 +2609,7 @@ def test_install_from_repository(mocker, url, source_path, destination_name, exp
     force = unittest.mock.sentinel.force
     clone_path = pathlib.PurePath("/foo/ClonePath")
 
-    # Stub
-    class TemporaryDirectory:
-        def __init__(self, temporary_directory):
-            self.temporary_directory = temporary_directory
-
-        def __enter__(self):
-            return self.temporary_directory
-
-        def __exit__(self, *exc):
-            pass
-
-    mocker.patch("tempfile.TemporaryDirectory", autospec=True,
-                 return_value=TemporaryDirectory(temporary_directory=clone_path))
+    mocker.patch("tempfile.mkdtemp", autospec=True, return_value=clone_path)
     mocker.patch("compilesketches.CompileSketches.clone_repository", autospec=True)
     mocker.patch("compilesketches.CompileSketches.install_from_path", autospec=True)
 
@@ -2635,7 +2622,9 @@ def test_install_from_repository(mocker, url, source_path, destination_name, exp
                                              destination_name=destination_name,
                                              force=force)
 
-    tempfile.TemporaryDirectory.assert_called_once()
+    # noinspection PyUnresolvedReferences
+    tempfile.mkdtemp.assert_called_once_with(dir=compile_sketches.temporary_directory.name,
+                                             prefix="install_from_repository-")
     compile_sketches.clone_repository.assert_called_once_with(compile_sketches,
                                                               url=url,
                                                               git_ref=git_ref,
