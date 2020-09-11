@@ -5,7 +5,7 @@
 [![Spell Check](https://github.com/arduino/compile-sketches/workflows/Spell%20Check/badge.svg)](https://github.com/arduino/compile-sketches/actions?workflow=Spell+Check)
 [![codecov](https://codecov.io/gh/arduino/compile-sketches/branch/master/graph/badge.svg)](https://codecov.io/gh/arduino/compile-sketches)
 
-This action checks whether Arduino sketches compile and produces a report of data from the compilations.
+This action checks whether [Arduino](https://www.arduino.cc/) sketches compile and produces a report of data from the compilations.
 
 ## Inputs
 
@@ -25,7 +25,7 @@ If the board is from one of the platforms provided by Arduino's [default package
 
 ### `platforms`
 
-YAML-format list of platform dependencies to install.
+[YAML](https://en.wikipedia.org/wiki/YAML)-format list of platform dependencies to install.
 
 **Default**: The board's dependency will be automatically determined from the `fqbn` input and the latest version of that platform will be installed via Boards Manager.
 
@@ -77,7 +77,7 @@ Keys:
 
 ### `libraries`
 
-YAML-format list of library dependencies to install.
+[YAML](https://en.wikipedia.org/wiki/YAML)-format list of library dependencies to install.
 
 **Default**: `"- source-path: ./"`
 This causes the repository to be installed as a library. If there are no library dependencies and you want to override the default, set the `libraries` input to an empty list (`- libraries: '-'`).
@@ -124,7 +124,7 @@ Keys:
 
 ### `sketch-paths`
 
-YAML-format list of paths containing sketches to compile. These paths will be searched recursively.
+[YAML](https://en.wikipedia.org/wiki/YAML)-format list of paths containing sketches to compile. These paths will be searched recursively.
 
 **Default**: `"- examples"`
 
@@ -136,19 +136,19 @@ Set to true to show verbose output in the log.
 
 ### `sketches-report-path`
 
-Path in which to save a JSON formatted file containing data from the sketch compilations. Should be used only to store reports. Relative paths are relative to [`GITHUB_WORKSPACE`](https://help.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables). The folder will be created if it doesn't already exist. This report is used by the `arduino/report-size-deltas` and `arduino/report-size-trends` actions.
+Path in which to save a JSON formatted file containing data from the sketch compilations. Should be used only to store reports. Relative paths are relative to [`GITHUB_WORKSPACE`](https://help.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables). The folder will be created if it doesn't already exist. This report is used by the [`arduino/report-size-deltas`](https://github.com/arduino/report-size-deltas) and [`arduino/report-size-trends`](https://github.com/arduino/report-size-trends) actions.
 
 **Default**: `"size-deltas-reports"`
 
 ### `github-token`
 
-GitHub access token used to get information from the GitHub API. Only needed for private repositories with `enable-deltas-report` set to `true`. It will be convenient to use [`${{ secrets.GITHUB_TOKEN }}`](https://help.github.com/en/actions/configuring-and-managing-workflows/authenticating-with-the-github_token).
+GitHub access token used to get information from the GitHub API. Only needed for private repositories with [`enable-deltas-report`](#enable-deltas-report) set to `true`. It will be convenient to use [`${{ secrets.GITHUB_TOKEN }}`](https://help.github.com/en/actions/configuring-and-managing-workflows/authenticating-with-the-github_token).
 
 **Default**: `""`
 
 ### `enable-deltas-report`
 
-Set to `true` to cause the action to determine the change in memory usage and compiler warnings of the compiled sketches. If the workflow is triggered by a `pull_request` event, the comparison is between the pull request branch and the tip of the pull request's base branch. If the workflow is triggered by a `push` event, the comparison is between the pushed commit and its immediate parent. The deltas will be displayed in the GitHub Actions build log. This may be used with the [`arduino/report-size-deltas` action](https://github.com/arduino/report-size-deltas).
+Set to `true` to cause the action to determine the change in memory usage and compiler warnings of the compiled sketches. If the workflow is triggered by a [`pull_request` event](https://docs.github.com/en/actions/reference/events-that-trigger-workflows#pull_request), the comparison is between the pull request branch and the tip of the pull request's base branch. If the workflow is triggered by a [`push` event](https://docs.github.com/en/actions/reference/events-that-trigger-workflows#push), the comparison is between the pushed commit and its immediate parent. The deltas will be displayed in the GitHub Actions build log. This may be used with the [`arduino/report-size-deltas` action](https://github.com/arduino/report-size-deltas).
 
 **Default**: `false`
 
