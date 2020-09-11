@@ -1,4 +1,4 @@
-# arduino/compile-sketches action
+# `arduino/compile-sketches` action
 
 [![Tests](https://github.com/arduino/compile-sketches/workflows/Test%20Python%20code/badge.svg)](https://github.com/arduino/compile-sketches/actions?workflow=Test+Python+code)
 [![Lint](https://github.com/arduino/compile-sketches/workflows/Lint%20Python%20code/badge.svg)](https://github.com/arduino/compile-sketches/actions?workflow=Lint+Python+code)
@@ -40,39 +40,39 @@ platforms: |
     name: "arduino:samd"
 ```
 
-#### Sources:
+#### Supported platform sources:
 
 ##### Boards Manager
 
 Keys:
-- `name` - (**required**) platform name in the form of `VENDOR:ARCHITECTURE`.
-- `version` - version of the platform to install.
+- **`name`** - (**required**) platform name in the form of `VENDOR:ARCHITECTURE`.
+- **`version`** - version of the platform to install.
   - **Default**: the latest version.
-- `source-url` - Boards Manager URL of the platform.
+- **`source-url`** - Boards Manager URL of the platform.
   - **Default**: Arduino's package index, which allows installation of all official platforms.
 
 ##### Local path
 
 Keys:
-- `source-path` - (**required**) path to install as a platform. Relative paths are assumed to be relative to the root of the repository.
-- `name` - (**required**) platform name in the form of `VENDOR:ARCHITECTURE`.
+- **`source-path`** - (**required**) path to install as a platform. Relative paths are assumed to be relative to the root of the repository.
+- **`name`** - (**required**) platform name in the form of `VENDOR:ARCHITECTURE`.
 
 ##### Repository
 
 Keys:
-- `source-url` - (**required**) URL to clone the repository from. It must start with `git://` or end with `.git`.
-- `name` -  (**required**) platform name in the form of `VENDOR:ARCHITECTURE`.
-- `version` - [Git ref](https://git-scm.com/book/en/v2/Git-Internals-Git-References) of the repository to checkout. The special version name `latest` will cause the latest tag to be used.
+- **`source-url`** - (**required**) URL to clone the repository from. It must start with `git://` or end with `.git`.
+- **`name`** -  (**required**) platform name in the form of `VENDOR:ARCHITECTURE`.
+- **`version`** - [Git ref](https://git-scm.com/book/en/v2/Git-Internals-Git-References) of the repository to checkout. The special version name `latest` will cause the latest tag to be used.
   - **Default**: the repository is checked out to the tip of the default branch.
-- `source-path` - path to install as a platform. Paths are relative to the root of the repository.
+- **`source-path`** - path to install as a platform. Paths are relative to the root of the repository.
   - **Default**: root of the repository.
 
 ##### Archive download
 
 Keys:
-- `source-url` -  (**required**) download URL for the archive (e.g., `https://github.com/arduino/ArduinoCore-avr/archive/master.zip`).
-- `name` -  (**required**) platform name in the form of `VENDOR:ARCHITECTURE`.
-- `source-path` - path to install as a platform. Paths are relative to the root folder of the archive, or the root of the archive if it has no root folder.
+- **`source-url`** -  (**required**) download URL for the archive (e.g., `https://github.com/arduino/ArduinoCore-avr/archive/master.zip`).
+- **`name`** -  (**required**) platform name in the form of `VENDOR:ARCHITECTURE`.
+- **`source-path`** - path to install as a platform. Paths are relative to the root folder of the archive, or the root of the archive if it has no root folder.
   - **Default**: root folder of the archive.
 
 ### `libraries`
@@ -84,42 +84,42 @@ This causes the repository to be installed as a library. If there are no library
 
 Libraries are installed under the Arduino user folder at `~/Arduino/libraries`.
 
-Note: when the deprecated space-separated list format of this input is used, the repository under test will always be installed as a library.
+**Note**: when the deprecated space-separated list format of this input is used, the repository under test will always be installed as a library.
 
-#### Sources:
+#### Supported library sources:
 
 ##### Library Manager
 
 Keys:
-- `name` - (**required**) name of the library, as defined in the `name` field of its [library.properties](https://arduino.github.io/arduino-cli/latest/library-specification/#libraryproperties-file-format) metadata file. The library will be installed to a folder matching the name, but with any spaces replaced by `_`.
-- `version` - version of the library to install.
+- **`name`** - (**required**) name of the library, as defined in the `name` field of its [library.properties](https://arduino.github.io/arduino-cli/latest/library-specification/#libraryproperties-file-format) metadata file. The library will be installed to a folder matching the name, but with any spaces replaced by `_`.
+- **`version`** - version of the library to install.
   - **Default**: the latest version.
 
 ##### Local path
 
 Keys:
-- `source-path` - (**required**) path to install as a library. Relative paths are assumed to be relative to the root of the repository.
-- `destination-name` - folder name to install the library to.
+- **`source-path`** - (**required**) path to install as a library. Relative paths are assumed to be relative to the root of the repository.
+- **`destination-name`** - folder name to install the library to.
   - **Default**: the folder will be named according to the source repository or subfolder name.
 
 ##### Repository
 
 Keys:
-- `source-url` - (**required**) URL to clone the repository from. It must start with `git://` or end with `.git`.
-- `version` - [Git ref](https://git-scm.com/book/en/v2/Git-Internals-Git-References) of the repository to checkout. The special version name `latest` will cause the latest tag to be used.
+- **`source-url`** - (**required**) URL to clone the repository from. It must start with `git://` or end with `.git`.
+- **`version`** - [Git ref](https://git-scm.com/book/en/v2/Git-Internals-Git-References) of the repository to checkout. The special version name `latest` will cause the latest tag to be used.
   - **Default**: the tip of the default branch.
-- `source-path` - path to install as a library. Paths are relative to the root of the repository.
+- **`source-path`** - path to install as a library. Paths are relative to the root of the repository.
   - **Default**: root of the repository.
-- `destination-name` - folder name to install the library to.
+- **`destination-name`** - folder name to install the library to.
   - **Default**: named according to the source repository or subfolder name.
 
 ##### Archive download
 
 Keys:
-- `source-url` - (**required**) download URL for the archive (e.g., `https://github.com/arduino-libraries/Servo/archive/master.zip`).
-- `source-path` - path to install as a library. Paths are relative to the root folder of the archive, or the root of the archive if it has no root folder.
+- **`source-url`** - (**required**) download URL for the archive (e.g., `https://github.com/arduino-libraries/Servo/archive/master.zip`).
+- **`source-path`** - path to install as a library. Paths are relative to the root folder of the archive, or the root of the archive if it has no root folder.
   - **Default**: root folder of the archive.
-- `destination-name` - folder name to install the library to.
+- **`destination-name`** - folder name to install the library to.
   - **Default**: named according to the source archive or subfolder name.
 
 ### `sketch-paths`
