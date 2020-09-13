@@ -91,9 +91,13 @@ Libraries are installed under the Arduino user folder at `~/Arduino/libraries`.
 ##### Library Manager
 
 Keys:
-- **`name`** - (**required**) name of the library, as defined in the `name` field of its [library.properties](https://arduino.github.io/arduino-cli/latest/library-specification/#libraryproperties-file-format) metadata file. The library will be installed to a folder matching the name, but with any spaces replaced by `_`.
+- **`name`** - (**required**) name of the library, as defined in the `name` field of its [library.properties](https://arduino.github.io/arduino-cli/latest/library-specification/#libraryproperties-file-format) metadata file.
 - **`version`** - version of the library to install.
   - **Default**: the latest version.
+
+**Notes**:
+- The library will be installed to a folder matching its name, but with any spaces replaced by `_`.
+- If the library's author defined dependencies, those libraries will be installed automatically.
 
 ##### Local path
 
