@@ -158,9 +158,15 @@ If the workflow is triggered by a [`push` event](https://docs.github.com/en/acti
 
 The deltas will be displayed in the GitHub Actions build log.
 
-This may be used with the [`arduino/report-size-deltas` action](https://github.com/arduino/report-size-deltas).
+This report may be used with the [`arduino/report-size-deltas` action](https://github.com/arduino/report-size-deltas).
 
 **Default**: `false`
+
+#### How it works
+
+The sketch is first compiled with the repository in [`$GITHUB_WORKSPACE`](https://docs.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables#default-environment-variables) at the state it was at before the action's step. Data from the compilation is recorded in the sketches report. Next, a [`git checkout`] to the [Git ref](https://git-scm.com/book/en/v2/Git-Internals-Git-References) used as the base of the comparison is done and the compilation + data recording process repeated. The delta is the change in the data between the two compilations.
+
+Dependencies defined via the [`libraries`](#libraries) or [`platforms`](#platforms) inputs are installed via [symlinks](https://en.wikipedia.org/wiki/Symbolic_link), meaning dependencies from local paths under `$GITHUB_WORKSPACE` reflect the deltas checkouts even though they are installed outside `$GITHUB_WORKSPACE`.
 
 ### `enable-warnings-report`
 
