@@ -176,8 +176,7 @@ Storing the sketches compilation report report as a [workflow artifact](https://
 - uses: arduino/compile-sketches@main
   with:
     enable-deltas-report: true
-- if: github.event_name == 'pull_request'
-  uses: actions/upload-artifact@v1
+- uses: actions/upload-artifact@v1
   with:
     name: size-deltas-reports
     path: size-deltas-reports
