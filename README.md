@@ -210,7 +210,6 @@ Set to `true` to cause the action to record the compiler warning count for each 
 
 ## Example usage
 
-Only compiling examples:
 ```yaml
 - uses: arduino/compile-sketches@main
   with:
@@ -219,15 +218,4 @@ Only compiling examples:
       - name: Servo
       - name: Stepper
         version: 1.1.3
-```
-
-Storing the sketches compilation report report as a [workflow artifact](https://help.github.com/en/actions/configuring-and-managing-workflows/persisting-workflow-data-using-artifacts):
-```yaml
-- uses: arduino/compile-sketches@main
-  with:
-    enable-deltas-report: true
-- uses: actions/upload-artifact@v1
-  with:
-    name: size-deltas-reports
-    path: size-deltas-reports
 ```
