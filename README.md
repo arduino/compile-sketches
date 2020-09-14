@@ -7,6 +7,36 @@
 
 This action checks whether [Arduino](https://www.arduino.cc/) sketches compile and produces a report of data from the compilations.
 
+## Table of contents
+
+<!-- toc -->
+
+- [Inputs](#inputs)
+  - [`cli-version`](#cli-version)
+  - [`fqbn`](#fqbn)
+  - [`platforms`](#platforms)
+    - [Supported platform sources:](#supported-platform-sources)
+      - [Boards Manager](#boards-manager)
+      - [Local path](#local-path)
+      - [Repository](#repository)
+      - [Archive download](#archive-download)
+  - [`libraries`](#libraries)
+    - [Supported library sources:](#supported-library-sources)
+      - [Library Manager](#library-manager)
+      - [Local path](#local-path-1)
+      - [Repository](#repository-1)
+      - [Archive download](#archive-download-1)
+  - [`sketch-paths`](#sketch-paths)
+  - [`verbose`](#verbose)
+  - [`sketches-report-path`](#sketches-report-path)
+  - [`github-token`](#github-token)
+  - [`enable-deltas-report`](#enable-deltas-report)
+    - [How it works](#how-it-works)
+  - [`enable-warnings-report`](#enable-warnings-report)
+- [Example usage](#example-usage)
+
+<!-- tocstop -->
+
 ## Inputs
 
 ### `cli-version`
