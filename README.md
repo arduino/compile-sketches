@@ -174,7 +174,7 @@ Path in which to save a JSON formatted file containing data from the sketch comp
 
 This report is used by the [`arduino/report-size-deltas`](https://github.com/arduino/report-size-deltas) and [`arduino/report-size-trends`](https://github.com/arduino/report-size-trends) actions.
 
-**Default**: `"size-deltas-reports"`
+**Default**: `"sketches-reports"`
 
 ### `github-token`
 

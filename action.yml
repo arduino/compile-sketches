@@ -21,7 +21,7 @@ inputs:
     default: false
   sketches-report-path:
     description: 'Path in which to save a JSON formatted file containing data from the sketch compilations'
-    default: 'size-deltas-reports'
+    default: 'sketches-reports'
   github-token:
     description: 'GitHub access token used to get information from the GitHub API. Only needed if you are using the deltas report feature in a private repository.'
     default: ''
