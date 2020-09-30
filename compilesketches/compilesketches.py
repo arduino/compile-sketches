@@ -1356,14 +1356,22 @@ class CompileSketches:
                 if (
                     summary_report_minimum is None
                     or summary_report_minimum == self.not_applicable_indicator
-                    or summary_report_minimum > sketch_report_delta
+                ):
+                    summary_report_minimum = sketch_report_delta
+                elif (
+                    sketch_report_delta != self.not_applicable_indicator
+                    and summary_report_minimum > sketch_report_delta
                 ):
                     summary_report_minimum = sketch_report_delta
 
                 if (
                     summary_report_maximum is None
                     or summary_report_maximum == self.not_applicable_indicator
-                    or summary_report_maximum < sketch_report_delta
+                ):
+                    summary_report_maximum = sketch_report_delta
+                elif (
+                    sketch_report_delta != self.not_applicable_indicator
+                    and summary_report_maximum < sketch_report_delta
                 ):
                     summary_report_maximum = sketch_report_delta
 

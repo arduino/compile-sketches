@@ -2386,6 +2386,127 @@ def test_get_warnings_summary_report():
         expected_warnings_summary_report
     )
 
+    sketch_report_list = [
+        {
+            compilesketches.CompileSketches.ReportKeys.warnings: {
+                compilesketches.CompileSketches.ReportKeys.delta: {
+                    compilesketches.CompileSketches.ReportKeys.absolute: 3
+                }
+            },
+        },
+        {
+            compilesketches.CompileSketches.ReportKeys.warnings: {
+                compilesketches.CompileSketches.ReportKeys.delta: {
+                    compilesketches.CompileSketches.ReportKeys.absolute: 42
+                }
+            }
+        }
+    ]
+
+    expected_warnings_summary_report = {
+        compilesketches.CompileSketches.ReportKeys.delta: {
+            compilesketches.CompileSketches.ReportKeys.absolute: {
+                compilesketches.CompileSketches.ReportKeys.minimum: 3,
+                compilesketches.CompileSketches.ReportKeys.maximum: 42
+            }
+        }
+    }
+
+    assert compile_sketches.get_warnings_summary_report(sketch_report_list=sketch_report_list) == (
+        expected_warnings_summary_report
+    )
+
+    # N/As
+    sketch_report_list = [
+        {
+            compilesketches.CompileSketches.ReportKeys.warnings: {
+                compilesketches.CompileSketches.ReportKeys.delta: {
+                    compilesketches.CompileSketches.ReportKeys.absolute: compile_sketches.not_applicable_indicator
+                }
+            },
+        },
+        {
+            compilesketches.CompileSketches.ReportKeys.warnings: {
+                compilesketches.CompileSketches.ReportKeys.delta: {
+                    compilesketches.CompileSketches.ReportKeys.absolute: 3
+                }
+            }
+        }
+    ]
+
+    expected_warnings_summary_report = {
+        compilesketches.CompileSketches.ReportKeys.delta: {
+            compilesketches.CompileSketches.ReportKeys.absolute: {
+                compilesketches.CompileSketches.ReportKeys.minimum: 3,
+                compilesketches.CompileSketches.ReportKeys.maximum: 3
+            }
+        }
+    }
+
+    assert compile_sketches.get_warnings_summary_report(sketch_report_list=sketch_report_list) == (
+        expected_warnings_summary_report
+    )
+
+    sketch_report_list = [
+        {
+            compilesketches.CompileSketches.ReportKeys.warnings: {
+                compilesketches.CompileSketches.ReportKeys.delta: {
+                    compilesketches.CompileSketches.ReportKeys.absolute: 42
+                }
+            },
+        },
+        {
+            compilesketches.CompileSketches.ReportKeys.warnings: {
+                compilesketches.CompileSketches.ReportKeys.delta: {
+                    compilesketches.CompileSketches.ReportKeys.absolute: compile_sketches.not_applicable_indicator
+                }
+            }
+        }
+    ]
+
+    expected_warnings_summary_report = {
+        compilesketches.CompileSketches.ReportKeys.delta: {
+            compilesketches.CompileSketches.ReportKeys.absolute: {
+                compilesketches.CompileSketches.ReportKeys.minimum: 42,
+                compilesketches.CompileSketches.ReportKeys.maximum: 42
+            }
+        }
+    }
+
+    assert compile_sketches.get_warnings_summary_report(sketch_report_list=sketch_report_list) == (
+        expected_warnings_summary_report
+    )
+
+    sketch_report_list = [
+        {
+            compilesketches.CompileSketches.ReportKeys.warnings: {
+                compilesketches.CompileSketches.ReportKeys.delta: {
+                    compilesketches.CompileSketches.ReportKeys.absolute: compile_sketches.not_applicable_indicator
+                }
+            },
+        },
+        {
+            compilesketches.CompileSketches.ReportKeys.warnings: {
+                compilesketches.CompileSketches.ReportKeys.delta: {
+                    compilesketches.CompileSketches.ReportKeys.absolute: compile_sketches.not_applicable_indicator
+                }
+            }
+        }
+    ]
+
+    expected_warnings_summary_report = {
+        compilesketches.CompileSketches.ReportKeys.delta: {
+            compilesketches.CompileSketches.ReportKeys.absolute: {
+                compilesketches.CompileSketches.ReportKeys.minimum: compile_sketches.not_applicable_indicator,
+                compilesketches.CompileSketches.ReportKeys.maximum: compile_sketches.not_applicable_indicator
+            }
+        }
+    }
+
+    assert compile_sketches.get_warnings_summary_report(sketch_report_list=sketch_report_list) == (
+        expected_warnings_summary_report
+    )
+
     # Test with deltas disabled
     sketch_report_list = [
         {
