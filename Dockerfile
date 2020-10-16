@@ -1,4 +1,4 @@
-FROM python:3.8.5
+FROM python:3.8.6
 
 # Copies your code file from your action repository to the filesystem path `/` of the container
 COPY compilesketches /compilesketches
