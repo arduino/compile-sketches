@@ -32,6 +32,7 @@ sudo apt-get install --yes python${PYTHON_PACKAGE_VERSION}-venv > /dev/null
 "$PYTHON_COMMAND" -m venv "$PYTHON_VENV_PATH"
 
 # Activate Python virtual environment
+# shellcheck source=/dev/null
 . "$PYTHON_VENV_ACTIVATE_SCRIPT_PATH"
 
 # Install Python dependencies
