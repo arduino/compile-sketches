@@ -1,0 +1,113 @@
+name: Run integration tests
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/test-integration.yml'
+      - '.github/workflows/testdata'
+      - 'action.yml'
+      - 'compilesketches/**'
+
+  push:
+    paths:
+      - '.github/workflows/test-integration.yml'
+      - '.github/workflows/testdata'
+      - 'action.yml'
+      - 'compilesketches/**'
+
+env:
+  SKETCHES_REPORTS_PATH: sketches-reports
+  TESTDATA_SKETCHES_PATH: .github/workflows/testdata/sketches
+
+jobs:
+  default-inputs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Servo library
+        uses: actions/checkout@v2
+        with:
+          repository: arduino-libraries/servo
+          ref: 1.1.7
+
+      - name: Checkout local repo
+        uses: actions/checkout@v2
+        with:
+          # Must be checked out to a subfolder to not interfere with the checked out library under test
+          path: extras/compile-sketches
+
+      - name: Run action with default input values
+        # Use action from local path
+        uses: ./extras/compile-sketches
+
+
+  all-inputs:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        board:
+          - fqbn: arduino:avr:uno
+            platforms: |
+              - name: arduino:avr
+                version: 1.8.3
+            libraries: |
+              - name: Servo
+                version: 1.1.7
+          # Board that requires Boards Manager URL
+          - fqbn: esp8266:esp8266:huzzah
+            platforms: |
+              - name: esp8266:esp8266
+                source-url: https://arduino.esp8266.com/stable/package_esp8266com_index.json
+                version: 2.7.4
+            libraries: |
+              # The official Servo library is not compatible with ESP8266, but that platform has a bundled Servo lib
+              # so there are no library dependencies
+              -
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Run action
+        # Use action from local path
+        uses: ./
+        with:
+          cli-version: 0.13.0
+          platforms: ${{ matrix.board.platforms }}
+          fqbn: ${{ matrix.board.fqbn }}
+          libraries: ${{ matrix.board.libraries }}
+          sketch-paths: |
+            - ${{ env.TESTDATA_SKETCHES_PATH }}/BareMinimum
+            - ${{ env.TESTDATA_SKETCHES_PATH }}/ServoLibrary
+          enable-deltas-report: true
+          enable-warnings-report: true
+          sketches-report-path: ${{ env.SKETCHES_REPORTS_PATH }}
+          verbose: true
+
+
+  expected-failed-compilation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout local repo
+        uses: actions/checkout@v2
+
+      - name: Compile sketch that is expected to error
+        id: compile-sketches
+        continue-on-error: true
+        uses: ./
+        with:
+          fqbn: arduino:avr:uno
+          libraries: |
+            -
+          sketch-paths: |
+            - ${{ env.TESTDATA_SKETCHES_PATH }}/Error
+
+      - name: Fail the job if the action run succeeded
+        if: steps.compile-sketches.outcome == 'success'
+        run: |
+          echo "::error::The action run was expected to fail, but passed!"
+          exit 1
