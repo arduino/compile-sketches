@@ -1,0 +1,47 @@
+name: Validate action.yml
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/validate-action_yml.yml"
+      - "action.yml"
+  push:
+    paths:
+      - ".github/workflows/validate-action_yml.yml"
+      - "action.yml"
+  # Scheduled trigger to catch workflow failure resulting from changes to the JSON schema
+  schedule:
+    # run every Tuesday at 3 AM UTC
+    - cron: "0 3 * * 2"
+  # See: https://docs.github.com/en/actions/reference/events-that-trigger-workflows#workflow_dispatch
+  workflow_dispatch:
+  # See: https://docs.github.com/en/actions/reference/events-that-trigger-workflows#repository_dispatch
+  repository_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    env:
+      JSON_SCHEMA_FOLDER: etc/github-action-json-schema
+      JSON_SCHEMA_FILENAME: github-action.json
+
+    steps:
+      - name: Checkout local repository
+        uses: actions/checkout@v2
+
+      # See: https://github.com/carlosperate/download-file-action/blob/master/README.md
+      - name: Download JSON schema for action.yml
+        uses: carlosperate/download-file-action@v1.0.3
+        with:
+          # See: https://github.com/SchemaStore/schemastore/blob/master/src/schemas/json/github-action.json
+          file-url: https://json.schemastore.org/github-action
+          location: ${{ env.JSON_SCHEMA_FOLDER }}
+          file-name: ${{ env.JSON_SCHEMA_FILENAME }}
+
+      - name: Install JSON schema validator
+        run: sudo npm install --global ajv-cli
+
+      # See: https://github.com/ajv-validator/ajv-cli/blob/master/README.md
+      - name: Validate action.yml
+        run: ajv -s "${{ env.JSON_SCHEMA_FOLDER }}/${{ env.JSON_SCHEMA_FILENAME }}" -d action.yml
