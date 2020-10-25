@@ -43,5 +43,30 @@ inputs:
     required: true
 
 runs:
-  using: 'docker'
-  image: 'Dockerfile'
+  using: composite
+  steps:
+    - name: Run the set up script
+      id: setup
+      shell: bash
+      run: |
+        # Group action setup log output
+        echo "::group::Action set up"
+        "${{ github.action_path }}/action-setup.sh"
+        echo "::endgroup::"
+
+    - name: Run script
+      shell: bash
+      env:
+        INPUT_CLI-VERSION: ${{ inputs.cli-version }}
+        INPUT_FQBN: ${{ inputs.fqbn }}
+        INPUT_LIBRARIES: ${{ inputs.libraries }}
+        INPUT_PLATFORMS: ${{ inputs.platforms }}
+        INPUT_SKETCH-PATHS: ${{ inputs.sketch-paths }}
+        INPUT_VERBOSE: ${{ inputs.verbose }}
+        INPUT_GITHUB-TOKEN: ${{ inputs.github-token }}
+        INPUT_ENABLE-DELTAS-REPORT: ${{ inputs.enable-deltas-report }}
+        INPUT_ENABLE-WARNINGS-REPORT: ${{ inputs.enable-warnings-report }}
+        INPUT_SKETCHES-REPORT-PATH: ${{ inputs.sketches-report-path }}
+      run: |
+        source "${{ steps.setup.outputs.python-venv-activate-script-path }}"
+        "${{ steps.setup.outputs.python-command }}" "${{ github.action_path }}/compilesketches/compilesketches.py"
