@@ -1,0 +1,147 @@
+{
+  "commit_hash": "d4343a2e7d8123726f2c53d2ac186df41b59e946",
+  "commit_url": "https://github.com/arduino/compile-sketches/commit/d4343a2e7d8123726f2c53d2ac186df41b59e946",
+  "boards": [
+    {
+      "board": "arduino:avr:uno",
+      "sketches": [
+        {
+          "name": ".github/workflows/testdata/sketches/BareMinimum",
+          "compilation_success": true,
+          "sizes": [
+            {
+              "name": "flash",
+              "maximum": 32256,
+              "current": {
+                "absolute": 444,
+                "relative": 1.38
+              },
+              "previous": {
+                "absolute": 444,
+                "relative": 1.38
+              },
+              "delta": {
+                "absolute": 0,
+                "relative": 0.0
+              }
+            },
+            {
+              "name": "RAM for global variables",
+              "maximum": 2048,
+              "current": {
+                "absolute": 9,
+                "relative": 0.44
+              },
+              "previous": {
+                "absolute": 9,
+                "relative": 0.44
+              },
+              "delta": {
+                "absolute": 0,
+                "relative": 0.0
+              }
+            }
+          ],
+          "warnings": {
+            "current": {
+              "absolute": 0
+            },
+            "previous": {
+              "absolute": 0
+            },
+            "delta": {
+              "absolute": 0
+            }
+          }
+        },
+        {
+          "name": ".github/workflows/testdata/sketches/ServoLibrary",
+          "compilation_success": true,
+          "sizes": [
+            {
+              "name": "flash",
+              "maximum": 32256,
+              "current": {
+                "absolute": 888,
+                "relative": 2.75
+              },
+              "previous": {
+                "absolute": 888,
+                "relative": 2.75
+              },
+              "delta": {
+                "absolute": 0,
+                "relative": 0.0
+              }
+            },
+            {
+              "name": "RAM for global variables",
+              "maximum": 2048,
+              "current": {
+                "absolute": 46,
+                "relative": 2.25
+              },
+              "previous": {
+                "absolute": 46,
+                "relative": 2.25
+              },
+              "delta": {
+                "absolute": 0,
+                "relative": 0.0
+              }
+            }
+          ],
+          "warnings": {
+            "current": {
+              "absolute": 0
+            },
+            "previous": {
+              "absolute": 0
+            },
+            "delta": {
+              "absolute": 0
+            }
+          }
+        }
+      ],
+      "sizes": [
+        {
+          "name": "flash",
+          "maximum": 32256,
+          "delta": {
+            "absolute": {
+              "minimum": 0,
+              "maximum": 0
+            },
+            "relative": {
+              "minimum": 0.0,
+              "maximum": 0.0
+            }
+          }
+        },
+        {
+          "name": "RAM for global variables",
+          "maximum": 2048,
+          "delta": {
+            "absolute": {
+              "minimum": 0,
+              "maximum": 0
+            },
+            "relative": {
+              "minimum": 0.0,
+              "maximum": 0.0
+            }
+          }
+        }
+      ],
+      "warnings": {
+        "delta": {
+          "absolute": {
+            "minimum": 0,
+            "maximum": 0
+          }
+        }
+      }
+    }
+  ]
+}

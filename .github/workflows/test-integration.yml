@@ -18,6 +18,7 @@ on:
 env:
   SKETCHES_REPORTS_PATH: sketches-reports
   TESTDATA_SKETCHES_PATH: .github/workflows/testdata/sketches
+  TESTDATA_REPORTS_PATH:  .github/workflows/testdata/reports
 
 jobs:
   default-inputs:
@@ -86,6 +87,84 @@ jobs:
           enable-warnings-report: true
           sketches-report-path: ${{ env.SKETCHES_REPORTS_PATH }}
           verbose: true
+
+      - name: Set report artifact name
+        id: report-artifact-name
+        run: |
+          echo "::set-output name=report-artifact-name::${{ github.job }}"
+
+      - name: Save sketches report as workflow artifact
+        uses: actions/upload-artifact@v2
+        with:
+          path: sketches-reports
+          name: ${{ steps.report-artifact-name.outputs.report-artifact-name }}
+
+    outputs:
+      report-artifact-name: ${{ steps.report-artifact-name.outputs.report-artifact-name }}
+
+
+  check-sketches-reports:
+    needs: all-inputs
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout is needed to get the golden reports
+      - name: Checkout local repo
+        uses: actions/checkout@v2
+
+      - name: Download sketches reports artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: ${{ needs.all-inputs.outputs.report-artifact-name }}
+          path: ${{ env.SKETCHES_REPORTS_PATH }}
+
+      - name: Compare generated sketches report to golden report
+        run: |
+          # The commit hash changes on every push, so it can't be compared against the golden report
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            COMMIT_HASH="${{ github.event.pull_request.head.sha }}"
+          else
+            COMMIT_HASH="$(git rev-parse HEAD)"
+          fi
+
+          set +o errexit  # Unset errexit so the results of all report comparisons are shown before exiting
+          EXIT_STATUS=0
+          while read -r reportPath; do
+            echo "Sketches report $reportPath matches expected:"
+
+            (
+              # Check static report components against golden reports
+              jq \
+                --null-input \
+                --exit-status \
+                --slurpfile generated "$reportPath" \
+                --slurpfile golden "${{ env.TESTDATA_REPORTS_PATH }}/${{ needs.all-inputs.outputs.report-artifact-name }}/$(basename "$reportPath")" \
+                '($generated|.[0].boards) == ($golden|.[0].boards)'
+            ) && (
+              # Check the commit_hash value
+              jq \
+                --null-input \
+                --exit-status \
+                --slurpfile generated "$reportPath" \
+                --arg commit_hash "$COMMIT_HASH" \
+                '$generated|.[0].commit_hash == $commit_hash|.'
+            ) && (
+              # Check the commit_url value
+              jq \
+                --null-input \
+                --exit-status \
+                --slurpfile generated "$reportPath" \
+                --arg commit_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${COMMIT_HASH}" \
+                '$generated|.[0].commit_url == $commit_url|.'
+            )
+
+            if [[ $? -ne 0 ]]; then
+              echo "::error::Sketches report $reportPath mismatch."
+              EXIT_STATUS=1
+            fi
+          done <<<"$(find "${{ env.SKETCHES_REPORTS_PATH }}" -type f -and -name '*.json')"
+
+          exit $EXIT_STATUS
 
 
   expected-failed-compilation:
