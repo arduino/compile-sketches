@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Testing
+htmlcov/
+.coverage
+coverage.xml
+
+# Environments
+.venv/
+venv/
+
+# IDEs
+.idea/
+.vscode/
+*.bak
+*.code-workspace
+*.sublime-workspace
