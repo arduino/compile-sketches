@@ -6,6 +6,7 @@ on:
       - '.github/workflows/test-integration.yml'
       - '.github/workflows/testdata'
       - 'action.yml'
+      - 'action-setup.sh'
       - 'compilesketches/**'
 
   push:
@@ -13,6 +14,7 @@ on:
       - '.github/workflows/test-integration.yml'
       - '.github/workflows/testdata'
       - 'action.yml'
+      - 'action-setup.sh'
       - 'compilesketches/**'
 
 env:
