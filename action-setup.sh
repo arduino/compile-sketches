@@ -29,7 +29,7 @@ sudo apt-get install --yes python3-setuptools > /dev/null
 sudo apt-get install --yes python${PYTHON_PACKAGE_VERSION}-venv > /dev/null
 
 # Create Python virtual environment
-"$PYTHON_COMMAND" -m venv "$PYTHON_VENV_PATH"
+"$PYTHON_COMMAND" -m venv --system-site-packages "$PYTHON_VENV_PATH"
 
 # Activate Python virtual environment
 # shellcheck source=/dev/null
