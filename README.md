@@ -3,7 +3,7 @@
 [![Tests](https://github.com/arduino/compile-sketches/workflows/Test%20Python%20code/badge.svg)](https://github.com/arduino/compile-sketches/actions?workflow=Test+Python+code)
 [![Lint](https://github.com/arduino/compile-sketches/workflows/Lint%20Python%20code/badge.svg)](https://github.com/arduino/compile-sketches/actions?workflow=Lint+Python+code)
 [![Spell Check](https://github.com/arduino/compile-sketches/workflows/Spell%20Check/badge.svg)](https://github.com/arduino/compile-sketches/actions?workflow=Spell+Check)
-[![codecov](https://codecov.io/gh/arduino/compile-sketches/branch/master/graph/badge.svg)](https://codecov.io/gh/arduino/compile-sketches)
+[![codecov](https://codecov.io/gh/arduino/compile-sketches/branch/main/graph/badge.svg?token=Uv6f1ebMZ4)](https://codecov.io/gh/arduino/compile-sketches)
 
 This action checks whether [Arduino](https://www.arduino.cc/) sketches compile and produces a report of data from the compilations.
 
