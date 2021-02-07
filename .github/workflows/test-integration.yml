@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/test-integration.yml'
-      - '.github/workflows/testdata'
+      - '.github/workflows/testdata/**'
       - 'action.yml'
       - 'action-setup.sh'
       - 'compilesketches/**'
@@ -12,7 +12,7 @@ on:
   push:
     paths:
       - '.github/workflows/test-integration.yml'
-      - '.github/workflows/testdata'
+      - '.github/workflows/testdata/**'
       - 'action.yml'
       - 'action-setup.sh'
       - 'compilesketches/**'
@@ -78,17 +78,26 @@ jobs:
         # Use action from local path
         uses: ./
         with:
-          cli-version: 0.13.0
+          cli-version: 0.15.1
           platforms: ${{ matrix.board.platforms }}
           fqbn: ${{ matrix.board.fqbn }}
           libraries: ${{ matrix.board.libraries }}
           sketch-paths: |
             - ${{ env.TESTDATA_SKETCHES_PATH }}/BareMinimum
             - ${{ env.TESTDATA_SKETCHES_PATH }}/ServoLibrary
+            - ${{ env.TESTDATA_SKETCHES_PATH }}/TestCompileFlags
+          cli-compile-flags: |
+            - --build-property
+            - compiler.cpp.extra_flags="-DSTRING_MACRO="hello world"" -DINT_MACRO=2 -DFLAG_MACRO
+            - --export-binaries
           enable-deltas-report: true
           enable-warnings-report: true
           sketches-report-path: ${{ env.SKETCHES_REPORTS_PATH }}
           verbose: true
+
+      - name: Verify --export-binaries flag was used by compilation command
+        run: |
+          [ -d ${{ env.TESTDATA_SKETCHES_PATH }}/BareMinimum/build ]
 
       - name: Set report artifact name
         id: report-artifact-name

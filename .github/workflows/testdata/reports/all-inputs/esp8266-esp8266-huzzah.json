@@ -1,6 +1,6 @@
 {
-  "commit_hash": "d4343a2e7d8123726f2c53d2ac186df41b59e946",
-  "commit_url": "https://github.com/arduino/compile-sketches/commit/d4343a2e7d8123726f2c53d2ac186df41b59e946",
+  "commit_hash": "d2ed774ec1f37e6e497b6d629963cbc79632e9f9",
+  "commit_url": "https://github.com/arduino/compile-sketches/commit/d2ed774ec1f37e6e497b6d629963cbc79632e9f9",
   "boards": [
     {
       "board": "esp8266:esp8266:huzzah",
@@ -97,6 +97,55 @@
             },
             "previous": {
               "absolute": 0
+            },
+            "delta": {
+              "absolute": 0
+            }
+          }
+        },
+        {
+          "name": ".github/workflows/testdata/sketches/TestCompileFlags",
+          "compilation_success": true,
+          "sizes": [
+            {
+              "name": "flash",
+              "maximum": 1044464,
+              "current": {
+                "absolute": 256684,
+                "relative": 24.58
+              },
+              "previous": {
+                "absolute": 256684,
+                "relative": 24.58
+              },
+              "delta": {
+                "absolute": 0,
+                "relative": 0.0
+              }
+            },
+            {
+              "name": "RAM for global variables",
+              "maximum": 81920,
+              "current": {
+                "absolute": 26776,
+                "relative": 32.69
+              },
+              "previous": {
+                "absolute": 26776,
+                "relative": 32.69
+              },
+              "delta": {
+                "absolute": 0,
+                "relative": 0.0
+              }
+            }
+          ],
+          "warnings": {
+            "current": {
+              "absolute": 1
+            },
+            "previous": {
+              "absolute": 1
             },
             "delta": {
               "absolute": 0
