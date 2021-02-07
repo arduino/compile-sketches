@@ -27,6 +27,7 @@ This action checks whether [Arduino](https://www.arduino.cc/) sketches compile a
       - [Repository](#repository-1)
       - [Archive download](#archive-download-1)
   - [`sketch-paths`](#sketch-paths)
+  - [`cli-compile-flags`](#cli-compile-flags)
   - [`verbose`](#verbose)
   - [`sketches-report-path`](#sketches-report-path)
   - [`github-token`](#github-token)
@@ -161,6 +162,12 @@ Keys:
 [YAML](https://en.wikipedia.org/wiki/YAML)-format list of paths containing sketches to compile. These paths will be searched recursively.
 
 **Default**: `"- examples"`
+
+### `cli-compile-flags`
+
+YAML-format list of flags to add to the Arduino CLI command used to compile the sketches. For the available flags, see [the Arduino CLI command reference](https://arduino.github.io/arduino-cli/latest/commands/arduino-cli_compile/#options).
+
+**Default**: `""`
 
 ### `verbose`
 

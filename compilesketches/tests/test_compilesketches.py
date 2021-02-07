@@ -25,6 +25,7 @@ def get_compilesketches_object(
     platforms="- name: FooVendor:BarArchitecture",
     libraries="foo libraries",
     sketch_paths="foo sketch_paths",
+    cli_compile_flags="--foo",
     verbose="false",
     github_token="",
     github_api=unittest.mock.sentinel.github_api,
@@ -41,6 +42,7 @@ def get_compilesketches_object(
                                                                  platforms=platforms,
                                                                  libraries=libraries,
                                                                  sketch_paths=sketch_paths,
+                                                                 cli_compile_flags=cli_compile_flags,
                                                                  verbose=verbose,
                                                                  github_token=github_token,
                                                                  enable_deltas_report=enable_deltas_report,
@@ -89,6 +91,7 @@ def setup_action_inputs(monkeypatch):
         platforms = "- name: FooVendor:BarArchitecture"
         libraries = "foo libraries"
         sketch_paths = "foo/Sketch bar/OtherSketch"
+        cli_compile_flags = "--foo"
         verbose = "true"
         github_token = "FooGitHubToken"
         enable_size_deltas_report = "FooEnableSizeDeltasReport"
@@ -102,6 +105,7 @@ def setup_action_inputs(monkeypatch):
     monkeypatch.setenv("INPUT_PLATFORMS", ActionInputs.platforms)
     monkeypatch.setenv("INPUT_LIBRARIES", ActionInputs.libraries)
     monkeypatch.setenv("INPUT_SKETCH-PATHS", ActionInputs.sketch_paths)
+    monkeypatch.setenv("INPUT_CLI-COMPILE-FLAGS", ActionInputs.cli_compile_flags)
     monkeypatch.setenv("INPUT_VERBOSE", ActionInputs.verbose)
     monkeypatch.setenv("INPUT_GITHUB-TOKEN", ActionInputs.github_token)
     monkeypatch.setenv("INPUT_ENABLE-DELTAS-REPORT", ActionInputs.enable_deltas_report)
@@ -227,6 +231,7 @@ def test_main(mocker, setup_action_inputs):
         platforms=setup_action_inputs.platforms,
         libraries=setup_action_inputs.libraries,
         sketch_paths=setup_action_inputs.sketch_paths,
+        cli_compile_flags=setup_action_inputs.cli_compile_flags,
         verbose=setup_action_inputs.verbose,
         github_token=setup_action_inputs.github_token,
         enable_deltas_report=setup_action_inputs.enable_deltas_report,
@@ -246,6 +251,8 @@ def test_compilesketches():
     sketch_paths = "examples/FooSketchPath examples/BarSketchPath"
     expected_sketch_paths_list = [compilesketches.absolute_path(path="examples/FooSketchPath"),
                                   compilesketches.absolute_path(path="examples/BarSketchPath")]
+    cli_compile_flags = "- --foo\n- --bar"
+    expected_cli_compile_flags = ["--foo", "--bar"]
     verbose = "false"
     github_token = "fooGitHubToken"
     expected_deltas_base_ref = unittest.mock.sentinel.deltas_base_ref
@@ -262,6 +269,7 @@ def test_compilesketches():
             platforms=platforms,
             libraries=libraries,
             sketch_paths=sketch_paths,
+            cli_compile_flags=cli_compile_flags,
             verbose=verbose,
             github_token=github_token,
             enable_deltas_report=enable_deltas_report,
@@ -275,11 +283,17 @@ def test_compilesketches():
     assert compile_sketches.platforms == platforms
     assert compile_sketches.libraries == libraries
     assert compile_sketches.sketch_paths == expected_sketch_paths_list
+    assert compile_sketches.cli_compile_flags == expected_cli_compile_flags
     assert compile_sketches.verbose is False
     assert compile_sketches.deltas_base_ref == expected_deltas_base_ref
     assert compile_sketches.enable_deltas_report is True
     assert compile_sketches.enable_warnings_report is True
     assert compile_sketches.sketches_report_path == pathlib.PurePath(sketches_report_path)
+
+    assert get_compilesketches_object(cli_compile_flags="").cli_compile_flags is None
+    assert get_compilesketches_object(cli_compile_flags="- --foo").cli_compile_flags == ["--foo"]
+    assert get_compilesketches_object(cli_compile_flags="- --foo\n- \"bar baz\"").cli_compile_flags == ["--foo",
+                                                                                                        "bar baz"]
 
     # Test invalid enable_deltas_report value
     with pytest.raises(expected_exception=SystemExit, match="1"):
