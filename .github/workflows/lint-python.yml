@@ -32,19 +32,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Set up Python
-        uses: actions/setup-python@v1
-        with:
-          python-version: '3.8.6'
+      - name: Run the set up script
+        id: setup
+        run: |
+          "${{ github.workspace }}/action-setup.sh"
 
       - name: Install flake8
         run: |
-          python -m pip install --upgrade pip
-          pip install --quiet flake8
-          pip install --quiet pep8-naming
+          source "${{ steps.setup.outputs.python-venv-activate-script-path }}"
+          "${{ steps.setup.outputs.python-command }}" \
+            -m \
+              pip install \
+                flake8 \
+                pep8-naming
 
       - name: Lint with flake8
         env:
           PYTHON_PROJECT_PATH: ${GITHUB_WORKSPACE}/compilesketches
         run: |
+          source "${{ steps.setup.outputs.python-venv-activate-script-path }}"
           flake8 --config "${{ env.PYTHON_PROJECT_PATH }}/.flake8" --show-source "${{ env.PYTHON_PROJECT_PATH }}"
