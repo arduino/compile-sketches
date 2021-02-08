@@ -43,6 +43,7 @@ def main():
         platforms=os.environ["INPUT_PLATFORMS"],
         libraries=os.environ["INPUT_LIBRARIES"],
         sketch_paths=os.environ["INPUT_SKETCH-PATHS"],
+        cli_compile_flags=os.environ["INPUT_CLI-COMPILE-FLAGS"],
         verbose=os.environ["INPUT_VERBOSE"],
         github_token=os.environ["INPUT_GITHUB-TOKEN"],
         enable_deltas_report=os.environ["INPUT_ENABLE-DELTAS-REPORT"],
@@ -64,6 +65,7 @@ class CompileSketches:
     libraries -- YAML-format or space-separated list of libraries to install
     sketch_paths -- space-separated list of paths containing sketches to compile. These paths will be searched
                     recursively for sketches.
+    cli_compile_flags -- Arbitrary Arduino CLI flags to add to the compile command.
     verbose -- set to "true" for verbose output ("true", "false")
     github_token -- GitHub access token
     enable_deltas_report -- set to "true" to cause the action to determine the change in memory usage
@@ -115,8 +117,8 @@ class CompileSketches:
 
     latest_release_indicator = "latest"
 
-    def __init__(self, cli_version, fqbn_arg, platforms, libraries, sketch_paths, verbose, github_token,
-                 enable_deltas_report, enable_warnings_report, sketches_report_path):
+    def __init__(self, cli_version, fqbn_arg, platforms, libraries, sketch_paths, cli_compile_flags, verbose,
+                 github_token, enable_deltas_report, enable_warnings_report, sketches_report_path):
         """Process, store, and validate the action's inputs."""
         self.cli_version = cli_version
 
@@ -131,6 +133,7 @@ class CompileSketches:
         absolute_sketch_paths = [absolute_path(path=sketch_path) for sketch_path in sketch_paths.value]
         self.sketch_paths = absolute_sketch_paths
 
+        self.cli_compile_flags = yaml.load(stream=cli_compile_flags, Loader=yaml.SafeLoader)
         self.verbose = parse_boolean_input(boolean_input=verbose)
 
         if github_token == "":
@@ -871,7 +874,10 @@ class CompileSketches:
         sketch_path -- path of the sketch to compile
         clean_build_cache -- whether to delete cached compiled from previous compilations before compiling
         """
-        compilation_command = ["compile", "--warnings", "all", "--fqbn", self.fqbn, sketch_path]
+        compilation_command = ["compile", "--warnings", "all", "--fqbn", self.fqbn]
+        if self.cli_compile_flags is not None:
+            compilation_command.extend(self.cli_compile_flags)
+        compilation_command.append(sketch_path)
 
         if clean_build_cache:
             for cache_path in pathlib.Path("/tmp").glob(pattern="arduino*"):

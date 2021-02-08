@@ -21,6 +21,10 @@ inputs:
     description: 'YAML-format list of paths containing sketches to compile.'
     default: '- examples'
     required: true
+  cli-compile-flags:
+    description: 'YAML-format list of flags to add to the Arduino CLI sketch compilation command.'
+    default: ''
+    required: false
   verbose:
     description: 'Set to true to show verbose output in the log'
     default: 'false'
@@ -62,6 +66,7 @@ runs:
         INPUT_LIBRARIES: ${{ inputs.libraries }}
         INPUT_PLATFORMS: ${{ inputs.platforms }}
         INPUT_SKETCH-PATHS: ${{ inputs.sketch-paths }}
+        INPUT_CLI-COMPILE-FLAGS: ${{ inputs.cli-compile-flags }}
         INPUT_VERBOSE: ${{ inputs.verbose }}
         INPUT_GITHUB-TOKEN: ${{ inputs.github-token }}
         INPUT_ENABLE-DELTAS-REPORT: ${{ inputs.enable-deltas-report }}
