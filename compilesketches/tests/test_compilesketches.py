@@ -20,7 +20,7 @@ test_data_path = pathlib.PurePath(os.path.dirname(os.path.realpath(__file__)), "
 
 
 def get_compilesketches_object(
-    cli_version=unittest.mock.sentinel.cli_version,
+    cli_version="0.12.3",
     fqbn_arg="foo fqbn_arg",
     platforms="- name: FooVendor:BarArchitecture",
     libraries="foo libraries",
@@ -2576,6 +2576,19 @@ def test_create_sketches_report_file(monkeypatch, tmp_path):
 
     with open(file=str(sketches_report_path.joinpath("arduino-avr-uno.json"))) as sketch_report_file:
         assert json.load(sketch_report_file) == sketches_report
+
+
+@pytest.mark.parametrize("cli_version, command, original_key, expected_key",
+                         [("latest", "core list", "ID", "id"),  # Non-semver
+                          ("1.0.0", "core list", "ID", "id"),  # >
+                          ("0.17.0", "core list", "ID", "ID"),  # ==
+                          ("0.14.0-rc2", "core list", "ID", "ID"),  # <
+                          ("1.0.0", "foo", "ID", "ID"),  # Command has no translation
+                          ("1.0.0", "core list", "foo", "foo")])  # Key has no translation
+def test_cli_json_key(cli_version, command, original_key, expected_key):
+    compile_sketches = get_compilesketches_object(cli_version=cli_version)
+
+    assert compile_sketches.cli_json_key(command, original_key) == expected_key
 
 
 @pytest.mark.parametrize("verbose", ["true", "false"])
