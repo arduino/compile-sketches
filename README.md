@@ -218,7 +218,7 @@ Set to `true` to cause the action to record the compiler warning count for each 
 ## Example usage
 
 ```yaml
-- uses: arduino/compile-sketches@main
+- uses: arduino/compile-sketches@v1
   with:
     fqbn: 'arduino:avr:uno'
     libraries: |
