@@ -1245,38 +1245,60 @@ def test_get_list_from_multiformat_input(input_value, expected_list, expected_wa
 
 # noinspection PyUnresolvedReferences
 @pytest.mark.parametrize(
-    "source_path, destination_parent_path, destination_name, expected_destination_path",
-    [(pathlib.Path("foo/source-path"),
-      pathlib.Path("bar/destination-parent-path"),
+    "source_sub_path, destination_parent_sub_path, destination_name, expected_destination_sub_path",
+    [("foo/source-path",
+      "bar/destination-parent-path",
       None,
-      pathlib.Path("bar/destination-parent-path/source-path")),
-     (pathlib.Path("foo/source-path"),
-      pathlib.Path("bar/destination-parent-path"),
+      "bar/destination-parent-path/source-path"),
+     ("foo/source-path",
+      "bar/destination-parent-path",
       "destination-name",
-      pathlib.Path("bar/destination-parent-path/destination-name"))])
-@pytest.mark.parametrize("exists", [True, False])
+      "bar/destination-parent-path/destination-name")])
+@pytest.mark.parametrize("exists", ["no", "yes", "symlink", "broken"])
 @pytest.mark.parametrize("force", [True, False])
 @pytest.mark.parametrize("is_dir", [True, False])
 def test_install_from_path(capsys,
-                           mocker,
-                           source_path,
-                           destination_parent_path,
+                           tmp_path,
+                           source_sub_path,
+                           destination_parent_sub_path,
                            destination_name,
-                           expected_destination_path,
+                           expected_destination_sub_path,
                            exists,
                            force,
                            is_dir):
-    is_dir = unittest.mock.sentinel.is_dir
+    source_path = tmp_path.joinpath(source_sub_path)
+
+    # Generate source path
+    if is_dir:
+        source_path.mkdir(parents=True)
+    else:
+        source_path.parent.mkdir(parents=True, exist_ok=True)
+        source_path.touch()
+
+    destination_parent_path = tmp_path.joinpath(destination_parent_sub_path)
+    if destination_name is None:
+        destination_path = destination_parent_path.joinpath(source_path.name)
+    else:
+        destination_path = destination_parent_path.joinpath(destination_name)
+    destination_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Generate pre-existing destination path
+    if exists == "yes":
+        if is_dir:
+            destination_path.mkdir(parents=True)
+        else:
+            # source_path.parent.mkdir(parents=True)
+            destination_path.touch()
+    elif exists == "symlink":
+        destination_path.symlink_to(target=source_path, target_is_directory=source_path.is_dir())
+    elif exists == "broken":
+        destination_path.symlink_to(target=tmp_path.joinpath("nonexistent"), target_is_directory=is_dir)
+
+    expected_destination_path = tmp_path.joinpath(expected_destination_sub_path)
 
     compile_sketches = get_compilesketches_object()
 
-    mocker.patch.object(pathlib.Path, "exists", autospec=True, return_value=exists)
-    mocker.patch("shutil.rmtree", autospec=True)
-    mocker.patch.object(pathlib.Path, "mkdir", autospec=True)
-    mocker.patch.object(pathlib.Path, "is_dir", autospec=True, return_value=is_dir)
-    mocker.patch.object(pathlib.Path, "symlink_to", autospec=True)
-
-    if exists and not force:
+    if exists != "no" and not force:
         with pytest.raises(expected_exception=SystemExit, match="1"):
             compile_sketches.install_from_path(source_path=source_path,
                                                destination_parent_path=destination_parent_path,
@@ -1291,13 +1313,8 @@ def test_install_from_path(capsys,
                                            destination_parent_path=destination_parent_path,
                                            destination_name=destination_name,
                                            force=force)
-        if exists and force:
-            shutil.rmtree.assert_called_once_with(path=expected_destination_path)
-        else:
-            shutil.rmtree.assert_not_called()
 
-        pathlib.Path.symlink_to.assert_called_once_with(expected_destination_path, target=source_path,
-                                                        target_is_directory=is_dir)
+        assert expected_destination_path.resolve() == source_path
 
 
 def test_install_from_path_functional(tmp_path):

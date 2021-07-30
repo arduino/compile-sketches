@@ -559,11 +559,14 @@ class CompileSketches:
 
         destination_path = destination_parent_path.joinpath(destination_name)
 
-        if destination_path.exists():
+        if destination_path.exists() or destination_path.is_symlink():
             if force:
-                # Clear existing folder
+                # Clear existing item
                 self.verbose_print("Overwriting installation at:", destination_path)
-                shutil.rmtree(path=destination_path)
+                if destination_path.is_symlink() or destination_path.is_file():
+                    destination_path.unlink()
+                else:
+                    shutil.rmtree(path=destination_path)
             else:
                 print("::error::Installation already exists:", destination_path)
                 sys.exit(1)
