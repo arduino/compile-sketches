@@ -1,3 +1,4 @@
+import atexit
 import contextlib
 import enum
 import json
@@ -575,6 +576,10 @@ class CompileSketches:
         destination_parent_path.mkdir(parents=True, exist_ok=True)
 
         destination_path.symlink_to(target=source_path, target_is_directory=source_path.is_dir())
+
+        # Remove the symlink on script exit. The source path files added by the script are stored in a temporary folder
+        # which is deleted on exit, so the symlink will serve no purpose.
+        atexit.register(destination_path.unlink)
 
     def install_platforms_from_repository(self, platform_list):
         """Install libraries by cloning Git repositories
