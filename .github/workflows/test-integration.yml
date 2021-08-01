@@ -114,6 +114,95 @@ jobs:
       report-artifact-name: ${{ steps.report-artifact-name.outputs.report-artifact-name }}
 
 
+  multiple-steps:
+    name: multiple-steps (${{ matrix.board.source-type }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        board:
+          - source-type: manager
+            fqbn: arduino:avr:uno
+            platforms: |
+              - name: arduino:avr
+                version: 1.8.3
+            libraries: |
+              - name: Servo
+                version: 1.1.7
+          - source-type: path
+            fqbn: arduino:avr:uno
+            platforms: |
+              - name: arduino:avr
+                version: 1.8.3
+              - source-path: extras/ArduinoCore-avr
+                name: arduino:avr
+            libraries: |
+              - source-path: ./
+                name: Servo
+          - source-type: repo
+            fqbn: arduino:avr:uno
+            platforms: |
+              - name: arduino:avr
+                version: 1.8.3
+              - source-url: https://github.com/arduino/ArduinoCore-avr.git
+                name: arduino:avr
+                version: 1.8.3
+            libraries: |
+              - source-url: https://github.com/arduino-libraries/Servo.git
+                name: Servo
+                version: 1.1.7
+          - source-type: archive
+            fqbn: arduino:avr:uno
+            platforms: |
+              - name: arduino:avr
+                version: 1.8.3
+              - source-url: https://github.com/arduino/ArduinoCore-avr/archive/refs/tags/1.8.3.zip
+                name: arduino:avr
+            libraries: |
+              - source-url: https://github.com/arduino-libraries/Servo/archive/refs/tags/1.1.7.zip
+                name: Servo
+
+    steps:
+      - name: Checkout library
+        uses: actions/checkout@v2
+        with:
+          repository: arduino-libraries/Servo
+          ref: 1.1.7
+
+      - name: Checkout platform
+        if: matrix.board.source-type == 'path'
+        uses: actions/checkout@v2
+        with:
+          repository: arduino/ArduinoCore-avr
+          ref: 1.8.3
+          path: extras/ArduinoCore-avr
+
+      - name: Checkout local repo
+        uses: actions/checkout@v2
+        with:
+          path: extras/compile-sketches
+
+      - name: Run action
+        # Use action from local path
+        uses: ./extras/compile-sketches
+        with:
+          platforms: ${{ matrix.board.platforms }}
+          fqbn: ${{ matrix.board.fqbn }}
+          libraries: ${{ matrix.board.libraries }}
+          sketch-paths: |
+            - examples/Sweep
+
+      - name: Run action again
+        uses: ./extras/compile-sketches
+        with:
+          platforms: ${{ matrix.board.platforms }}
+          fqbn: ${{ matrix.board.fqbn }}
+          libraries: ${{ matrix.board.libraries }}
+          sketch-paths: |
+            - examples/Sweep
+
   check-sketches-reports:
     needs: all-inputs
     runs-on: ubuntu-latest
