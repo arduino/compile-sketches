@@ -11,3 +11,9 @@ updates:
       interval: daily
     labels:
       - "topic: infrastructure"
+  - package-ecosystem: pip
+    directory: /compilesketches/
+    schedule:
+      interval: daily
+    labels:
+      - "topic: infrastructure"
