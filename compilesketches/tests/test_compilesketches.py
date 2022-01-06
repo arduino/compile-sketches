@@ -352,7 +352,9 @@ def test_get_pull_request_base_ref(monkeypatch, mocker):
     github_api_object.get_repo.assert_called_once_with(full_name_or_id=os.environ["GITHUB_REPOSITORY"])
     github_api_object.get_pull.assert_called_once_with(number=42)  # PR number is hardcoded into test file
 
-    mocker.patch.object(Github, "get_repo", side_effect=github.UnknownObjectException(status=42, data="foo"))
+    mocker.patch.object(Github,
+                        "get_repo",
+                        side_effect=github.UnknownObjectException(status=42, data="foo", headers=None))
     with pytest.raises(expected_exception=SystemExit, match="1"):
         compile_sketches.get_pull_request_base_ref()
 
