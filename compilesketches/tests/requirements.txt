@@ -1,4 +1,4 @@
 --requirement ../requirements.txt
-coverage==6.2
+coverage==6.3
 pytest==6.2.5
 pytest-mock==3.6.1
