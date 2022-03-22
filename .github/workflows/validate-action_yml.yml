@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Checkout local repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       # See: https://github.com/carlosperate/download-file-action/blob/master/README.md
       - name: Download JSON schema for action.yml
