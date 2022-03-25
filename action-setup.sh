@@ -5,7 +5,7 @@
 readonly PYTHON_PACKAGE_VERSION='3.8'
 
 # https://stackoverflow.com/a/29835459
-readonly SCRIPT_PATH="$(
+SCRIPT_PATH="$(
   CDPATH='' \
   cd -- "$(
     dirname -- "$0"
@@ -13,6 +13,7 @@ readonly SCRIPT_PATH="$(
     pwd -P
   )
 )"
+readonly SCRIPT_PATH
 
 readonly PYTHON_COMMAND="python${PYTHON_PACKAGE_VERSION}"
 readonly PYTHON_VENV_PATH="${SCRIPT_PATH}/compilesketches/.venv"
