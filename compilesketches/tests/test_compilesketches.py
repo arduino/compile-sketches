@@ -1439,6 +1439,8 @@ def test_compile_sketch(capsys, mocker, clean_build_cache, returncode, expected_
     )
     if not expected_success:
         expected_stdout += "\n::error::Compilation failed"
+    else:
+        expected_stdout += "\nCompilation time elapsed: 0s"
     assert capsys.readouterr().out.strip() == expected_stdout
 
     assert compilation_result.sketch == sketch_path
