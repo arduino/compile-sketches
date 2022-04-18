@@ -919,7 +919,7 @@ class CompileSketches:
                     time_summary += f"{int(diff_time / 360)}h "
                 time_summary += f"{int(diff_time / 60) % 60}m "
             time_summary += f"{int(diff_time) % 60}s"
-            print("Compilation time elapsed", time_summary)
+            print("Compilation time elapsed:", time_summary)
 
         return CompilationResult()
 
