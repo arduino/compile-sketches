@@ -1,4 +1,5 @@
 import atexit
+import time
 import contextlib
 import enum
 import json
@@ -893,13 +894,22 @@ class CompileSketches:
         if clean_build_cache:
             for cache_path in pathlib.Path("/tmp").glob(pattern="arduino*"):
                 shutil.rmtree(path=cache_path)
-
+        start_time = time.monotonic()
         compilation_data = self.run_arduino_cli_command(
             command=compilation_command, enable_output=self.RunCommandOutput.NONE, exit_on_failure=False)
+        diff_time = time.monotonic() - start_time
+        time_summary = ""
+        if diff_time > 60:
+            if diff_time > 360:
+                time_summary += f"{int(diff_time / 360)} hours "
+            time_summary += f"{int(diff_time / 60) % 60} minutes "
+        time_summary += f"{int(diff_time) % 60} seconds."
+
         # Group compilation output to make the log easy to read
         # https://github.com/actions/toolkit/blob/master/docs/commands.md#group-and-ungroup-log-lines
         print("::group::Compiling sketch:", path_relative_to_workspace(path=sketch_path))
         print(compilation_data.stdout)
+        print("Compilation time elapsed", time_summary)
         print("::endgroup::")
 
         class CompilationResult:
