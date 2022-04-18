@@ -1435,6 +1435,7 @@ def test_compile_sketch(capsys, mocker, clean_build_cache, returncode, expected_
     expected_stdout = (
         "::group::Compiling sketch: " + str(compilesketches.path_relative_to_workspace(path=sketch_path)) + "\n"
         + str(stdout) + "\n"
+        + "Compilation time elapsed 0 seconds.\n"
         + "::endgroup::"
     )
     if not expected_success:
