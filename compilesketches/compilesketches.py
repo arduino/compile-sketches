@@ -916,9 +916,9 @@ class CompileSketches:
             time_summary = ""
             if diff_time > 60:
                 if diff_time > 360:
-                    time_summary += f"{int(diff_time / 360)} h "
-                time_summary += f"{int(diff_time / 60) % 60} m "
-            time_summary += f"{int(diff_time) % 60} s"
+                    time_summary += f"{int(diff_time / 360)}h "
+                time_summary += f"{int(diff_time / 60) % 60}m "
+            time_summary += f"{int(diff_time) % 60}s"
             print("Compilation time elapsed", time_summary)
 
         return CompilationResult()
