@@ -32,7 +32,7 @@ jobs:
 
       # See: https://github.com/carlosperate/download-file-action/blob/master/README.md
       - name: Download JSON schema for action.yml
-        uses: carlosperate/download-file-action@v1
+        uses: carlosperate/download-file-action@v2
         with:
           # See: https://github.com/SchemaStore/schemastore/blob/master/src/schemas/json/github-action.json
           file-url: https://json.schemastore.org/github-action
