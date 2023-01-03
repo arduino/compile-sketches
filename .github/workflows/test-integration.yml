@@ -101,7 +101,7 @@ jobs:
       - name: Set report artifact name
         id: report-artifact-name
         run: |
-          echo "::set-output name=report-artifact-name::${{ github.job }}"
+          echo "report-artifact-name=${{ github.job }}" >> "$GITHUB_OUTPUT"
 
       - name: Save sketches report as workflow artifact
         uses: actions/upload-artifact@v3
