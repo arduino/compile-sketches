@@ -1,4 +1,4 @@
-GitPython==3.1.30
+GitPython==3.1.31
 PyGithub==1.57
 PyYAML==6.0
 semver==2.13.0
