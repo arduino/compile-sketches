@@ -49,6 +49,11 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Install Python
+      uses: actions/setup-python@v4.5.0
+      with:
+        python-version-file: ${{ github.action_path }}/.python-version
+
     - name: Run the set up script
       id: setup
       shell: bash
@@ -74,4 +79,4 @@ runs:
         INPUT_SKETCHES-REPORT-PATH: ${{ inputs.sketches-report-path }}
       run: |
         source "${{ steps.setup.outputs.python-venv-activate-script-path }}"
-        "${{ steps.setup.outputs.python-command }}" "${{ github.action_path }}/compilesketches/compilesketches.py"
+        python "${{ github.action_path }}/compilesketches/compilesketches.py"
