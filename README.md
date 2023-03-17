@@ -1,5 +1,6 @@
 # `arduino/compile-sketches` action
 
+[![Check Action Metadata status](https://github.com/arduino/compile-sketches/actions/workflows/check-action-metadata-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-action-metadata-task.yml)
 [![Tests](https://github.com/arduino/compile-sketches/workflows/Test%20Python%20code/badge.svg)](https://github.com/arduino/compile-sketches/actions?workflow=Test+Python+code)
 [![Lint](https://github.com/arduino/compile-sketches/workflows/Lint%20Python%20code/badge.svg)](https://github.com/arduino/compile-sketches/actions?workflow=Lint+Python+code)
 [![Spell Check](https://github.com/arduino/compile-sketches/workflows/Spell%20Check/badge.svg)](https://github.com/arduino/compile-sketches/actions?workflow=Spell+Check)
