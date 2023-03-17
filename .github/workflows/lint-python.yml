@@ -1,17 +1,25 @@
 name: Lint Python code
 
+env:
+  # See: https://pypi.org/project/poetry/#history
+  POETRY_VERSION: 1.4.0
+
 on:
   pull_request:
     paths:
       - '.github/workflows/lint-python.yml'
       - 'compilesketches/**.py'
       - '.python-version'
+      - '**/poetry.lock'
+      - '**/pyproject.toml'
 
   push:
     paths:
       - '.github/workflows/lint-python.yml'
       - 'compilesketches/**.py'
       - '.python-version'
+      - '**/poetry.lock'
+      - '**/pyproject.toml'
 
   # Scheduled trigger checks for workflow failures resulting from updates to the linting tools
   schedule:
@@ -39,23 +47,20 @@ jobs:
         with:
           python-version-file: .python-version
 
-      - name: Run the set up script
-        id: setup
+      - name: Install Poetry
         run: |
-          "${{ github.workspace }}/action-setup.sh"
+          pipx \
+            install \
+              poetry==${{ env.POETRY_VERSION }}
 
-      - name: Install flake8
+      - name: Install Python Dependencies
         run: |
-          source "${{ steps.setup.outputs.python-venv-activate-script-path }}"
-          python \
-            -m \
-              pip install \
-                flake8 \
-                pep8-naming
+          poetry \
+            install \
+            --only dev
 
       - name: Lint with flake8
         env:
           PYTHON_PROJECT_PATH: ${GITHUB_WORKSPACE}/compilesketches
         run: |
-          source "${{ steps.setup.outputs.python-venv-activate-script-path }}"
-          flake8 --config "${{ env.PYTHON_PROJECT_PATH }}/.flake8" --show-source "${{ env.PYTHON_PROJECT_PATH }}"
+          poetry run flake8 --config "${{ env.PYTHON_PROJECT_PATH }}/.flake8" --show-source "${{ env.PYTHON_PROJECT_PATH }}"

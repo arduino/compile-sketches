@@ -54,14 +54,18 @@ runs:
       with:
         python-version-file: ${{ github.action_path }}/.python-version
 
-    - name: Run the set up script
-      id: setup
+    - name: Install Poetry
       shell: bash
       run: |
-        # Group action setup log output
-        echo "::group::Action set up"
-        "${{ github.action_path }}/action-setup.sh"
-        echo "::endgroup::"
+        pipx install \
+          poetry==1.4.0
+
+    - name: Install Python Dependencies
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: |
+        poetry install \
+          --only main
 
     - name: Run script
       shell: bash
@@ -77,6 +81,7 @@ runs:
         INPUT_ENABLE-DELTAS-REPORT: ${{ inputs.enable-deltas-report }}
         INPUT_ENABLE-WARNINGS-REPORT: ${{ inputs.enable-warnings-report }}
         INPUT_SKETCHES-REPORT-PATH: ${{ inputs.sketches-report-path }}
+      working-directory: ${{ github.action_path }}
       run: |
-        source "${{ steps.setup.outputs.python-venv-activate-script-path }}"
-        python "${{ github.action_path }}/compilesketches/compilesketches.py"
+        poetry run \
+          python "${{ github.action_path }}/compilesketches/compilesketches.py"
