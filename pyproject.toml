@@ -18,6 +18,13 @@ pytest-mock = "3.10.0"
 flake8 = "5.0.4"
 pep8-naming = "0.13.3"
 
+[tool.pytest.ini_options]
+filterwarnings = [
+  "error",
+  "ignore::DeprecationWarning",
+  "ignore::ResourceWarning"
+]
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
