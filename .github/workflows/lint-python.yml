@@ -5,11 +5,13 @@ on:
     paths:
       - '.github/workflows/lint-python.yml'
       - 'compilesketches/**.py'
+      - '.python-version'
 
   push:
     paths:
       - '.github/workflows/lint-python.yml'
       - 'compilesketches/**.py'
+      - '.python-version'
 
   # Scheduled trigger checks for workflow failures resulting from updates to the linting tools
   schedule:
@@ -32,6 +34,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Install Python
+        uses: actions/setup-python@v4.5.0
+        with:
+          python-version-file: .python-version
+
       - name: Run the set up script
         id: setup
         run: |
@@ -40,7 +47,7 @@ jobs:
       - name: Install flake8
         run: |
           source "${{ steps.setup.outputs.python-venv-activate-script-path }}"
-          "${{ steps.setup.outputs.python-command }}" \
+          python \
             -m \
               pip install \
                 flake8 \

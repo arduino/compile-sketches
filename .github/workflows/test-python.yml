@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - '.github/workflows/test-python.yml'
+      - '.python-version'
       - 'action-setup.sh'
       - 'compilesketches/**'
 
   push:
     paths:
       - '.github/workflows/test-python.yml'
+      - '.python-version'
       - 'action-setup.sh'
       - 'compilesketches/**'
 
@@ -39,6 +41,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Install Python
+        uses: actions/setup-python@v4.5.0
+        with:
+          python-version-file: .python-version
+
       - name: Run the set up script
         id: setup
         run: |
@@ -47,7 +54,7 @@ jobs:
       - name: Install test dependencies
         run: |
           source "${{ steps.setup.outputs.python-venv-activate-script-path }}"
-          "${{ steps.setup.outputs.python-command }}" \
+          python \
             -m \
               pip install \
                 --requirement "${{ env.PYTHON_PROJECT_TESTS_PATH }}/requirements.txt"
@@ -56,7 +63,7 @@ jobs:
         run: |
           source "${{ steps.setup.outputs.python-venv-activate-script-path }}"
           export PYTHONPATH="${{ env.PYTHON_PROJECT_PATH }}"
-          "${{ steps.setup.outputs.python-command }}" \
+          python \
             -m \
               coverage run \
                 --rcfile="${{ env.PYTHON_PROJECT_TESTS_PATH }}/.coveragerc" \
@@ -65,7 +72,7 @@ jobs:
                   pytest "${{ env.PYTHON_PROJECT_TESTS_PATH }}"
           # Generate coverage data file for consumption by `codecov/codecov-action`.
           # Otherwise that action generates the file using the system Python environment, which doesn't work.
-          "${{ steps.setup.outputs.python-command }}" \
+          python \
             -m \
               coverage xml \
                 -o "${{ github.workspace }}/${{ env.COVERAGE_DATA_FILENAME }}"
@@ -73,7 +80,7 @@ jobs:
       - name: Display code coverage report
         run: |
           source "${{ steps.setup.outputs.python-venv-activate-script-path }}"
-          "${{ steps.setup.outputs.python-command }}" \
+          python \
             -m \
               coverage report
 
