@@ -1,18 +1,24 @@
 name: Test Python code
 
+env:
+  # See: https://pypi.org/project/poetry/#history
+  POETRY_VERSION: 1.4.0
+
 on:
   pull_request:
     paths:
       - '.github/workflows/test-python.yml'
       - '.python-version'
-      - 'action-setup.sh'
+      - '**/poetry.lock'
+      - '**/pyproject.toml'
       - 'compilesketches/**'
 
   push:
     paths:
       - '.github/workflows/test-python.yml'
       - '.python-version'
-      - 'action-setup.sh'
+      - '**/poetry.lock'
+      - '**/pyproject.toml'
       - 'compilesketches/**'
 
   # Catch issues resulting from new patch releases of Python in the APT repository
@@ -46,43 +52,40 @@ jobs:
         with:
           python-version-file: .python-version
 
-      - name: Run the set up script
-        id: setup
+      - name: Install Poetry
         run: |
-          "${{ github.workspace }}/action-setup.sh"
+          pipx \
+            install \
+              poetry==${{ env.POETRY_VERSION }}
 
-      - name: Install test dependencies
+      - name: Install Python Dependencies
         run: |
-          source "${{ steps.setup.outputs.python-venv-activate-script-path }}"
-          python \
-            -m \
-              pip install \
-                --requirement "${{ env.PYTHON_PROJECT_TESTS_PATH }}/requirements.txt"
+          poetry install
 
       - name: Run Python unit tests and record code coverage data
         run: |
-          source "${{ steps.setup.outputs.python-venv-activate-script-path }}"
           export PYTHONPATH="${{ env.PYTHON_PROJECT_PATH }}"
-          python \
-            -m \
-              coverage run \
-                --rcfile="${{ env.PYTHON_PROJECT_TESTS_PATH }}/.coveragerc" \
-                --source="${{ env.PYTHON_PROJECT_PATH }}" \
-                --module \
-                  pytest "${{ env.PYTHON_PROJECT_TESTS_PATH }}"
+          poetry run \
+            python \
+              -m \
+                coverage run \
+                  --source="${{ env.PYTHON_PROJECT_PATH }}" \
+                  --module \
+                    pytest "${{ env.PYTHON_PROJECT_TESTS_PATH }}"
           # Generate coverage data file for consumption by `codecov/codecov-action`.
           # Otherwise that action generates the file using the system Python environment, which doesn't work.
-          python \
-            -m \
-              coverage xml \
-                -o "${{ github.workspace }}/${{ env.COVERAGE_DATA_FILENAME }}"
+          poetry run \
+            python \
+              -m \
+                coverage xml \
+                  -o "${{ github.workspace }}/${{ env.COVERAGE_DATA_FILENAME }}"
 
       - name: Display code coverage report
         run: |
-          source "${{ steps.setup.outputs.python-venv-activate-script-path }}"
-          python \
-            -m \
-              coverage report
+          poetry run \
+            python \
+              -m \
+                coverage report
 
       - name: Upload coverage report to Codecov
         uses: codecov/codecov-action@v3
