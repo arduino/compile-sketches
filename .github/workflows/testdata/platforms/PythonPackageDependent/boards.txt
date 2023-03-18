@@ -1,0 +1,8 @@
+package_dependent.name=External Python Package Dependent Board
+package_dependent.upload.maximum_size=32256
+package_dependent.upload.maximum_data_size=2048
+package_dependent.build.mcu=atmega328p
+package_dependent.build.f_cpu=16000000L
+package_dependent.build.board=FOO
+package_dependent.build.core=arduino:arduino
+package_dependent.build.variant=arduino:standard

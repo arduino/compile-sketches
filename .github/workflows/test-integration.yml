@@ -19,6 +19,7 @@ on:
 
 env:
   SKETCHES_REPORTS_PATH: sketches-reports
+  TESTDATA_PLATFORMS_PATH: .github/workflows/testdata/platforms
   TESTDATA_SKETCHES_PATH: .github/workflows/testdata/sketches
   TESTDATA_REPORTS_PATH:  .github/workflows/testdata/reports
 
@@ -202,6 +203,31 @@ jobs:
           libraries: ${{ matrix.board.libraries }}
           sketch-paths: |
             - examples/Sweep
+
+  python-package-dependency:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout local repo
+        uses: actions/checkout@v3
+
+      - name: Install Python package dependency
+        run: pip install cowsay
+
+      - name: Run action with board that has external Python package dependency
+        # Use action from local path
+        uses: ./
+        with:
+          platforms: |
+            - name: arduino:avr
+            - source-path: ${{ env.TESTDATA_PLATFORMS_PATH }}/PythonPackageDependent
+              name: PythonPackageDependent:avr
+          fqbn: PythonPackageDependent:avr:package_dependent
+          libraries: |
+            []
+          sketch-paths: |
+            - ${{ env.TESTDATA_SKETCHES_PATH }}/BareMinimum
+
 
   check-sketches-reports:
     needs: all-inputs
