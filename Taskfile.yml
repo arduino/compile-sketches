@@ -6,6 +6,12 @@ tasks:
     desc: Check for problems with the project
     deps:
       - task: action:validate
+      - task: python:lint
+
+  fix:
+    desc: Make automated corrections to the project's files
+    deps:
+      - task: python:format
 
   # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/check-action-metadata-task/Taskfile.yml
   action:validate:
@@ -35,6 +41,36 @@ tasks:
     run: once
     cmds:
       - npm install
+
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/poetry-task/Taskfile.yml
+  poetry:install-deps:
+    desc: Install dependencies managed by Poetry
+    run: when_changed
+    cmds:
+      - |
+        poetry install \
+          --no-root \
+          {{if .POETRY_GROUPS}} --only {{.POETRY_GROUPS}} {{end}}
+
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/check-python-task/Taskfile.yml
+  python:format:
+    desc: Format Python files
+    deps:
+      - task: poetry:install-deps
+        vars:
+          POETRY_GROUPS: dev
+    cmds:
+      - poetry run black .
+
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/check-python-task/Taskfile.yml
+  python:lint:
+    desc: Lint Python code
+    deps:
+      - task: poetry:install-deps
+        vars:
+          POETRY_GROUPS: dev
+    cmds:
+      - poetry run flake8 --show-source
 
   # Make a temporary file named according to the passed TEMPLATE variable and print the path passed to stdout
   # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/windows-task/Taskfile.yml

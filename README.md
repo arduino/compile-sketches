@@ -2,7 +2,7 @@
 
 [![Check Action Metadata status](https://github.com/arduino/compile-sketches/actions/workflows/check-action-metadata-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-action-metadata-task.yml)
 [![Tests](https://github.com/arduino/compile-sketches/workflows/Test%20Python%20code/badge.svg)](https://github.com/arduino/compile-sketches/actions?workflow=Test+Python+code)
-[![Lint](https://github.com/arduino/compile-sketches/workflows/Lint%20Python%20code/badge.svg)](https://github.com/arduino/compile-sketches/actions?workflow=Lint+Python+code)
+[![Check Python status](https://github.com/arduino/compile-sketches/actions/workflows/check-python-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-python-task.yml)
 [![Spell Check](https://github.com/arduino/compile-sketches/workflows/Spell%20Check/badge.svg)](https://github.com/arduino/compile-sketches/actions?workflow=Spell+Check)
 [![codecov](https://codecov.io/gh/arduino/compile-sketches/branch/main/graph/badge.svg?token=Uv6f1ebMZ4)](https://codecov.io/gh/arduino/compile-sketches)
 

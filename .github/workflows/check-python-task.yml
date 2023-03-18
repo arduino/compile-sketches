@@ -1,0 +1,121 @@
+# Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/check-python-task.md
+name: Check Python
+
+# See: https://docs.github.com/actions/using-workflows/events-that-trigger-workflows
+on:
+  create:
+  push:
+    paths:
+      - ".github/workflows/check-python-task.ya?ml"
+      - "**/.flake8"
+      - "**/poetry.lock"
+      - "**/pyproject.toml"
+      - "**/setup.cfg"
+      - ".python-version"
+      - "Taskfile.ya?ml"
+      - "**/tox.ini"
+      - "**.py"
+  pull_request:
+    paths:
+      - ".github/workflows/check-python-task.ya?ml"
+      - "**/.flake8"
+      - "**/poetry.lock"
+      - "**/pyproject.toml"
+      - "**/setup.cfg"
+      - ".python-version"
+      - "Taskfile.ya?ml"
+      - "**/tox.ini"
+      - "**.py"
+  schedule:
+    # Run periodically to catch breakage caused by external changes.
+    - cron: "0 8 * * WED"
+  workflow_dispatch:
+  repository_dispatch:
+
+jobs:
+  run-determination:
+    runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.determination.outputs.result }}
+    steps:
+      - name: Determine if the rest of the workflow should run
+        id: determination
+        run: |
+          RELEASE_BRANCH_REGEX="refs/heads/[0-9]+.[0-9]+.x"
+          # The `create` event trigger doesn't support `branches` filters, so it's necessary to use Bash instead.
+          if [[
+            "${{ github.event_name }}" != "create" ||
+            "${{ github.ref }}" =~ $RELEASE_BRANCH_REGEX
+          ]]; then
+            # Run the other jobs.
+            RESULT="true"
+          else
+            # There is no need to run the other jobs.
+            RESULT="false"
+          fi
+
+          echo "result=$RESULT" >> $GITHUB_OUTPUT
+
+  lint:
+    needs: run-determination
+    if: needs.run-determination.outputs.result == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: .python-version
+
+      - name: Install Poetry
+        run: |
+          pipx install \
+            --python "$(which python)" \
+            poetry
+
+      - name: Install Task
+        uses: arduino/setup-task@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          version: 3.x
+
+      - name: Run flake8
+        uses: liskin/gh-problem-matcher-wrap@v2
+        with:
+          linters: flake8
+          run: task python:lint
+
+  formatting:
+    needs: run-determination
+    if: needs.run-determination.outputs.result == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: .python-version
+
+      - name: Install Poetry
+        run: |
+          pipx install \
+            --python "$(which python)" \
+            poetry
+
+      - name: Install Task
+        uses: arduino/setup-task@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          version: 3.x
+
+      - name: Format Python code
+        run: task python:format
+
+      - name: Check formatting
+        run: git diff --color --exit-code
