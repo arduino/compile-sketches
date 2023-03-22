@@ -49,6 +49,13 @@ inputs:
 runs:
   using: composite
   steps:
+    # User installations of external Python package platform dependencies will be located here.
+    - name: Get system Python "user site-packages" path
+      id: system-user-site-packages
+      shell: bash
+      run: |
+        echo "path=$(python -m site --user-site)" >> $GITHUB_OUTPUT
+
     - name: Install Python
       uses: actions/setup-python@v4.5.0
       with:
@@ -66,6 +73,23 @@ runs:
       run: |
         poetry install \
           --only main
+
+    - name: Make user-installed Python packages available to platforms
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: |
+        readonly PYTHON_ENVIRONMENT_PATH="$(
+          poetry env info \
+            --path
+        )"
+        readonly VENV_SITE_PACKAGES_PATH="$(
+          poetry run \
+            python -c \
+              'import site; print(site.getsitepackages()[0])'
+        )"
+        echo \
+          "${{ steps.system-user-site-packages.outputs.path }}" > \
+          "${VENV_SITE_PACKAGES_PATH}/system-user-site-packages.pth"
 
     - name: Run script
       shell: bash

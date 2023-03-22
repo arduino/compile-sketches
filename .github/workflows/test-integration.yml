@@ -212,7 +212,11 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install Python package dependency
-        run: pip install cowsay
+        run: |
+          pip install \
+            --ignore-installed \
+            --user \
+            cowsay
 
       - name: Run action with board that has external Python package dependency
         # Use action from local path

@@ -41,3 +41,20 @@ The **arduino/compile-sketches** action runs in the same environment as the rest
 ```
 
 ---
+
+#### Python Packages
+
+The **arduino/compile-sketches** action uses a Python [virtual environment](https://docs.python.org/glossary.html#term-virtual-environment). In order to enable user installation of Python [package](https://docs.python.org/glossary.html#term-package) dependencies of boards platforms, the packages installed in the "[user site-packages](https://peps.python.org/pep-0370/)" folder are included in this virtual environment.
+
+In order to be certain your installation of a package dependency will be available to the platform, add the [`--ignore-installed`](https://pip.pypa.io/en/stable/cli/pip_install/#cmdoption-ignore-installed) and [`--user`](https://pip.pypa.io/en/stable/cli/pip_install/#install-user) flags to the [**pip**](https://pip.pypa.io/) command used to install the package.
+
+---
+
+**Example:**
+
+```yaml
+- run: pip install --ignore-installed --user pyserial
+- uses: arduino/compile-sketches@v1
+```
+
+---
