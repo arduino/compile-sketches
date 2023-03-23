@@ -65,6 +65,7 @@ runs:
       shell: bash
       run: |
         pipx install \
+          --python "$(which python)" \
           poetry==1.4.0
 
     - name: Install Python Dependencies
