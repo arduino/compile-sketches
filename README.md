@@ -231,5 +231,6 @@ Set to `true` to cause the action to record the compiler warning count for each 
 ## Additional resources
 
 - [Introductory article about **arduino/compile-sketches**](https://blog.arduino.cc/2021/04/09/test-your-arduino-projects-with-github-actions/)
+- [Frequently asked questions about **arduino/compile-sketches**](docs/FAQ.md#frequently-asked-questions)
 - [**GitHub Actions** documentation](https://docs.github.com/actions/learn-github-actions/understanding-github-actions)
 - [Discuss or request assistance on **Arduino Forum**](https://forum.arduino.cc/)
