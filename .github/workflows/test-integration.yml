@@ -231,6 +231,35 @@ jobs:
             - ${{ env.TESTDATA_SKETCHES_PATH }}/BareMinimum
 
 
+  # Targeted testing for ESP32 boards platform support.
+  pyserial-dependency:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout local repo
+        uses: actions/checkout@v3
+
+      - name: Install pyserial
+        run: |
+          # Use of pip3 and omission of recommended flags done to reproduce established use pattern:
+          # https://github.com/arduino-libraries/ArduinoIoTCloud/blob/1.11.0/.github/workflows/compile-examples.yml#L206
+          pip3 install pyserial
+
+      - name: Run action with board that has pyserial dependency
+        # Use action from local path
+        uses: ./
+        with:
+          platforms: |
+            - name: arduino:avr
+            - source-path: ${{ env.TESTDATA_PLATFORMS_PATH }}/PyserialDependent
+              name: PyserialDependent:avr
+          fqbn: PyserialDependent:avr:pyserial_dependent
+          libraries: |
+            []
+          sketch-paths: |
+            - ${{ env.TESTDATA_SKETCHES_PATH }}/BareMinimum
+
+
   check-sketches-reports:
     needs: all-inputs
     runs-on: ubuntu-latest
