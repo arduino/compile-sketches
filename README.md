@@ -35,6 +35,7 @@ This action checks whether [Arduino](https://www.arduino.cc/) sketches compile a
     - [How it works](#how-it-works)
   - [`enable-warnings-report`](#enable-warnings-report)
 - [Example usage](#example-usage)
+- [Additional resources](#additional-resources)
 
 <!-- tocstop -->
 
@@ -226,3 +227,9 @@ Set to `true` to cause the action to record the compiler warning count for each 
       - name: Stepper
         version: 1.1.3
 ```
+
+## Additional resources
+
+- [Introductory article about **arduino/compile-sketches**](https://blog.arduino.cc/2021/04/09/test-your-arduino-projects-with-github-actions/)
+- [**GitHub Actions** documentation](https://docs.github.com/actions/learn-github-actions/understanding-github-actions)
+- [Discuss or request assistance on **Arduino Forum**](https://forum.arduino.cc/)
