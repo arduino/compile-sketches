@@ -1,0 +1,5 @@
+name=pyserial Dependent Platform
+version=0.0.0
+# python3 is used to parallel ESP32 platform configuration:
+# https://github.com/espressif/arduino-esp32/blob/2.0.7/platform.txt#L220
+recipe.hooks.prebuild.1.pattern=python3 -c 'import serial'

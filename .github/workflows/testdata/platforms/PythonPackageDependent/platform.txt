@@ -1,0 +1,3 @@
+name=External Python Package Dependent Platform
+version=0.0.0
+recipe.hooks.prebuild.1.pattern=python "{runtime.platform.path}/dependent.py"

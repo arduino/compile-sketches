@@ -1,0 +1,8 @@
+pyserial_dependent.name=pyserial Dependent Board
+pyserial_dependent.upload.maximum_size=32256
+pyserial_dependent.upload.maximum_data_size=2048
+pyserial_dependent.build.mcu=atmega328p
+pyserial_dependent.build.f_cpu=16000000L
+pyserial_dependent.build.board=FOO
+pyserial_dependent.build.core=arduino:arduino
+pyserial_dependent.build.variant=arduino:standard
