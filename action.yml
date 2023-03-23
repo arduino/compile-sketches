@@ -54,6 +54,7 @@ runs:
       id: system-user-site-packages
       shell: bash
       run: |
+        # Get system Python "user site-packages" path.
         echo "path=$(python -m site --user-site)" >> $GITHUB_OUTPUT
 
     - name: Install Python
@@ -61,24 +62,22 @@ runs:
       with:
         python-version-file: ${{ github.action_path }}/.python-version
 
-    - name: Install Poetry
+    - name: Action setup
       shell: bash
+      working-directory: ${{ github.action_path }}
       run: |
+        echo "::group::Action setup"
+
+        # Install Poetry.
         pipx install \
           --python "$(which python)" \
           poetry==1.4.0
 
-    - name: Install Python Dependencies
-      shell: bash
-      working-directory: ${{ github.action_path }}
-      run: |
+        # Install Python dependencies.
         poetry install \
           --only main,external
 
-    - name: Make user-installed Python packages available to platforms
-      shell: bash
-      working-directory: ${{ github.action_path }}
-      run: |
+        # Make user-installed Python packages available to platforms.
         readonly PYTHON_ENVIRONMENT_PATH="$(
           poetry env info \
             --path
@@ -91,6 +90,9 @@ runs:
         echo \
           "${{ steps.system-user-site-packages.outputs.path }}" > \
           "${VENV_SITE_PACKAGES_PATH}/system-user-site-packages.pth"
+
+        # Terminate action setup group
+        echo "::endgroup::"
 
     - name: Run script
       shell: bash
@@ -108,5 +110,6 @@ runs:
         INPUT_SKETCHES-REPORT-PATH: ${{ inputs.sketches-report-path }}
       working-directory: ${{ github.action_path }}
       run: |
+        # Run action
         poetry run \
           python compilesketches/compilesketches.py
