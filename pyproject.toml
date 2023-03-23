@@ -18,6 +18,14 @@ pytest-mock = "3.10.0"
 flake8 = "5.0.4"
 pep8-naming = "0.13.3"
 
+# Provided only for use by boards platforms
+# NOTE: This group is a temporary workaround that will be removed at the 2.0.0 release of the action.
+[tool.poetry.group.external]
+optional = true
+
+[tool.poetry.group.external.dependencies]
+pyserial = "3.5"
+
 [tool.pytest.ini_options]
 filterwarnings = [
   "error",
