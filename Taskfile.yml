@@ -6,11 +6,13 @@ tasks:
     desc: Check for problems with the project
     deps:
       - task: action:validate
+      - task: general:check-spelling
       - task: python:lint
 
   fix:
     desc: Make automated corrections to the project's files
     deps:
+      - task: general:correct-spelling
       - task: python:format
 
   # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/check-action-metadata-task/Taskfile.yml
@@ -34,6 +36,26 @@ tasks:
             --strict=false \
             -s "{{.ACTION_METADATA_SCHEMA_PATH}}" \
             -d "action.yml"
+
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/spell-check-task/Taskfile.yml
+  general:check-spelling:
+    desc: Check for commonly misspelled words
+    deps:
+      - task: poetry:install-deps
+        vars:
+          POETRY_GROUPS: dev
+    cmds:
+      - poetry run codespell
+
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/spell-check-task/Taskfile.yml
+  general:correct-spelling:
+    desc: Correct commonly misspelled words where possible
+    deps:
+      - task: poetry:install-deps
+        vars:
+          POETRY_GROUPS: dev
+    cmds:
+      - poetry run codespell --write-changes
 
   # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/npm-task/Taskfile.yml
   npm:install-deps:
