@@ -31,13 +31,6 @@ optional = true
 [tool.poetry.group.external.dependencies]
 pyserial = "3.5"
 
-[tool.pytest.ini_options]
-filterwarnings = [
-  "error",
-  "ignore::DeprecationWarning",
-  "ignore::ResourceWarning"
-]
-
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
