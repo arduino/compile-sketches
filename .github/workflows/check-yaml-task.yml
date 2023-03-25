@@ -1,0 +1,115 @@
+# Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/check-yaml-task.md
+name: Check YAML
+
+# See: https://docs.github.com/actions/using-workflows/events-that-trigger-workflows
+on:
+  create:
+  push:
+    paths:
+      - ".python-version"
+      - ".yamllint*"
+      - "poetry.lock"
+      - "pyproject.toml"
+      # Source: https://github.com/ikatyang/linguist-languages/blob/master/data/YAML.json (used by Prettier)
+      - "**/.clang-format"
+      - "**/.clang-tidy"
+      - "**/.gemrc"
+      - "**/glide.lock"
+      - "**.ya?ml*"
+      - "**.mir"
+      - "**.reek"
+      - "**.rviz"
+      - "**.sublime-syntax"
+      - "**.syntax"
+  pull_request:
+    paths:
+      - ".python-version"
+      - ".yamllint*"
+      - "poetry.lock"
+      - "pyproject.toml"
+      # Source: https://github.com/ikatyang/linguist-languages/blob/master/data/YAML.json (used by Prettier)
+      - "**/.clang-format"
+      - "**/.clang-tidy"
+      - "**/.gemrc"
+      - "**/glide.lock"
+      - "**.ya?ml*"
+      - "**.mir"
+      - "**.reek"
+      - "**.rviz"
+      - "**.sublime-syntax"
+      - "**.syntax"
+  schedule:
+    # Run periodically to catch breakage caused by external changes.
+    - cron: "0 9 * * WED"
+  workflow_dispatch:
+  repository_dispatch:
+
+jobs:
+  run-determination:
+    runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.determination.outputs.result }}
+    steps:
+      - name: Determine if the rest of the workflow should run
+        id: determination
+        run: |
+          RELEASE_BRANCH_REGEX="refs/heads/[0-9]+.[0-9]+.x"
+          # The `create` event trigger doesn't support `branches` filters, so it's necessary to use Bash instead.
+          if [[
+            "${{ github.event_name }}" != "create" ||
+            "${{ github.ref }}" =~ $RELEASE_BRANCH_REGEX
+          ]]; then
+            # Run the other jobs.
+            RESULT="true"
+          else
+            # There is no need to run the other jobs.
+            RESULT="false"
+          fi
+
+          echo "result=$RESULT" >> $GITHUB_OUTPUT
+
+  check:
+    name: ${{ matrix.configuration.name }}
+    needs: run-determination
+    if: needs.run-determination.outputs.result == 'true'
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        configuration:
+          - name: Generate problem matcher output
+            # yamllint's "github" output type produces annotated diffs, but is not useful to humans reading the log.
+            format: github
+            # The other matrix job is used to set the result, so this job is configured to always pass.
+            continue-on-error: true
+          - name: Check formatting
+            # yamllint's "colored" output type is most suitable for humans reading the log.
+            format: colored
+            continue-on-error: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: .python-version
+
+      - name: Install Poetry
+        run: |
+          pipx install \
+            --python "$(which python)" \
+            poetry
+
+      - name: Install Task
+        uses: arduino/setup-task@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          version: 3.x
+
+      - name: Check YAML
+        continue-on-error: ${{ matrix.configuration.continue-on-error }}
+        run: task yaml:lint YAMLLINT_FORMAT=${{ matrix.configuration.format }}

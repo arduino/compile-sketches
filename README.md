@@ -11,6 +11,7 @@
 [![Check Taskfiles status](https://github.com/arduino/compile-sketches/actions/workflows/check-taskfiles.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-taskfiles.yml)
 [![Check ToC status](https://github.com/arduino/compile-sketches/actions/workflows/check-toc-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-toc-task.yml)
 [![Check Workflows status](https://github.com/arduino/compile-sketches/actions/workflows/check-workflows-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-workflows-task.yml)
+[![Check YAML status](https://github.com/arduino/compile-sketches/actions/workflows/check-yaml-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-yaml-task.yml)
 [![Spell Check status](https://github.com/arduino/compile-sketches/actions/workflows/spell-check-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/spell-check-task.yml)
 [![Sync Labels status](https://github.com/arduino/compile-sketches/actions/workflows/sync-labels-npm.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/sync-labels-npm.yml)
 [![Test Python status](https://github.com/arduino/compile-sketches/actions/workflows/test-python-poetry-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/test-python-poetry-task.yml)
