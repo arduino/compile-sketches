@@ -41,6 +41,76 @@ tasks:
             -s "{{.ACTION_METADATA_SCHEMA_PATH}}" \
             -d "action.yml"
 
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/check-files-task/Taskfile.yml
+  general:check-filenames:
+    desc: Check for non-portable filenames
+    cmds:
+      - |
+        find . \
+          -type d -name '.git' -prune -o \
+          -type d -name '.licenses' -prune -o \
+          -type d -name '__pycache__' -prune -o \
+          -type d -name 'node_modules' -prune -o \
+          -exec \
+            sh \
+              -c \
+                ' \
+                  basename "$0" | \
+                    grep \
+                      --perl-regexp \
+                      --regexp='"'"'([<>:"/\\|?*\x{0000}-\x{001F}])|(.+\.$)'"'"' \
+                      --silent \
+                  && \
+                  echo "$0"
+                ' \
+              '{}' \
+            \; \
+          -execdir \
+            false \
+            '{}' \
+            + \
+        || \
+        {
+          echo
+          echo "Prohibited characters found in filenames"
+          echo "See:"
+          echo "https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions:~:text=except%20for%20the%20following"
+          false
+        }
+      - |
+        find . \
+          -type d -name '.git' -prune -o \
+          -type d -name '.licenses' -prune -o \
+          -type d -name '__pycache__' -prune -o \
+          -type d -name 'node_modules' -prune -o \
+          -exec \
+            sh \
+              -c \
+                ' \
+                  basename "$0" | \
+                    grep \
+                      --ignore-case \
+                      --extended-regexp \
+                      --regexp='"'"'^(con|prn|aux|nul|com[0-9]+|lpt[0-9]+)$'"'"' \
+                      --silent \
+                  && \
+                  echo "$0"
+                ' \
+              '{}' \
+            \; \
+          -execdir \
+            false \
+            '{}' \
+            + \
+        || \
+        {
+          echo
+          echo "Reserved filenames found"
+          echo "See:"
+          echo "https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions:~:text=use%20the%20following-,reserved%20names,-for%20the%20name"
+          false
+        }
+
   # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/spell-check-task/Taskfile.yml
   general:check-spelling:
     desc: Check for commonly misspelled words
@@ -50,6 +120,33 @@ tasks:
           POETRY_GROUPS: dev
     cmds:
       - poetry run codespell
+
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/check-files-task/Taskfile.yml
+  general:check-symlinks:
+    desc: Check for bad symlinks
+    cmds:
+      - |
+        find . \
+          -type d -name '.git' -prune -o \
+          -type d -name '.licenses' -prune -o \
+          -type d -name '__pycache__' -prune -o \
+          -type d -name 'node_modules' -prune -o \
+          -type l \
+          -execdir \
+            test ! -e '{}' \
+            \; \
+          -exec \
+            echo '{}' \
+            \; \
+          -execdir \
+            false \
+            '{}' \
+            + \
+        || \
+        {
+          echo 'Broken or circular symlink found'
+          false
+        }
 
   # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/spell-check-task/Taskfile.yml
   general:correct-spelling:
