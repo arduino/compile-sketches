@@ -300,8 +300,12 @@ jobs:
               jq \
                 --null-input \
                 --exit-status \
-                --slurpfile generated "$reportPath" \
-                --slurpfile golden "${{ env.TESTDATA_REPORTS_PATH }}/${{ needs.all-inputs.outputs.report-artifact-name }}/$(basename "$reportPath")" \
+                --slurpfile \
+                  generated \
+                  "$reportPath" \
+                --slurpfile \
+                  golden \
+                  "${{ env.TESTDATA_REPORTS_PATH }}/${{ needs.all-inputs.outputs.report-artifact-name }}/$(basename "$reportPath")" \
                 '($generated|.[0].boards) == ($golden|.[0].boards)'
             ) && (
               # Check the commit_hash value
