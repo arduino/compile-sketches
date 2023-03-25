@@ -25,6 +25,10 @@ tasks:
       - task: general:correct-spelling
       - task: general:format-prettier
       - task: markdown:fix
+      - task: markdown:toc
+        vars:
+          FILE_PATH: README.md
+          MAX_DEPTH: 5
       - task: python:format
 
   # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/check-action-metadata-task/Taskfile.yml
@@ -265,6 +269,19 @@ tasks:
       - task: npm:install-deps
     cmds:
       - npx markdownlint-cli "**/*.md"
+
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/check-toc-task/Taskfile.yml
+  markdown:toc:
+    desc: Update the table of contents
+    deps:
+      - task: npm:install-deps
+    cmds:
+      - |
+        npx markdown-toc \
+            --bullets=- \
+            --maxdepth={{.MAX_DEPTH}} \
+            -i \
+            "{{.FILE_PATH}}"
 
   # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/npm-task/Taskfile.yml
   npm:install-deps:
