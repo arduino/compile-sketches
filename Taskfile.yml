@@ -9,6 +9,7 @@ tasks:
     desc: Check for problems with the project
     deps:
       - task: action:validate
+      - task: general:check-formatting
       - task: general:check-spelling
       - task: python:lint
       - task: python:test
@@ -110,6 +111,18 @@ tasks:
           echo "https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file#naming-conventions:~:text=use%20the%20following-,reserved%20names,-for%20the%20name"
           false
         }
+
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/check-general-formatting-task/Taskfile.yml
+  general:check-formatting:
+    desc: Check basic formatting style of all files
+    cmds:
+      - |
+        if ! which ec &>/dev/null; then
+          echo "ec not found or not in PATH."
+          echo "Please install: https://github.com/editorconfig-checker/editorconfig-checker#installation"
+          exit 1
+        fi
+      - ec
 
   # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/spell-check-task/Taskfile.yml
   general:check-spelling:
