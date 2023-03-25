@@ -1,8 +1,10 @@
 # `arduino/compile-sketches` action
 
-[![Tests](https://github.com/arduino/compile-sketches/workflows/Test%20Python%20code/badge.svg)](https://github.com/arduino/compile-sketches/actions?workflow=Test+Python+code)
-[![Lint](https://github.com/arduino/compile-sketches/workflows/Lint%20Python%20code/badge.svg)](https://github.com/arduino/compile-sketches/actions?workflow=Lint+Python+code)
-[![Spell Check](https://github.com/arduino/compile-sketches/workflows/Spell%20Check/badge.svg)](https://github.com/arduino/compile-sketches/actions?workflow=Spell+Check)
+[![Check Action Metadata status](https://github.com/arduino/compile-sketches/actions/workflows/check-action-metadata-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-action-metadata-task.yml)
+[![Check Python status](https://github.com/arduino/compile-sketches/actions/workflows/check-python-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-python-task.yml)
+[![Spell Check status](https://github.com/arduino/compile-sketches/actions/workflows/spell-check-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/spell-check-task.yml)
+[![Sync Labels status](https://github.com/arduino/compile-sketches/actions/workflows/sync-labels-npm.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/sync-labels-npm.yml)
+[![Test Python status](https://github.com/arduino/compile-sketches/actions/workflows/test-python-poetry-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/test-python-poetry-task.yml)
 [![codecov](https://codecov.io/gh/arduino/compile-sketches/branch/main/graph/badge.svg?token=Uv6f1ebMZ4)](https://codecov.io/gh/arduino/compile-sketches)
 
 This action checks whether [Arduino](https://www.arduino.cc/) sketches compile and produces a report of data from the compilations.

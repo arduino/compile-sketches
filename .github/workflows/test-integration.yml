@@ -5,6 +5,9 @@ on:
     paths:
       - '.github/workflows/test-integration.yml'
       - '.github/workflows/testdata/**'
+      - '.python-version'
+      - 'poetry.lock'
+      - 'pyproject.toml'
       - 'action.yml'
       - 'compilesketches/**'
 
@@ -12,6 +15,9 @@ on:
     paths:
       - '.github/workflows/test-integration.yml'
       - '.github/workflows/testdata/**'
+      - '.python-version'
+      - 'poetry.lock'
+      - 'pyproject.toml'
       - 'action.yml'
       - 'compilesketches/**'
 
@@ -78,6 +84,7 @@ jobs:
         uses: ./
         with:
           cli-version: 0.15.1
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           platforms: ${{ matrix.board.platforms }}
           fqbn: ${{ matrix.board.fqbn }}
           libraries: ${{ matrix.board.libraries }}
@@ -196,6 +203,7 @@ jobs:
       - name: Run action again
         uses: ./extras/compile-sketches
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           platforms: ${{ matrix.board.platforms }}
           fqbn: ${{ matrix.board.fqbn }}
           libraries: ${{ matrix.board.libraries }}
@@ -220,6 +228,7 @@ jobs:
         # Use action from local path
         uses: ./
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           platforms: |
             - name: arduino:avr
             - source-path: ${{ env.TESTDATA_PLATFORMS_PATH }}/PythonPackageDependent
@@ -249,6 +258,7 @@ jobs:
         # Use action from local path
         uses: ./
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           platforms: |
             - name: arduino:avr
             - source-path: ${{ env.TESTDATA_PLATFORMS_PATH }}/PyserialDependent
@@ -337,6 +347,7 @@ jobs:
         uses: ./
         with:
           fqbn: arduino:avr:uno
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           libraries: |
             -
           sketch-paths: |

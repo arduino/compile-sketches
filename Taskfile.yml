@@ -1,0 +1,161 @@
+# See: https://taskfile.dev/#/usage
+version: "3"
+
+vars:
+  PYTHON_PROJECT_PATH: compilesketches
+
+tasks:
+  check:
+    desc: Check for problems with the project
+    deps:
+      - task: action:validate
+      - task: general:check-spelling
+      - task: python:lint
+      - task: python:test
+
+  fix:
+    desc: Make automated corrections to the project's files
+    deps:
+      - task: general:correct-spelling
+      - task: python:format
+
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/check-action-metadata-task/Taskfile.yml
+  action:validate:
+    desc: Validate GitHub Actions metadata against JSON schema
+    vars:
+      ACTION_METADATA_SCHEMA_PATH:
+        sh: task utility:mktemp-file TEMPLATE="github-action-schema-XXXXXXXXXX.json"
+    deps:
+      - task: npm:install-deps
+    cmds:
+      - |
+        wget \
+          --quiet \
+          --output-document="{{.ACTION_METADATA_SCHEMA_PATH}}" \
+          https://json.schemastore.org/github-action
+      - |
+        npx \
+          ajv-cli \
+            validate \
+            --strict=false \
+            -s "{{.ACTION_METADATA_SCHEMA_PATH}}" \
+            -d "action.yml"
+
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/spell-check-task/Taskfile.yml
+  general:check-spelling:
+    desc: Check for commonly misspelled words
+    deps:
+      - task: poetry:install-deps
+        vars:
+          POETRY_GROUPS: dev
+    cmds:
+      - poetry run codespell
+
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/spell-check-task/Taskfile.yml
+  general:correct-spelling:
+    desc: Correct commonly misspelled words where possible
+    deps:
+      - task: poetry:install-deps
+        vars:
+          POETRY_GROUPS: dev
+    cmds:
+      - poetry run codespell --write-changes
+
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/npm-task/Taskfile.yml
+  npm:install-deps:
+    desc: Install dependencies managed by npm
+    run: once
+    cmds:
+      - npm install
+
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/poetry-task/Taskfile.yml
+  poetry:install-deps:
+    desc: Install dependencies managed by Poetry
+    run: when_changed
+    cmds:
+      - |
+        poetry install \
+          --no-root \
+          {{if .POETRY_GROUPS}} --only {{.POETRY_GROUPS}} {{end}}
+
+  python:coverage-report:
+    desc: Show code coverage report
+    deps:
+      - task: poetry:install-deps
+        vars:
+          POETRY_GROUPS: dev
+    cmds:
+      - |
+        poetry run \
+          coverage report
+
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/check-python-task/Taskfile.yml
+  python:format:
+    desc: Format Python files
+    deps:
+      - task: poetry:install-deps
+        vars:
+          POETRY_GROUPS: dev
+    cmds:
+      - poetry run black .
+
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/check-python-task/Taskfile.yml
+  python:lint:
+    desc: Lint Python code
+    deps:
+      - task: poetry:install-deps
+        vars:
+          POETRY_GROUPS: dev
+    cmds:
+      - poetry run flake8 --show-source
+
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/test-python-poetry-task/Taskfile.yml
+  python:test:
+    desc: Run Python tests
+    deps:
+      - task: poetry:install-deps
+        vars:
+          POETRY_GROUPS: dev,main
+    cmds:
+      - |
+        export PYTHONPATH="${PWD}/{{.PYTHON_PROJECT_PATH}}"
+        poetry run \
+          coverage run \
+            --source="{{.PYTHON_PROJECT_PATH}}" \
+            --module \
+              pytest "{{.PYTHON_PROJECT_PATH}}/tests"
+
+  # Make a temporary file named according to the passed TEMPLATE variable and print the path passed to stdout
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/windows-task/Taskfile.yml
+  utility:mktemp-file:
+    vars:
+      RAW_PATH:
+        sh: mktemp --tmpdir "{{.TEMPLATE}}"
+    cmds:
+      - task: utility:normalize-path
+        vars:
+          RAW_PATH: "{{.RAW_PATH}}"
+
+  # Make a temporary folder named according to the passed TEMPLATE variable and print the path passed to stdout
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/windows-task/Taskfile.yml
+  utility:mktemp-folder:
+    vars:
+      RAW_PATH:
+        sh: mktemp --directory --tmpdir "{{.TEMPLATE}}"
+    cmds:
+      - task: utility:normalize-path
+        vars:
+          RAW_PATH: "{{.RAW_PATH}}"
+
+  # Print a normalized version of the path passed via the RAW_PATH variable to stdout
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/windows-task/Taskfile.yml
+  utility:normalize-path:
+    cmds:
+      - |
+        if [[ "{{.OS}}" == "Windows_NT" ]] && which cygpath &>/dev/null; then
+            # Even though the shell handles POSIX format absolute paths as expected, external applications do not.
+            # So paths passed to such applications must first be converted to Windows format.
+            cygpath -w "{{.RAW_PATH}}"
+        else
+          echo "{{.RAW_PATH}}"
+        fi
