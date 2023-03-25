@@ -4,6 +4,7 @@
 [![Check Files status](https://github.com/arduino/compile-sketches/actions/workflows/check-files-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-files-task.yml)
 [![Check General Formatting status](https://github.com/arduino/compile-sketches/actions/workflows/check-general-formatting-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-general-formatting-task.yml)
 [![Check License status](https://github.com/arduino/compile-sketches/actions/workflows/check-license.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-license.ym
+[![Check Markdown status](https://github.com/arduino/compile-sketches/actions/workflows/check-markdown-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-markdown-task.yml)
 [![Check Python status](https://github.com/arduino/compile-sketches/actions/workflows/check-python-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-python-task.yml)
 [![Spell Check status](https://github.com/arduino/compile-sketches/actions/workflows/spell-check-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/spell-check-task.yml)
 [![Sync Labels status](https://github.com/arduino/compile-sketches/actions/workflows/sync-labels-npm.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/sync-labels-npm.yml)
