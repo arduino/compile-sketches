@@ -8,6 +8,7 @@
 [![Check npm status](https://github.com/arduino/compile-sketches/actions/workflows/check-npm-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-npm-task.yml)
 [![Check Prettier Formatting status](https://github.com/arduino/compile-sketches/actions/workflows/check-prettier-formatting-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-prettier-formatting-task.yml)
 [![Check Python status](https://github.com/arduino/compile-sketches/actions/workflows/check-python-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-python-task.yml)
+[![Check Taskfiles status](https://github.com/arduino/compile-sketches/actions/workflows/check-taskfiles.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-taskfiles.yml)
 [![Spell Check status](https://github.com/arduino/compile-sketches/actions/workflows/spell-check-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/spell-check-task.yml)
 [![Sync Labels status](https://github.com/arduino/compile-sketches/actions/workflows/sync-labels-npm.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/sync-labels-npm.yml)
 [![Test Python status](https://github.com/arduino/compile-sketches/actions/workflows/test-python-poetry-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/test-python-poetry-task.yml)
