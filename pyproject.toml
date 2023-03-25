@@ -20,7 +20,7 @@ codespell = "2.2.4"
 coverage = "7.2.2"
 pytest = "7.2.2"
 pytest-mock = "3.10.0"
-flake8 = "5.0.4"
+flake8 = "6.0.0"
 pep8-naming = "0.13.3"
 
 [tool.poetry.group.external]
