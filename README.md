@@ -71,6 +71,7 @@ If the board is from one of the platforms provided by Arduino's [default package
 
 If a platform dependency from a non-Boards Manager source of the same name as another Boards Manager source platform dependency is defined, they will both be installed, with the non-Boards Manager dependency overwriting the Boards Manager platform installation. This permits testing against a non-release version of a platform while using Boards Manager to install the platform's tools dependencies.
 Example:
+
 ```yaml
 platforms: |
   # Install the latest release of Arduino SAMD Boards and its toolchain via Boards Manager
@@ -85,6 +86,7 @@ platforms: |
 ##### Boards Manager
 
 Keys:
+
 - **`name`** - (**required**) platform name in the form of `VENDOR:ARCHITECTURE` (e.g., `arduino:avr`).
 - **`version`** - version of the platform to install.
   - **Default**: the latest version.
@@ -94,14 +96,16 @@ Keys:
 ##### Local path
 
 Keys:
+
 - **`source-path`** - (**required**) path to install as a platform. Relative paths are assumed to be relative to the root of the repository.
 - **`name`** - (**required**) platform name in the form of `VENDOR:ARCHITECTURE` (e.g., `arduino:avr`).
 
 ##### Repository
 
 Keys:
+
 - **`source-url`** - (**required**) URL to clone the repository from. It must start with `git://` or end with `.git`.
-- **`name`** -  (**required**) platform name in the form of `VENDOR:ARCHITECTURE` (e.g., `arduino:avr`).
+- **`name`** - (**required**) platform name in the form of `VENDOR:ARCHITECTURE` (e.g., `arduino:avr`).
 - **`version`** - [Git ref](https://git-scm.com/book/en/v2/Git-Internals-Git-References) of the repository to checkout. The special version name `latest` will cause the latest tag to be used.
   - **Default**: the repository is checked out to the tip of the default branch.
 - **`source-path`** - path to install as a platform. Paths are relative to the root of the repository.
@@ -110,8 +114,9 @@ Keys:
 ##### Archive download
 
 Keys:
-- **`source-url`** -  (**required**) download URL for the archive (e.g., `https://github.com/arduino/ArduinoCore-avr/archive/master.zip`).
-- **`name`** -  (**required**) platform name in the form of `VENDOR:ARCHITECTURE` (e.g., `arduino:avr`).
+
+- **`source-url`** - (**required**) download URL for the archive (e.g., `https://github.com/arduino/ArduinoCore-avr/archive/master.zip`).
+- **`name`** - (**required**) platform name in the form of `VENDOR:ARCHITECTURE` (e.g., `arduino:avr`).
 - **`source-path`** - path to install as a platform. Paths are relative to the root folder of the archive, or the root of the archive if it has no root folder.
   - **Default**: root folder of the archive.
 
@@ -131,17 +136,20 @@ Libraries are installed under the Arduino user folder at `~/Arduino/libraries`.
 ##### Library Manager
 
 Keys:
+
 - **`name`** - (**required**) name of the library, as defined in the `name` field of its [library.properties](https://arduino.github.io/arduino-cli/latest/library-specification/#libraryproperties-file-format) metadata file.
 - **`version`** - version of the library to install.
   - **Default**: the latest version.
 
 **Notes**:
+
 - The library will be installed to a folder matching its name, but with any spaces replaced by `_`.
 - If the library's author defined dependencies, those libraries will be installed automatically.
 
 ##### Local path
 
 Keys:
+
 - **`source-path`** - (**required**) path to install as a library. Relative paths are assumed to be relative to the root of the repository.
 - **`destination-name`** - folder name to install the library to.
   - **Default**: the folder will be named according to the source repository or subfolder name.
@@ -149,6 +157,7 @@ Keys:
 ##### Repository
 
 Keys:
+
 - **`source-url`** - (**required**) URL to clone the repository from. It must start with `git://` or end with `.git`.
 - **`version`** - [Git ref](https://git-scm.com/book/en/v2/Git-Internals-Git-References) of the repository to checkout. The special version name `latest` will cause the latest tag to be used.
   - **Default**: the tip of the default branch.
@@ -160,6 +169,7 @@ Keys:
 ##### Archive download
 
 Keys:
+
 - **`source-url`** - (**required**) download URL for the archive (e.g., `https://github.com/arduino-libraries/Servo/archive/master.zip`).
 - **`source-path`** - path to install as a library. Paths are relative to the root folder of the archive, or the root of the archive if it has no root folder.
   - **Default**: root folder of the archive.
@@ -229,7 +239,7 @@ Set to `true` to cause the action to record the compiler warning count for each 
 ```yaml
 - uses: arduino/compile-sketches@v1
   with:
-    fqbn: 'arduino:avr:uno'
+    fqbn: "arduino:avr:uno"
     libraries: |
       - name: Servo
       - name: Stepper
