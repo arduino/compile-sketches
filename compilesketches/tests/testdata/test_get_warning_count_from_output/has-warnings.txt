@@ -85,13 +85,13 @@ In file included from /github/home/.arduino15/packages/arduino/tools/CMSIS-Atmel
                  from /github/home/Arduino/libraries/WiFi101/src/WiFi.cpp:36:
 /github/home/.arduino15/packages/arduino/tools/CMSIS-Atmel/1.2.0/CMSIS/Device/ATMEL/samd21/include/samd21g18a.h:226:0: warning: "LITTLE_ENDIAN" redefined
  #define LITTLE_ENDIAN          1
- 
+
 In file included from /github/home/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/arm-none-eabi/include/sys/types.h:67:0,
                  from /github/home/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/arm-none-eabi/include/time.h:28,
                  from /github/home/Arduino/libraries/WiFi101/src/WiFi.cpp:28:
 /github/home/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/arm-none-eabi/include/machine/endian.h:17:0: note: this is the location of the previous definition
  #define LITTLE_ENDIAN _LITTLE_ENDIAN
- 
+
 /github/home/Arduino/libraries/WiFi101/src/WiFi.cpp: In member function 'char* WiFiClass::firmwareVersion()':
 /github/home/Arduino/libraries/WiFi101/src/WiFi.cpp:343:7: warning: '%d' directive writing between 1 and 3 bytes into a region of size between 1 and 5 [-Wformat-overflow=]
  char* WiFiClass::firmwareVersion()
@@ -310,13 +310,13 @@ In file included from /github/home/.arduino15/packages/arduino/tools/CMSIS-Atmel
                  from /github/home/Arduino/libraries/RTCZero/src/RTCZero.cpp:22:
 /github/home/.arduino15/packages/arduino/tools/CMSIS-Atmel/1.2.0/CMSIS/Device/ATMEL/samd21/include/samd21g18a.h:226:0: warning: "LITTLE_ENDIAN" redefined
  #define LITTLE_ENDIAN          1
- 
+
 In file included from /github/home/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/arm-none-eabi/include/sys/types.h:67:0,
                  from /github/home/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/arm-none-eabi/include/time.h:28,
                  from /github/home/Arduino/libraries/RTCZero/src/RTCZero.cpp:20:
 /github/home/.arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/arm-none-eabi/include/machine/endian.h:17:0: note: this is the location of the previous definition
  #define LITTLE_ENDIAN _LITTLE_ENDIAN
- 
+
 /github/home/Arduino/libraries/RTCZero/src/RTCZero.cpp: In member function 'void RTCZero::begin(bool)':
 /github/home/Arduino/libraries/RTCZero/src/RTCZero.cpp:96:26: warning: 'oldTime.RTC_MODE2_CLOCK_Type::reg' may be used uninitialized in this function [-Wmaybe-uninitialized]
      RTC->MODE2.CLOCK.reg = oldTime.reg;

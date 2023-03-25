@@ -1,0 +1,14 @@
+{
+  "Exclude": [
+    "^\\.git[/\\\\]",
+    "^\\.licenses[/\\\\]",
+    ".pytest_cache[/\\\\]",
+    "__pycache__[/\\\\]",
+    "node_modules[/\\\\]",
+    "^LICENSE\\.txt$",
+    "^poetry\\.lock$",
+    "\\.py$",
+    "^compilesketches[/\\\\]tests[/\\\\]testdata[/\\\\]test_get_warning_count_from_output[/\\\\]has-warnings\\.txt$",
+    "^compilesketches[/\\\\]tests[/\\\\]testdata[/\\\\]test_get_warning_count_from_output[/\\\\]no-warnings\\.txt$"
+  ]
+}
