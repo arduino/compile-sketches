@@ -22,6 +22,7 @@ pytest = "7.2.2"
 pytest-mock = "3.10.0"
 flake8 = "6.0.0"
 pep8-naming = "0.13.3"
+yamllint = "1.30.0"
 
 [tool.poetry.group.external]
 # Provided only for use by boards platforms

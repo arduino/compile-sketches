@@ -19,6 +19,7 @@ tasks:
       - task: npm:validate
       - task: python:lint
       - task: python:test
+      - task: yaml:lint
 
   fix:
     desc: Make automated corrections to the project's files
@@ -474,3 +475,13 @@ tasks:
         else
           echo "{{.RAW_PATH}}"
         fi
+
+  # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/check-yaml-task/Taskfile.yml
+  yaml:lint:
+    desc: Check for problems with YAML files
+    deps:
+      - task: poetry:install-deps
+        vars:
+          POETRY_GROUPS: dev
+    cmds:
+      - poetry run yamllint --format {{default "colored" .YAMLLINT_FORMAT}} .
