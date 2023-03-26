@@ -129,7 +129,7 @@ Keys:
 [YAML](https://en.wikipedia.org/wiki/YAML)-format list of library dependencies to install.
 
 **Default**: `"- source-path: ./"`
-This causes the repository to be installed as a library. If there are no library dependencies and you want to override the default, set the `libraries` input to an empty list (`- libraries: '-'`).
+This causes the repository to be installed as a library. If there are no library dependencies and you want to override the default, set the `libraries` input to an empty list (`- libraries: '[]'`).
 
 Libraries are installed under the Arduino user folder at `~/Arduino/libraries`.
 

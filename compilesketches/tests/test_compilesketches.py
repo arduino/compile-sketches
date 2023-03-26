@@ -1070,6 +1070,7 @@ def test_install_platforms_from_download(mocker):
             [],
         ),
         ("-", [], [], [], []),
+        ("[]", [], [], [], []),
         (
             "- " + compilesketches.CompileSketches.dependency_name_key + ": foo",
             [{compilesketches.CompileSketches.dependency_name_key: "foo"}],

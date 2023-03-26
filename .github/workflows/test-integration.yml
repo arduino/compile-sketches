@@ -72,7 +72,7 @@ jobs:
             libraries: |
               # The official Servo library is not compatible with ESP8266, but that platform has a bundled Servo lib
               # so there are no library dependencies
-              -
+              []
 
     steps:
       - name: Checkout
@@ -348,7 +348,7 @@ jobs:
           fqbn: arduino:avr:uno
           github-token: ${{ secrets.GITHUB_TOKEN }}
           libraries: |
-            -
+            []
           sketch-paths: |
             - ${{ env.TESTDATA_SKETCHES_PATH }}/Error
 
