@@ -3,7 +3,7 @@
 [![Check Action Metadata status](https://github.com/arduino/compile-sketches/actions/workflows/check-action-metadata-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-action-metadata-task.yml)
 [![Check Files status](https://github.com/arduino/compile-sketches/actions/workflows/check-files-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-files-task.yml)
 [![Check General Formatting status](https://github.com/arduino/compile-sketches/actions/workflows/check-general-formatting-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-general-formatting-task.yml)
-[![Check License status](https://github.com/arduino/compile-sketches/actions/workflows/check-license.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-license.ym
+[![Check License status](https://github.com/arduino/compile-sketches/actions/workflows/check-license.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-license.yml)
 [![Check Markdown status](https://github.com/arduino/compile-sketches/actions/workflows/check-markdown-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-markdown-task.yml)
 [![Check npm status](https://github.com/arduino/compile-sketches/actions/workflows/check-npm-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-npm-task.yml)
 [![Check Prettier Formatting status](https://github.com/arduino/compile-sketches/actions/workflows/check-prettier-formatting-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-prettier-formatting-task.yml)
