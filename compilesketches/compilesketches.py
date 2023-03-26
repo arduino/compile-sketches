@@ -1300,55 +1300,52 @@ class CompileSketches:
         sizes_summary_report = []
         for sketch_report in sketch_report_list:
             for size_report in sketch_report[self.ReportKeys.sizes]:
-                if self.ReportKeys.delta in size_report:
-                    # Determine the sizes_summary_report index for this memory type
-                    size_summary_report_index_list = [
-                        index
-                        for index, size_summary in enumerate(sizes_summary_report)
-                        if size_summary.get(self.ReportKeys.name) == size_report[self.ReportKeys.name]
+                # Determine the sizes_summary_report index for this memory type
+                size_summary_report_index_list = [
+                    index
+                    for index, size_summary in enumerate(sizes_summary_report)
+                    if size_summary.get(self.ReportKeys.name) == size_report[self.ReportKeys.name]
+                ]
+                if not size_summary_report_index_list:
+                    # There is no existing entry in the summary list for this memory type, so create one
+                    sizes_summary_report.append({self.ReportKeys.name: size_report[self.ReportKeys.name]})
+                    size_summary_report_index = len(sizes_summary_report) - 1
+                else:
+                    size_summary_report_index = size_summary_report_index_list[0]
+
+                if (
+                    self.ReportKeys.maximum not in sizes_summary_report[size_summary_report_index]
+                    or sizes_summary_report[size_summary_report_index][self.ReportKeys.maximum]
+                    == self.not_applicable_indicator
+                ):
+                    sizes_summary_report[size_summary_report_index][self.ReportKeys.maximum] = size_report[
+                        self.ReportKeys.maximum
                     ]
-                    if not size_summary_report_index_list:
-                        # There is no existing entry in the summary list for this memory type, so create one
-                        sizes_summary_report.append(
-                            {
-                                self.ReportKeys.name: size_report[self.ReportKeys.name],
-                                self.ReportKeys.maximum: size_report[self.ReportKeys.maximum],
-                                self.ReportKeys.delta: {
-                                    self.ReportKeys.absolute: {
-                                        self.ReportKeys.minimum: size_report[self.ReportKeys.delta][
-                                            self.ReportKeys.absolute
-                                        ],
-                                        self.ReportKeys.maximum: size_report[self.ReportKeys.delta][
-                                            self.ReportKeys.absolute
-                                        ],
-                                    },
-                                    self.ReportKeys.relative: {
-                                        self.ReportKeys.minimum: size_report[self.ReportKeys.delta][
-                                            self.ReportKeys.relative
-                                        ],
-                                        self.ReportKeys.maximum: size_report[self.ReportKeys.delta][
-                                            self.ReportKeys.relative
-                                        ],
-                                    },
-                                },
-                            }
-                        )
-                    else:
-                        size_summary_report_index = size_summary_report_index_list[0]
 
+                if self.ReportKeys.delta in size_report:
+                    if (
+                        self.ReportKeys.delta not in sizes_summary_report[size_summary_report_index]
+                        or sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
+                            self.ReportKeys.absolute
+                        ][self.ReportKeys.minimum]
+                        == self.not_applicable_indicator
+                    ):
+                        sizes_summary_report[size_summary_report_index][self.ReportKeys.delta] = {
+                            self.ReportKeys.absolute: {
+                                self.ReportKeys.minimum: size_report[self.ReportKeys.delta][self.ReportKeys.absolute],
+                                self.ReportKeys.maximum: size_report[self.ReportKeys.delta][self.ReportKeys.absolute],
+                            },
+                            self.ReportKeys.relative: {
+                                self.ReportKeys.minimum: size_report[self.ReportKeys.delta][self.ReportKeys.relative],
+                                self.ReportKeys.maximum: size_report[self.ReportKeys.delta][self.ReportKeys.relative],
+                            },
+                        }
+                    elif size_report[self.ReportKeys.delta][self.ReportKeys.absolute] != self.not_applicable_indicator:
                         if (
-                            sizes_summary_report[size_summary_report_index][self.ReportKeys.maximum]
-                            == self.not_applicable_indicator
-                        ):
-                            sizes_summary_report[size_summary_report_index][self.ReportKeys.maximum] = size_report[
-                                self.ReportKeys.maximum
-                            ]
-
-                        if (
-                            sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
+                            size_report[self.ReportKeys.delta][self.ReportKeys.absolute]
+                            < sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
                                 self.ReportKeys.absolute
                             ][self.ReportKeys.minimum]
-                            == self.not_applicable_indicator
                         ):
                             sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
                                 self.ReportKeys.absolute
@@ -1358,6 +1355,12 @@ class CompileSketches:
                                 self.ReportKeys.relative
                             ][self.ReportKeys.minimum] = size_report[self.ReportKeys.delta][self.ReportKeys.relative]
 
+                        if (
+                            size_report[self.ReportKeys.delta][self.ReportKeys.absolute]
+                            > sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
+                                self.ReportKeys.absolute
+                            ][self.ReportKeys.maximum]
+                        ):
                             sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
                                 self.ReportKeys.absolute
                             ][self.ReportKeys.maximum] = size_report[self.ReportKeys.delta][self.ReportKeys.absolute]
@@ -1365,45 +1368,6 @@ class CompileSketches:
                             sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
                                 self.ReportKeys.relative
                             ][self.ReportKeys.maximum] = size_report[self.ReportKeys.delta][self.ReportKeys.relative]
-
-                        elif size_report[self.ReportKeys.delta][self.ReportKeys.absolute] != (
-                            self.not_applicable_indicator
-                        ):
-                            if (
-                                size_report[self.ReportKeys.delta][self.ReportKeys.absolute]
-                                < sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
-                                    self.ReportKeys.absolute
-                                ][self.ReportKeys.minimum]
-                            ):
-                                sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
-                                    self.ReportKeys.absolute
-                                ][self.ReportKeys.minimum] = size_report[self.ReportKeys.delta][
-                                    self.ReportKeys.absolute
-                                ]
-
-                                sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
-                                    self.ReportKeys.relative
-                                ][self.ReportKeys.minimum] = size_report[self.ReportKeys.delta][
-                                    self.ReportKeys.relative
-                                ]
-
-                            if (
-                                size_report[self.ReportKeys.delta][self.ReportKeys.absolute]
-                                > sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
-                                    self.ReportKeys.absolute
-                                ][self.ReportKeys.maximum]
-                            ):
-                                sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
-                                    self.ReportKeys.absolute
-                                ][self.ReportKeys.maximum] = size_report[self.ReportKeys.delta][
-                                    self.ReportKeys.absolute
-                                ]
-
-                                sizes_summary_report[size_summary_report_index][self.ReportKeys.delta][
-                                    self.ReportKeys.relative
-                                ][self.ReportKeys.maximum] = size_report[self.ReportKeys.delta][
-                                    self.ReportKeys.relative
-                                ]
 
         return sizes_summary_report
 

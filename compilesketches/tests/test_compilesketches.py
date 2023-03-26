@@ -2631,7 +2631,16 @@ def test_get_sizes_summary_report():
         },
     ]
 
-    expected_sizes_summary_report = []
+    expected_sizes_summary_report = [
+        {
+            compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+            compilesketches.CompileSketches.ReportKeys.maximum: 111,
+        },
+        {
+            compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+            compilesketches.CompileSketches.ReportKeys.maximum: 222,
+        },
+    ]
 
     assert compile_sketches.get_sizes_summary_report(sketch_report_list=sketch_report_list) == (
         expected_sizes_summary_report
