@@ -1,48 +1,64 @@
 name: "Compile Arduino Sketches"
-description: "Checks whether Arduino sketches will compile and produces a report of data from the compilations"
+description: >-
+  Checks whether Arduino sketches will compile and produces a report of data from the compilations
 inputs:
   cli-version:
-    description: "Version of Arduino CLI to use when building"
+    description: >-
+      Version of Arduino CLI to use when building
     default: "latest"
     required: true
   fqbn:
-    description: "Full qualified board name, with Boards Manager URL if needed"
+    description: >-
+      Full qualified board name, with Boards Manager URL if needed
     default: "arduino:avr:uno"
     required: true
   libraries:
-    description: "YAML-format list of library dependencies to install"
+    description: >-
+      YAML-format list of library dependencies to install
     default: "- source-path: ./"
     required: true
   platforms:
-    description: "YAML-format list of platform dependencies to install"
+    description: >-
+      YAML-format list of platform dependencies to install
     default: ""
     required: true
   sketch-paths:
-    description: "YAML-format list of paths containing sketches to compile."
+    description: >-
+      YAML-format list of paths containing sketches to compile.
     default: "- examples"
     required: true
   cli-compile-flags:
-    description: "YAML-format list of flags to add to the Arduino CLI sketch compilation command."
+    description: >-
+      YAML-format list of flags to add to the Arduino CLI sketch compilation command.
     default: ""
     required: false
   verbose:
-    description: "Set to true to show verbose output in the log"
+    description: >-
+      Set to true to show verbose output in the log
     default: "false"
     required: true
   sketches-report-path:
-    description: "Path in which to save a JSON formatted file containing data from the sketch compilations"
+    description: >-
+      Path in which to save a JSON formatted file containing data from the sketch compilations
     default: "sketches-reports"
     required: true
   github-token:
-    description: "GitHub access token used to get information from the GitHub API. Only needed if you are using the deltas report feature in a private repository."
+    description: >-
+      GitHub access token used to get information from the GitHub API.
+
+      Only needed if you are using the deltas report feature in a private repository.
     default: ""
     required: true
   enable-deltas-report:
-    description: "Set to true to cause the action to determine the change in memory usage and compiler warnings of the compiled sketches between the head and base refs of a PR and the immediate parent commit of a push"
+    description: >-
+      Set to true to cause the action to determine the change in memory usage and compiler warnings of the compiled
+      sketches between the head and base refs of a PR and the immediate parent commit of a push
     default: "false"
     required: true
   enable-warnings-report:
-    description: "Set to true to cause the action to record the compiler warning count for each sketch compilation in the sketches report"
+    description: >-
+      Set to true to cause the action to record the compiler warning count for each sketch compilation in the sketches
+      report
     default: "false"
     required: true
 
