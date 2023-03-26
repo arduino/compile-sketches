@@ -2621,7 +2621,7 @@ def test_get_sizes_summary_report():
                 },
                 {
                     compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
-                    compilesketches.CompileSketches.ReportKeys.maximum: 111,
+                    compilesketches.CompileSketches.ReportKeys.maximum: 222,
                     compilesketches.CompileSketches.ReportKeys.current: {
                         compilesketches.CompileSketches.ReportKeys.absolute: 33,
                         compilesketches.CompileSketches.ReportKeys.relative: 3.342,
