@@ -23,6 +23,10 @@ on:
       - "action.yml"
       - "compilesketches/**"
 
+  schedule:
+    # Run periodically to catch breakage caused by external changes.
+    - cron: "0 12 * * THU"
+
 env:
   SKETCHES_REPORTS_PATH: sketches-reports
   TESTDATA_PLATFORMS_PATH: .github/workflows/testdata/platforms
