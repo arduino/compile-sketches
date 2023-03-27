@@ -37,7 +37,7 @@ jobs:
       - name: Determine if the rest of the workflow should run
         id: determination
         run: |
-          RELEASE_BRANCH_REGEX="refs/heads/[0-9]+.[0-9]+.x"
+          RELEASE_BRANCH_REGEX="^refs/heads/v[0-9]+$"
           # The `create` event trigger doesn't support `branches` filters, so it's necessary to use Bash instead.
           if [[
             "${{ github.event_name }}" != "create" ||

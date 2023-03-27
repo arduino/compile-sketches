@@ -1,6 +1,8 @@
 name: Run integration tests
 
 on:
+  create:
+
   pull_request:
     paths:
       - ".github/workflows/test-integration.yml"
@@ -21,6 +23,14 @@ on:
       - "action.yml"
       - "compilesketches/**"
 
+  repository_dispatch:
+
+  schedule:
+    # Run periodically to catch breakage caused by external changes.
+    - cron: "0 12 * * THU"
+
+  workflow_dispatch:
+
 env:
   SKETCHES_REPORTS_PATH: sketches-reports
   TESTDATA_PLATFORMS_PATH: .github/workflows/testdata/platforms
@@ -28,7 +38,32 @@ env:
   TESTDATA_REPORTS_PATH: .github/workflows/testdata/reports
 
 jobs:
+  run-determination:
+    runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.determination.outputs.result }}
+    steps:
+      - name: Determine if the rest of the workflow should run
+        id: determination
+        run: |
+          RELEASE_BRANCH_REGEX="^refs/heads/v[0-9]+$"
+          # The `create` event trigger doesn't support `branches` filters, so it's necessary to use Bash instead.
+          if [[
+            "${{ github.event_name }}" != "create" ||
+            "${{ github.ref }}" =~ $RELEASE_BRANCH_REGEX
+          ]]; then
+            # Run the other jobs.
+            RESULT="true"
+          else
+            # There is no need to run the other jobs.
+            RESULT="false"
+          fi
+
+          echo "result=$RESULT" >> $GITHUB_OUTPUT
+
   default-inputs:
+    needs: run-determination
+    if: needs.run-determination.outputs.result == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -49,6 +84,8 @@ jobs:
         uses: ./extras/compile-sketches
 
   all-inputs:
+    needs: run-determination
+    if: needs.run-determination.outputs.result == 'true'
     runs-on: ubuntu-latest
 
     strategy:
@@ -120,6 +157,8 @@ jobs:
 
   multiple-steps:
     name: multiple-steps (${{ matrix.board.source-type }})
+    needs: run-determination
+    if: needs.run-determination.outputs.result == 'true'
     runs-on: ubuntu-latest
 
     strategy:
@@ -209,6 +248,8 @@ jobs:
             - examples/Sweep
 
   python-package-dependency:
+    needs: run-determination
+    if: needs.run-determination.outputs.result == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -239,6 +280,8 @@ jobs:
 
   # Targeted testing for ESP32 boards platform support.
   pyserial-dependency:
+    needs: run-determination
+    if: needs.run-determination.outputs.result == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -267,7 +310,10 @@ jobs:
             - ${{ env.TESTDATA_SKETCHES_PATH }}/BareMinimum
 
   check-sketches-reports:
-    needs: all-inputs
+    needs:
+      - run-determination
+      - all-inputs
+    if: needs.run-determination.outputs.result == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -334,6 +380,8 @@ jobs:
           exit $EXIT_STATUS
 
   expected-failed-compilation:
+    needs: run-determination
+    if: needs.run-determination.outputs.result == 'true'
     runs-on: ubuntu-latest
 
     steps:
