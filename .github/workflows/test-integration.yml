@@ -23,9 +23,13 @@ on:
       - "action.yml"
       - "compilesketches/**"
 
+  repository_dispatch:
+
   schedule:
     # Run periodically to catch breakage caused by external changes.
     - cron: "0 12 * * THU"
+
+  workflow_dispatch:
 
 env:
   SKETCHES_REPORTS_PATH: sketches-reports
