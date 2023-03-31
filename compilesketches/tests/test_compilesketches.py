@@ -1803,6 +1803,28 @@ def test_get_sketch_report(mocker, enable_warnings_report, do_deltas_report):
             "                                       ^~~~~\n"
             "Sketch uses {flash} bytes (4%) of program storage space. Maximum is {maximum_flash} bytes.\n",
             12636,
+            25272,
+            50.0,
+            get_compilesketches_object().not_applicable_indicator,
+            get_compilesketches_object().not_applicable_indicator,
+            get_compilesketches_object().not_applicable_indicator,
+        ),
+        (
+            True,
+            "/home/per/Arduino/libraries/Servo/src/samd/Servo.cpp: In function 'void _initISR(Tc*, uint8_t, uint32_t, IRQn_Ty"
+            "pe, uint8_t, uint8_t)':\n"
+            "/home/per/Arduino/libraries/Servo/src/samd/Servo.cpp:120:56: warning: unused parameter 'id' [-Wunused-parameter]"
+            "\n"
+            " static void _initISR(Tc *tc, uint8_t channel, uint32_t id, IRQn_Type irqn, uint8_t gcmForTimer, uint8_t intEnab"
+            " leBit)\n"
+            "                                                        ^~\n"
+            "/home/per/Arduino/libraries/Servo/src/samd/Servo.cpp: In function 'void finISR(timer16_Sequence_t)':\n"
+            "/home/per/Arduino/libraries/Servo/src/samd/Servo.cpp:174:39: warning: unused parameter 'timer' [-Wunused-paramet"
+            "er]\n"
+            " static void finISR(timer16_Sequence_t timer)\n"
+            "                                       ^~~~~\n"
+            "Sketch uses {flash} bytes (4%) of program storage space.\n",
+            12636,
             get_compilesketches_object().not_applicable_indicator,
             get_compilesketches_object().not_applicable_indicator,
             get_compilesketches_object().not_applicable_indicator,
@@ -2621,7 +2643,7 @@ def test_get_sizes_summary_report():
                 },
                 {
                     compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
-                    compilesketches.CompileSketches.ReportKeys.maximum: 111,
+                    compilesketches.CompileSketches.ReportKeys.maximum: 222,
                     compilesketches.CompileSketches.ReportKeys.current: {
                         compilesketches.CompileSketches.ReportKeys.absolute: 33,
                         compilesketches.CompileSketches.ReportKeys.relative: 3.342,
@@ -2631,7 +2653,16 @@ def test_get_sizes_summary_report():
         },
     ]
 
-    expected_sizes_summary_report = []
+    expected_sizes_summary_report = [
+        {
+            compilesketches.CompileSketches.ReportKeys.name: "Foo memory type",
+            compilesketches.CompileSketches.ReportKeys.maximum: 111,
+        },
+        {
+            compilesketches.CompileSketches.ReportKeys.name: "Bar memory type",
+            compilesketches.CompileSketches.ReportKeys.maximum: 222,
+        },
+    ]
 
     assert compile_sketches.get_sizes_summary_report(sketch_report_list=sketch_report_list) == (
         expected_sizes_summary_report
