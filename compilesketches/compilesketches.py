@@ -1502,8 +1502,8 @@ class CompileSketches:
         }
 
         if (
-            not semver.VersionInfo.isvalid(version=self.cli_version)
-            or semver.compare(ver1=self.cli_version, ver2=final_original_interface_version) > 0
+            not semver.VersionInfo.is_valid(version=self.cli_version)
+            or semver.Version.parse(version=self.cli_version).compare(other=final_original_interface_version) > 0
         ) and (command in key_translation and original_key_name in key_translation[command]):
             return key_translation[command][original_key_name]
 
