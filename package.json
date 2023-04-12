@@ -3,7 +3,7 @@
     "ajv-cli": "5.0.0",
     "ajv-formats": "2.1.1",
     "github-label-sync": "2.3.1",
-    "markdown-link-check": "3.10.3",
+    "markdown-link-check": "3.11.1",
     "markdown-toc": "1.2.0",
     "markdownlint-cli": "0.33.0",
     "prettier": "2.8.7"
