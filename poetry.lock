@@ -595,14 +595,14 @@ files = [
 
 [[package]]
 name = "pygithub"
-version = "1.58.1"
+version = "1.58.2"
 description = "Use the full Github API v3"
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "PyGithub-1.58.1-py3-none-any.whl", hash = "sha256:4e7fe9c3ec30d5fde5b4fbb97f18821c9dbf372bf6df337fe66f6689a65e0a83"},
-    {file = "PyGithub-1.58.1.tar.gz", hash = "sha256:7d528b4ad92bc13122129fafd444ce3d04c47d2d801f6446b6e6ee2d410235b3"},
+    {file = "PyGithub-1.58.2-py3-none-any.whl", hash = "sha256:f435884af617c6debaa76cbc355372d1027445a56fbc39972a3b9ed4968badc8"},
+    {file = "PyGithub-1.58.2.tar.gz", hash = "sha256:1e6b1b7afe31f75151fb81f7ab6b984a7188a852bdb123dbb9ae90023c3ce60f"},
 ]
 
 [package.dependencies]
@@ -933,4 +933,4 @@ dev = ["doc8", "flake8", "flake8-import-order", "rstcheck[sphinx]", "sphinx"]
 [metadata]
 lock-version = "2.0"
 python-versions = "~3.11"
-content-hash = "1c6afc9505620bc00d644790f250653ad2330b56658b69d0046ff669450e311d"
+content-hash = "beedac8d63d97bd1ea6178a81125330bd347b045aae46b285f5fa1cc499b0be0"
