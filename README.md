@@ -23,31 +23,33 @@ This action checks whether [Arduino](https://www.arduino.cc/) sketches compile a
 
 <!-- toc -->
 
-- [Inputs](#inputs)
-  - [`cli-version`](#cli-version)
-  - [`fqbn`](#fqbn)
-  - [`platforms`](#platforms)
-    - [Supported platform sources:](#supported-platform-sources)
-      - [Boards Manager](#boards-manager)
-      - [Local path](#local-path)
-      - [Repository](#repository)
-      - [Archive download](#archive-download)
-  - [`libraries`](#libraries)
-    - [Supported library sources:](#supported-library-sources)
-      - [Library Manager](#library-manager)
-      - [Local path](#local-path-1)
-      - [Repository](#repository-1)
-      - [Archive download](#archive-download-1)
-  - [`sketch-paths`](#sketch-paths)
-  - [`cli-compile-flags`](#cli-compile-flags)
-  - [`verbose`](#verbose)
-  - [`sketches-report-path`](#sketches-report-path)
-  - [`github-token`](#github-token)
-  - [`enable-deltas-report`](#enable-deltas-report)
-    - [How it works](#how-it-works)
-  - [`enable-warnings-report`](#enable-warnings-report)
-- [Example usage](#example-usage)
-- [Additional resources](#additional-resources)
+- [`arduino/compile-sketches` action](#arduinocompile-sketches-action)
+  - [Table of contents](#table-of-contents)
+  - [Inputs](#inputs)
+    - [`cli-version`](#cli-version)
+    - [`fqbn`](#fqbn)
+    - [`platforms`](#platforms)
+      - [Supported platform sources:](#supported-platform-sources)
+        - [Boards Manager](#boards-manager)
+        - [Local path](#local-path)
+        - [Repository](#repository)
+        - [Archive download](#archive-download)
+    - [`libraries`](#libraries)
+      - [Supported library sources:](#supported-library-sources)
+        - [Library Manager](#library-manager)
+        - [Local path](#local-path-1)
+        - [Repository](#repository-1)
+        - [Archive download](#archive-download-1)
+    - [`sketch-paths`](#sketch-paths)
+    - [`cli-compile-flags`](#cli-compile-flags)
+    - [`verbose`](#verbose)
+    - [`sketches-report-path`](#sketches-report-path)
+    - [`github-token`](#github-token)
+    - [`enable-deltas-report`](#enable-deltas-report)
+      - [How it works](#how-it-works)
+    - [`enable-warnings-report`](#enable-warnings-report)
+  - [Example usage](#example-usage)
+  - [Additional resources](#additional-resources)
 
 <!-- tocstop -->
 
@@ -241,13 +243,39 @@ Set to `true` to cause the action to record the compiler warning count for each 
 ## Example usage
 
 ```yaml
-- uses: arduino/compile-sketches@v1
-  with:
-    fqbn: "arduino:avr:uno"
-    libraries: |
-      - name: Servo
-      - name: Stepper
-        version: 1.1.3
+# You will see this name in the Actions tab on GitHub
+name: Compile Sketches
+
+# Specify conditions for workflow to run
+on:
+  push: # push to main branch
+    branches:
+      -main
+  
+  pull_request: # PR to main branch
+    branches:
+      -main
+
+  workflow_dispatch: # Manually via button in the Actions tab
+
+
+# This workflow involves only one job to do, called compile-sketch
+jobs:
+  compile-sketch:
+    runs-on: ubuntu-latest # runner is latest Github-hosted Ubuntu
+    steps: # define what steps should be taken
+      # GA for checking out repo to runner -> https://github.com/actions/checkout
+      - uses: actions/checkout@v3
+      # GA for compiling sketches -> https://github.com/arduino/compile-sketches
+      - uses: arduino/compile-sketches@v1
+        with:
+          fqbn: "arduino:avr:uno" # specify fully qualified board name to compile sketches for
+          libraries: |
+            # load latest version of Servo library from arduino-libraries org
+            - name: Servo
+            # load version 1.1.3 of Stepper library 
+            - name: Stepper # 
+              version: 1.1.3
 ```
 
 ## Additional resources
