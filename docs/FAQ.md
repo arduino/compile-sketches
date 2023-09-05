@@ -58,3 +58,53 @@ In order to be certain your installation of a package dependency will be availab
 ```
 
 ---
+
+## How can I install a platform or library dependency from an external private repository?
+
+The **arduino/compile-sketches** action supports installing platform and library dependencies of the sketches by cloning the repository specified via the `source-url` field of the [`platforms`](../README.md#platforms) or [`libraries`](../README.md#libraries) inputs.
+
+With a public repository, the dependency definition will look something like this:
+
+```yaml
+libraries: |
+  - source-url: https://github.com/arduino-libraries/Servo.git
+```
+
+However, if `arduino-libraries/Servo` was a private repository the installation of this library by the action would fail:
+
+```text
+fatal: could not read Username for 'https://github.com': No such device or address
+```
+
+In this case is necessary to configure the repository URL to provide the authentication required for **Git** to clone the repository, as documented [**here**](https://git-scm.com/docs/git-clone#_git_urls). For private GitHub repositories, the following URL format can be used:
+
+```text
+https://<token>@github.com/<repo slug>.git
+```
+
+where `<token>` is a "[personal access token](https://docs.github.com/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#about-personal-access-tokens)" with `repo` scope from the account of a user with access to the private repository.
+
+---
+
+**ⓘ** You might find it convenient to create the token under a ["machine user" account](https://docs.github.com/authentication/connecting-to-github-with-ssh/managing-deploy-keys#machine-users).
+
+---
+
+In order to avoid leaking the token, it must be stored in a [secret](https://docs.github.com/actions/security-guides/using-secrets-in-github-actions), and that secret [referenced](https://docs.github.com/actions/security-guides/using-secrets-in-github-actions#using-secrets-in-a-workflow) in the URL.
+
+---
+
+**Example:**
+
+```yaml
+- uses: arduino/compile-sketches@v1
+  with:
+    libraries: |
+      - source-url: https://${{ secrets.REPO_SCOPE_TOKEN }}@github.com/octocat/SomePrivateLib.git
+```
+
+---
+
+**ⓘ** The automatically generated [`GITHUB_TOKEN` secret](https://docs.github.com/actions/security-guides/automatic-token-authentication#about-the-github_token-secret) can not be used for this purpose as it lacks the necessary permissions.
+
+---
