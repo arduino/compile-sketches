@@ -68,13 +68,13 @@ jobs:
 
     steps:
       - name: Checkout Servo library
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: arduino-libraries/servo
           ref: 1.1.7
 
       - name: Checkout local repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           # Must be checked out to a subfolder to not interfere with the checked out library under test
           path: extras/compile-sketches
@@ -113,7 +113,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Run action
         # Use action from local path
@@ -209,21 +209,21 @@ jobs:
 
     steps:
       - name: Checkout library
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: arduino-libraries/Servo
           ref: 1.1.7
 
       - name: Checkout platform
         if: matrix.board.source-type == 'path'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: arduino/ArduinoCore-avr
           ref: 1.8.3
           path: extras/ArduinoCore-avr
 
       - name: Checkout local repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: extras/compile-sketches
 
@@ -254,7 +254,7 @@ jobs:
 
     steps:
       - name: Checkout local repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Python package dependency
         run: |
@@ -286,7 +286,7 @@ jobs:
 
     steps:
       - name: Checkout local repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install pyserial
         run: |
@@ -319,7 +319,7 @@ jobs:
     steps:
       # Checkout is needed to get the golden reports
       - name: Checkout local repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download sketches reports artifact
         uses: actions/download-artifact@v3
@@ -386,7 +386,7 @@ jobs:
 
     steps:
       - name: Checkout local repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Compile sketch that is expected to error
         id: compile-sketches
