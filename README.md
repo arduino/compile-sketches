@@ -1,3 +1,7 @@
+## This is my fork of Arduino's compile action.
+
+I mostly just wanted to experiment with GitHub actions, but also I wanted to make some customizations to this one. Once I get time to really do some work on this repo, I'll update this README.
+
 # `arduino/compile-sketches` action
 
 [![Check Action Metadata status](https://github.com/arduino/compile-sketches/actions/workflows/check-action-metadata-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-action-metadata-task.yml)
