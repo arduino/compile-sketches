@@ -117,6 +117,14 @@ class CompileSketches:
         minimum = "minimum"
         maximum = "maximum"
         sketches = "sketches"
+        code = "code"
+        data = "data"
+        headers = "headers"
+        free_for_files = "free_for_files"
+        variables = "variables"
+        padding = "padding"
+        free_for_local_variables = "free_for_local_variables"
+        free_for_malloc_new = "free_for_malloc_new"
 
     dependency_name_key = "name"
     dependency_version_key = "version"
@@ -1014,8 +1022,49 @@ class CompileSketches:
 
         Keyword arguments:
         compilation_result -- object returned by compile_sketch()
+
+        Memory Usage on Teensy 4.0:
+            FLASH: code:66336, data:12724, headers:9000   free for files:1943556
+                RAM1: variables:19712, code:64184, padding:1352   free for local variables:439040
+                RAM2: variables:12416  free for malloc/new:511872
+
+                self.ReportKeys.code
+                self.ReportKeys.data
+                self.ReportKeys.headers
+                self.ReportKeys.free_for_files
+                self.ReportKeys.variables
+                self.ReportKeys.padding
+                self.ReportKeys.free_for_local_variables
+                self.ReportKeys.free_for_malloc_new
         """
         memory_types = [
+            {
+                "name": "flash",
+                "regex": {
+                    self.ReportKeys.code: r"FLASH: code:([0-9]+), data:[0-9]+, headers:[0-9]+   free for files:[0-9]+",
+                    self.ReportKeys.data: r"FLASH: code:[0-9]+, data:([0-9]+), headers:[0-9]+   free for files:[0-9]+",
+                    self.ReportKeys.headers: r"FLASH: code:[0-9]+, data:[0-9]+, headers:([0-9]+)   free for files:[0-9]+",
+                    self.ReportKeys.free_for_files: r"FLASH: code:[0-9]+, data:[0-9]+, headers:[0-9]+   free for files:([0-9]+)"
+                },
+            },
+            {
+                "name": "RAM1",
+                "regex": {
+                    self.ReportKeys.variables: r"RAM1: variables:([0-9]+), code:[0-9]+, padding:[0-9]+   free for local variables:[0-9]+",
+                    self.ReportKeys.code: r"RAM1: variables:[0-9]+, code:([0-9]+), padding:[0-9]+   free for local variables:[0-9]+",
+                    self.ReportKeys.padding: r"RAM1: variables:[0-9]+, code:[0-9]+, padding:([0-9]+)   free for local variables:[0-9]+",
+                    self.ReportKeys.free_for_local_variables: r"RAM1: variables:[0-9]+, code:[0-9]+, padding:[0-9]+   free for local variables:([0-9]+)"
+                },
+            },
+            {
+                "name": "RAM2",
+                "regex": {
+                    self.ReportKeys.variables: r"RAM2: variables:([0-9]+)  free for malloc/new:[0-9]+",
+                    self.ReportKeys.free_for_malloc_new: r"RAM2: variables:[0-9]+  free for malloc/new:([0-9]+)"
+                },
+            },
+        ]
+        """memory_types = [
             {
                 "name": "flash",
                 # Use capturing parentheses to identify the location of the data in the regular expression
@@ -1037,7 +1086,7 @@ class CompileSketches:
                     ),
                 },
             },
-        ]
+        ]"""
 
         sizes = []
         for memory_type in memory_types:
@@ -1047,6 +1096,14 @@ class CompileSketches:
                 self.ReportKeys.absolute: self.not_applicable_indicator,
                 self.ReportKeys.maximum: self.not_applicable_indicator,
                 self.ReportKeys.relative: self.not_applicable_indicator,
+                self.ReportKeys.code: self.not_applicable_indicator,
+                self.ReportKeys.data: self.not_applicable_indicator,
+                self.ReportKeys.headers: self.not_applicable_indicator,
+                self.ReportKeys.free_for_files: self.not_applicable_indicator,
+                self.ReportKeys.variables: self.not_applicable_indicator,
+                self.ReportKeys.padding: self.not_applicable_indicator,
+                self.ReportKeys.free_for_local_variables: self.not_applicable_indicator,
+                self.ReportKeys.free_for_malloc_new: self.not_applicable_indicator,
             }
 
             if compilation_result.success is True:
@@ -1054,10 +1111,10 @@ class CompileSketches:
                 size_data = self.get_size_data_from_output(
                     compilation_output=compilation_result.output,
                     memory_type=memory_type,
-                    size_data_type=self.ReportKeys.absolute,
+                    size_data_type=self.ReportKeys.code,
                 )
                 if size_data:
-                    size[self.ReportKeys.absolute] = size_data
+                    size[self.ReportKeys.code] = size_data
 
                     size_data = self.get_size_data_from_output(
                         compilation_output=compilation_result.output,
@@ -1068,7 +1125,7 @@ class CompileSketches:
                         size[self.ReportKeys.maximum] = size_data
 
                         size[self.ReportKeys.relative] = round(
-                            (100 * size[self.ReportKeys.absolute] / size[self.ReportKeys.maximum]),
+                            (100 * size[self.ReportKeys.code] / size[self.ReportKeys.maximum]),
                             self.relative_size_report_decimal_places,
                         )
 
