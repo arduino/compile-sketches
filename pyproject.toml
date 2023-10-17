@@ -9,7 +9,7 @@ authors = ["Arduino <info@arduino.cc>"]
 
 [tool.poetry.dependencies]
 python = "3.11.2"
-GitPython = "3.1.37"
+GitPython = "3.1.38"
 PyGithub = "2.1.1"
 PyYAML = "6.0.1"
 semver = "3.0.2"
