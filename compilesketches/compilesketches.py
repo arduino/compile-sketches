@@ -774,7 +774,7 @@ class CompileSketches:
             return dependencies
 
     def get_library_dependencies(library_path):
-        """if library.properties is present, extract dependancies"""
+        """if library.properties is present, extract dependencies"""
         properties_file_path = os.path.join(library_path, "library.properties")
         if os.path.exists(properties_file_path):
             return get_dependencies_from_properties_file(properties_file_path)
