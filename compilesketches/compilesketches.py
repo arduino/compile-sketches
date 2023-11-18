@@ -777,7 +777,7 @@ class CompileSketches:
         """if library.properties is present, extract dependencies"""
         properties_file_path = os.path.join(library_path, "library.properties")
         if os.path.exists(properties_file_path):
-            return get_dependencies_from_properties_file(properties_file_path)
+            return self.get_dependencies_from_properties_file(properties_file_path)
         return []
 
     def install_libraries_from_library_manager(self, library_list):
@@ -796,7 +796,7 @@ class CompileSketches:
             lib_install_command.append(self.get_manager_dependency_name(library))
             self.run_arduino_cli_command(command=lib_install_command, enable_output=self.get_run_command_output_level())
 
-        dependencies = get_library_dependencies(library[self.dependency_source_path_key])
+        dependencies = self.get_library_dependencies(library[self.dependency_source_path_key])
         for depends_library in dependencies:
             lib_install_command.extend(depends_library)
 
