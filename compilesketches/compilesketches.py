@@ -796,7 +796,7 @@ class CompileSketches:
             lib_install_command.append(self.get_manager_dependency_name(library))
             self.run_arduino_cli_command(command=lib_install_command, enable_output=self.get_run_command_output_level())
 
-        dependencies = self.get_library_dependencies(library[self.dependency_source_path_key])
+        dependencies = self.get_library_dependencies(os.environ["GITHUB_REPOSITORY"])
         for depends_library in dependencies:
             lib_install_command.extend(depends_library)
 
