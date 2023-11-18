@@ -762,7 +762,7 @@ class CompileSketches:
         if len(library_list.download) > 0:
             self.install_libraries_from_download(library_list=library_list.download)
 
-    def get_dependencies_from_properties_file(properties_file_path):
+    def get_dependencies_from_properties_file(self, properties_file_path):
         """extract library names from `depends` key"""
         dependencies = []
         with open(properties_file_path, 'r') as file:
@@ -773,7 +773,7 @@ class CompileSketches:
                 dependencies = match.group(1).split(",")
             return dependencies
 
-    def get_library_dependencies(library_path):
+    def get_library_dependencies(self, library_path):
         """if library.properties is present, extract dependencies"""
         properties_file_path = os.path.join(library_path, "library.properties")
         if os.path.exists(properties_file_path):
