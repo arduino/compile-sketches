@@ -204,7 +204,7 @@ Set to true to show verbose output in the log.
 
 Path in which to save a JSON formatted file containing data from the sketch compilations. Should be used only to store reports. Relative paths are relative to [`GITHUB_WORKSPACE`](https://help.github.com/en/actions/configuring-and-managing-workflows/using-environment-variables). The folder will be created if it doesn't already exist.
 
-This report is used by the [`arduino/report-size-deltas`](https://github.com/arduino/report-size-deltas) and [`arduino/report-size-trends`](https://github.com/arduino/report-size-trends) actions.
+This report is used by the [`arduino/report-size-deltas`](https://github.com/arduino/report-size-deltas) action.
 
 **Default**: `"sketches-reports"`
 
