@@ -767,15 +767,15 @@ class CompileSketches:
         dependencies = []
         with open(properties_file_path, 'r') as file:
             content = file.read()
-            match = re.search(r'depends=(.*)', content)
+            match = re.search(r"depends=(.*)", content)
             if match:
-                # only works with ',' (comma) deliminator
-                dependencies = match.group(1).split(',')
+                # only works with "," (comma) deliminator
+                dependencies = match.group(1).split(",")
             return dependencies
 
     def get_library_dependencies(library_path):
         """if library.properties is present, extract dependancies"""
-        properties_file_path = os.path.join(library_path, 'library.properties')
+        properties_file_path = os.path.join(library_path, "library.properties")
         if os.path.exists(properties_file_path):
             return get_dependencies_from_properties_file(properties_file_path)
         return []
