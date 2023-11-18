@@ -765,7 +765,7 @@ class CompileSketches:
     def get_dependencies_from_properties_file(self, properties_file_path):
         """extract library names from `depends` key"""
         dependencies = []
-        with open(properties_file_path, 'r') as file:
+        with open(properties_file_path, "r") as file:
             content = file.read()
             match = re.search(r"depends=(.*)", content)
             if match:
