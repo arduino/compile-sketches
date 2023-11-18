@@ -762,6 +762,24 @@ class CompileSketches:
         if len(library_list.download) > 0:
             self.install_libraries_from_download(library_list=library_list.download)
 
+    def get_dependencies_from_properties_file(properties_file_path):
+        """extract library names from `depends` key"""
+        dependencies = []
+        with open(properties_file_path, 'r') as file:
+            content = file.read()
+            match = re.search(r'depends=(.*)', content)
+            if match:
+                # only works with ',' (comma) deliminator
+                dependencies = match.group(1).split(',')
+            return dependencies
+
+    def get_library_dependencies(library_path):
+        """if library.properties is present, extract dependancies"""
+        properties_file_path = os.path.join(library_path, 'library.properties')
+        if os.path.exists(properties_file_path):
+            return get_dependencies_from_properties_file(properties_file_path)
+        return []
+
     def install_libraries_from_library_manager(self, library_list):
         """Install libraries using the Arduino Library Manager
 
@@ -777,6 +795,10 @@ class CompileSketches:
             lib_install_command = lib_install_base_command.copy()
             lib_install_command.append(self.get_manager_dependency_name(library))
             self.run_arduino_cli_command(command=lib_install_command, enable_output=self.get_run_command_output_level())
+
+        dependencies = get_library_dependencies(library[self.dependency_source_path_key])
+        for dependsLibrary in dependencies
+            lib_install_command.extend(dependsLibrary)
 
     def install_libraries_from_path(self, library_list):
         """Install libraries from local paths
