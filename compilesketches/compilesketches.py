@@ -797,7 +797,7 @@ class CompileSketches:
             self.run_arduino_cli_command(command=lib_install_command, enable_output=self.get_run_command_output_level())
 
         dependencies = get_library_dependencies(library[self.dependency_source_path_key])
-        for dependsLibrary in dependencies
+        for dependsLibrary in dependencies:
             lib_install_command.extend(dependsLibrary)
 
     def install_libraries_from_path(self, library_list):
