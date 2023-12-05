@@ -88,7 +88,7 @@ jobs:
           version: 3.x
 
       - name: Run tests
-        uses: liskin/gh-problem-matcher-wrap@v2
+        uses: liskin/gh-problem-matcher-wrap@v3
         with:
           linters: pytest
           run: task python:test
