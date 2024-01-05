@@ -20,7 +20,7 @@ codespell = "2.2.6"
 coverage = "7.4.0"
 pytest = "7.4.4"
 pytest-mock = "3.12.0"
-flake8 = "6.1.0"
+flake8 = "7.0.0"
 pep8-naming = "0.13.3"
 yamllint = "1.33.0"
 
