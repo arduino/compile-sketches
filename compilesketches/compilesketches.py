@@ -285,9 +285,11 @@ class CompileSketches:
         with tempfile.TemporaryDirectory("-compilesketches-download_folder") as download_folder:
             download_file_path = pathlib.PurePath(download_folder, url.rsplit(sep="/", maxsplit=1)[1])
 
+            request_site = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+
             # https://stackoverflow.com/a/38358646
             with open(file=str(download_file_path), mode="wb") as out_file:
-                with contextlib.closing(thing=urllib.request.urlopen(url=url)) as file_pointer:
+                with contextlib.closing(thing=urllib.request.urlopen(request_site)) as file_pointer:
                     block_size = 1024 * 8
                     while True:
                         block = file_pointer.read(block_size)
