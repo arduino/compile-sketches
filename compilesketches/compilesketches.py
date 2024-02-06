@@ -770,7 +770,9 @@ class CompileSketches:
             match = re.search(r"depends=(.*)", content)
             if match:
                 # only works with "," (comma) deliminator
-                dependencies = match.group(1).split(",")
+                depends = match.group(1)
+                if depends:
+                    dependencies = depends.split(",")
             return dependencies
 
     def get_library_dependencies(self, library_path):
