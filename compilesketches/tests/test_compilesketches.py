@@ -3229,6 +3229,7 @@ def test_get_library_dependencies_with_properties_file():
 
     assert dependencies == ["Library1", "Library2", "Library3"]
 
+
 # no dependencies when the library does not contain a properties file
 def test_get_library_dependencies_without_properties_file():
     library_path = os.path.join(os.getcwd(), "library")
