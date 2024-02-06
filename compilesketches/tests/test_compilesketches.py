@@ -3183,6 +3183,7 @@ def test_get_head_commit_hash(monkeypatch, mocker, github_event, expected_hash):
 
     assert compilesketches.get_head_commit_hash() == expected_hash
 
+
 # Automated library parsing from the library.properties file
 def test_get_dependencies_from_properties_file_with_dependencies():
     properties_file = os.path.join(os.getcwd(), "library.properties")
@@ -3193,6 +3194,7 @@ def test_get_dependencies_from_properties_file_with_dependencies():
     dependencies = compilesketches_object.get_dependencies_from_properties_file(properties_file)
 
     assert dependencies == ["Library1", "Library2", "Library3"]
+
 
 # Empty library.properties file should not return any dependencies
 def test_get_dependencies_from_properties_file_without_dependencies():
@@ -3205,6 +3207,7 @@ def test_get_dependencies_from_properties_file_without_dependencies():
 
     assert dependencies == []
 
+
 # No depends key inside library.properties, should not return any dependencies
 def test_get_dependencies_from_properties_file_no_depends_key():
     properties_file = os.path.join(os.getcwd(), "library.properties")
@@ -3215,6 +3218,7 @@ def test_get_dependencies_from_properties_file_no_depends_key():
     dependencies = compilesketches_object.get_dependencies_from_properties_file(properties_file)
 
     assert dependencies == []
+
 
 # dependencies correctly extracted from a properties file within a library
 def test_get_library_dependencies_with_properties_file():
