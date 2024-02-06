@@ -3233,6 +3233,9 @@ def test_get_library_dependencies_with_properties_file():
 def test_get_library_dependencies_without_properties_file():
     library_path = os.path.join(os.getcwd(), "library")
     os.makedirs(library_path, exist_ok=True)
+    properties_file = os.path.join(library_path, "library.properties")
+    if os.path.exists(properties_file):
+        os.remove(properties_file)  # properties file is removed
 
     compilesketches_object = get_compilesketches_object()
     dependencies = compilesketches_object.get_library_dependencies(library_path)
