@@ -3182,3 +3182,36 @@ def test_get_head_commit_hash(monkeypatch, mocker, github_event, expected_hash):
     mocker.patch.object(Repo, "rev_parse", return_value="push-head-sha")
 
     assert compilesketches.get_head_commit_hash() == expected_hash
+
+# Automated library parsing from the library.properties file
+def test_get_dependencies_from_properties_file_with_dependencies():
+    properties_file = os.path.join(os.environ["GITHUB_WORKSPACE"], "library.properties")
+    with open(properties_file, "w") as file:
+        file.write("depends=Library1,Library2,Library3")
+
+    compilesketches_object = get_compilesketches_object()
+    dependencies = compilesketches_object.get_dependencies_from_properties_file(properties_file)
+
+    assert dependencies == ["Library1", "Library2", "Library3"]
+
+# Empty library.properties file should not return any dependencies
+def test_get_dependencies_from_properties_file_without_dependencies():
+    properties_file = os.path.join(os.environ["GITHUB_WORKSPACE"], "library.properties")
+    with open(properties_file, "w") as file:
+        file.write("depends=")
+
+    compilesketches_object = get_compilesketches_object()
+    dependencies = compilesketches_object.get_dependencies_from_properties_file(properties_file)
+
+    assert dependencies == []
+
+# No depends key inside library.properties, should not return any dependencies
+def test_get_dependencies_from_properties_file_no_depends_key():
+    properties_file = os.path.join(os.environ["GITHUB_WORKSPACE"], "library.properties")
+    with open(properties_file, "w") as file:
+        file.write("key=value")
+
+    compilesketches_object = get_compilesketches_object()
+    dependencies = compilesketches_object.get_dependencies_from_properties_file(properties_file)
+
+    assert dependencies == []
