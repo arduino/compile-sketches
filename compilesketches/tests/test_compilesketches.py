@@ -3185,7 +3185,9 @@ def test_get_head_commit_hash(monkeypatch, mocker, github_event, expected_hash):
 
 # Automated library parsing from the library.properties file
 def test_get_dependencies_from_properties_file_with_dependencies():
-    properties_file = os.path.join(os.environ["GITHUB_WORKSPACE"], "library.properties")
+    directory = os.environ["GITHUB_WORKSPACE"]
+    os.makedirs(directory, exist_ok=True)  # check directory exists
+    properties_file = os.path.join(directory, "library.properties")
     with open(properties_file, "w") as file:
         file.write("depends=Library1,Library2,Library3")
 
