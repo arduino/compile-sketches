@@ -15,14 +15,14 @@ PyYAML = "6.0.1"
 semver = "3.0.2"
 
 [tool.poetry.group.dev.dependencies]
-black = "24.1.1"
+black = "24.2.0"
 codespell = "2.2.6"
 coverage = "7.4.1"
 pytest = "8.0.0"
 pytest-mock = "3.12.0"
 flake8 = "7.0.0"
 pep8-naming = "0.13.3"
-yamllint = "1.33.0"
+yamllint = "1.34.0"
 
 [tool.poetry.group.external]
 # Provided only for use by boards platforms
