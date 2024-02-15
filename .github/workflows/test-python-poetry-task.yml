@@ -119,7 +119,7 @@ jobs:
           echo "CODECOV_TOKEN=$CODECOV_TOKEN" >> "$GITHUB_ENV"
 
       - name: Upload coverage report to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           fail_ci_if_error: true
           file: ${{ env.COVERAGE_DATA_FILENAME }}
