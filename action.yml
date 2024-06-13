@@ -76,7 +76,7 @@ runs:
     - name: Install Python
       uses: actions/setup-python@v5
       with:
-        python-version-file: ${{ github.action_path }}/.python-version
+        python-version-file: ${{ github.action_path }}/pyproject.toml
 
     - name: Action setup
       shell: bash

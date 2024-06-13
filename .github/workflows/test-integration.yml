@@ -7,7 +7,6 @@ on:
     paths:
       - ".github/workflows/test-integration.yml"
       - ".github/workflows/testdata/**"
-      - ".python-version"
       - "poetry.lock"
       - "pyproject.toml"
       - "action.yml"
@@ -17,7 +16,6 @@ on:
     paths:
       - ".github/workflows/test-integration.yml"
       - ".github/workflows/testdata/**"
-      - ".python-version"
       - "poetry.lock"
       - "pyproject.toml"
       - "action.yml"
