@@ -104,8 +104,8 @@ tasks:
                 ' \
                   basename "$0" | \
                     grep \
-                      --perl-regexp \
-                      --regexp='"'"'([<>:"/\\|?*\x{0000}-\x{001F}])|(.+\.$)'"'"' \
+                      --extended-regexp \
+                      --regexp='"'"'([<>:"/\\|?*'"'"'"$(printf "\001-\037")"'"'"'])|(.+\.$)'"'"' \
                       --silent \
                   && \
                   echo "$0"
