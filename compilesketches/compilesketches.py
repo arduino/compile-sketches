@@ -558,15 +558,15 @@ class CompileSketches:
         self.run_arduino_cli_command(command=["core", "update-index"])
         # Use Arduino CLI to get the list of installed platforms
         command_data = self.run_arduino_cli_command(command=["core", "list", "--format", "json"])
-        installed_platform_list = json.loads(command_data.stdout)
+        installed_platform_list = self.cli_core_list_platform_list(json.loads(command_data.stdout))
         for installed_platform in installed_platform_list:
-            if installed_platform[self.cli_json_key("core list", "ID")] == platform[self.dependency_name_key]:
+            if installed_platform[self.cli_json_key("core list", "id")] == platform[self.dependency_name_key]:
                 # The platform has been installed via Board Manager, so do an overwrite
                 platform_installation_path.path = self.board_manager_platforms_path.joinpath(
                     platform_vendor,
                     "hardware",
                     platform_architecture,
-                    installed_platform[self.cli_json_key("core list", "Installed")],
+                    installed_platform[self.cli_json_key("core list", "installed_version")],
                 )
                 platform_installation_path.is_overwrite = True
 
@@ -1437,77 +1437,69 @@ class CompileSketches:
         ) as report_file:
             json.dump(obj=sketches_report, fp=report_file, indent=2)
 
-    def cli_json_key(self, command, original_key_name):
+    def cli_core_list_platform_list(self, data):
+        """Extract the list of platform data from the `arduino-cli core list` command output according to the Arduino
+        CLI version in use.
+
+        Keyword arguments:
+        data -- Arduino CLI command output data
+        """
+        # Interface was changed at this Arduino CLI release:
+        # https://arduino.github.io/arduino-cli/dev/UPGRADING/#cli-changed-json-output-for-some-lib-core-config-board-and-sketch-commands
+        first_new_interface_version = "1.0.0"
+
+        if (
+            not semver.VersionInfo.is_valid(version=self.cli_version)
+            or semver.Version.parse(version=self.cli_version).compare(other=first_new_interface_version) >= 0
+        ):
+            # cli_version is either "latest" (which will now always be >=1.0.0) or an explicit version >=1.0.0
+            return data["platforms"]
+
+        return data
+
+    def cli_json_key(self, command, key_name):
         """Return the appropriate JSON output key name for the Arduino CLI version in use.
 
         Keyword arguments:
         command -- Arduino CLI command (e.g., "core list")
-        original_key_name -- key name used by the original Arduino CLI JSON interface
+        key_name -- key name used by the current Arduino CLI JSON interface
         """
-        final_original_interface_version = "0.17.0"  # Interface was changed in the next Arduino CLI release
-
-        key_translation = {
-            "board details": {
-                "identification_pref": "identification_prefs",
-                "usbID": "usb_id",
-                "PID": "pid",
-                "VID": "vid",
-                "websiteURL": "website_url",
-                "archiveFileName": "archive_filename",
-                "propertiesId": "properties_id",
-                "toolsDependencies": "tools_dependencies",
-            },
-            "board list": {"FQBN": "fqbn", "VID": "vid", "PID": "pid"},
-            "board listall": {
-                "FQBN": "fqbn",
-                "Email": "email",
-                "ID": "id",
-                "Installed": "installed",
-                "Latest": "latest",
-                "Name": "name",
-                "Maintainer": "maintainer",
-                "Website": "website",
-            },
-            "board search": {
-                "FQBN": "fqbn",
-                "Email": "email",
-                "ID": "id",
-                "Installed": "installed",
-                "Latest": "latest",
-                "Name": "name",
-                "Maintainer": "maintainer",
-                "Website": "website",
-            },
+        key_translations = {
             "core list": {
-                "Boards": "boards",
-                "Email": "email",
-                "ID": "id",
-                "Installed": "installed",
-                "Latest": "latest",
-                "Maintainer": "maintainer",
-                "Name": "name",
-                "Website": "website",
-            },
-            "core search": {
-                "Boards": "boards",
-                "Email": "email",
-                "ID": "id",
-                "Latest": "latest",
-                "Maintainer": "maintainer",
-                "Name": "name",
-                "Website": "website",
-            },
-            "lib deps": {"versionRequired": "version_required", "versionInstalled": "version_installed"},
-            "lib search": {"archivefilename": "archive_filename", "cachepath": "cache_path"},
+                "id": [
+                    {"constraints": [">=0.0.0", "<=0.17.0"], "name": "ID"},
+                    # https://arduino.github.io/arduino-cli/dev/UPGRADING/#arduino-cli-json-output-breaking-changes
+                    {"constraints": [">0.17.0"], "name": "id"},
+                ],
+                "installed_version": [
+                    {"constraints": [">=0.0.0", "<=0.17.0"], "name": "Installed"},
+                    # https://arduino.github.io/arduino-cli/dev/UPGRADING/#arduino-cli-json-output-breaking-changes
+                    {"constraints": [">0.17.0", "<1.0.0"], "name": "installed"},
+                    # https://arduino.github.io/arduino-cli/dev/UPGRADING/#cli-core-list-and-core-search-changed-json-output
+                    {"constraints": [">=1.0.0"], "name": "installed_version"},
+                ],
+            }
         }
 
-        if (
-            not semver.VersionInfo.is_valid(version=self.cli_version)
-            or semver.Version.parse(version=self.cli_version).compare(other=final_original_interface_version) > 0
-        ) and (command in key_translation and original_key_name in key_translation[command]):
-            return key_translation[command][original_key_name]
+        if not semver.VersionInfo.is_valid(version=self.cli_version):
+            # cli_version is "latest", so use the current key name
+            return key_name
 
-        return original_key_name
+        for translation in key_translations[command][key_name]:
+            match = True
+            for constraint in translation["constraints"]:
+                if not semver.Version.parse(version=self.cli_version).match(match_expr=constraint):
+                    # The Arduino CLI version does not match the translation's version constraints
+                    match = False
+                    break
+
+            if match:
+                # The Arduino CLI version matches the translation's version constraints
+                return translation["name"]
+
+        raise RuntimeError(
+            f"Translation not implemented for `{key_name}` key of `arduino-cli {command}` for version {self.cli_version}"
+        )  # pragma: no cover
 
 
 def parse_list_input(list_input):

@@ -2884,20 +2884,33 @@ def test_create_sketches_report_file(monkeypatch, tmp_path):
 
 
 @pytest.mark.parametrize(
-    "cli_version, command, original_key, expected_key",
+    "cli_version, data, assertion",
     [
-        ("latest", "core list", "ID", "id"),  # Non-semver
-        ("1.0.0", "core list", "ID", "id"),  # >
-        ("0.17.0", "core list", "ID", "ID"),  # ==
-        ("0.14.0-rc2", "core list", "ID", "ID"),  # <
-        ("1.0.0", "foo", "ID", "ID"),  # Command has no translation
-        ("1.0.0", "core list", "foo", "foo"),
+        ("latest", {"platforms": [unittest.mock.sentinel.list_item]}, [unittest.mock.sentinel.list_item]),  # Non-semver
+        ("2.0.0", {"platforms": [unittest.mock.sentinel.list_item]}, [unittest.mock.sentinel.list_item]),  # >
+        ("1.0.0", {"platforms": [unittest.mock.sentinel.list_item]}, [unittest.mock.sentinel.list_item]),  # ==
+        ("0.1.2", [unittest.mock.sentinel.list_item], [unittest.mock.sentinel.list_item]),  # <
     ],
-)  # Key has no translation
-def test_cli_json_key(cli_version, command, original_key, expected_key):
+)
+def test_cli_core_list_platform_list(cli_version, data, assertion):
     compile_sketches = get_compilesketches_object(cli_version=cli_version)
 
-    assert compile_sketches.cli_json_key(command, original_key) == expected_key
+    assert compile_sketches.cli_core_list_platform_list(data) == assertion
+
+
+@pytest.mark.parametrize(
+    "cli_version, command, key_name, expected_key",
+    [
+        ("latest", "core list", "installed_version", "installed_version"),  # Non-semver
+        ("0.1.2", "core list", "installed_version", "Installed"),
+        ("0.17.1", "core list", "installed_version", "installed"),
+        ("1.2.3", "core list", "installed_version", "installed_version"),
+    ],
+)
+def test_cli_json_key(cli_version, command, key_name, expected_key):
+    compile_sketches = get_compilesketches_object(cli_version=cli_version)
+
+    assert compile_sketches.cli_json_key(command, key_name) == expected_key
 
 
 @pytest.mark.parametrize("verbose", ["true", "false"])
