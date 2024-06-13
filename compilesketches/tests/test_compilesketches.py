@@ -2884,6 +2884,21 @@ def test_create_sketches_report_file(monkeypatch, tmp_path):
 
 
 @pytest.mark.parametrize(
+    "cli_version, data, assertion",
+    [
+        ("latest", {"platforms": [unittest.mock.sentinel.list_item]}, [unittest.mock.sentinel.list_item]),  # Non-semver
+        ("2.0.0", {"platforms": [unittest.mock.sentinel.list_item]}, [unittest.mock.sentinel.list_item]),  # >
+        ("1.0.0", {"platforms": [unittest.mock.sentinel.list_item]}, [unittest.mock.sentinel.list_item]),  # ==
+        ("0.1.2", [unittest.mock.sentinel.list_item], [unittest.mock.sentinel.list_item]),  # <
+    ],
+)
+def test_cli_core_list_platform_list(cli_version, data, assertion):
+    compile_sketches = get_compilesketches_object(cli_version=cli_version)
+
+    assert compile_sketches.cli_core_list_platform_list(data) == assertion
+
+
+@pytest.mark.parametrize(
     "cli_version, command, original_key, expected_key",
     [
         ("latest", "core list", "ID", "id"),  # Non-semver

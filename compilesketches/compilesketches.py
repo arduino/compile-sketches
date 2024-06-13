@@ -558,7 +558,7 @@ class CompileSketches:
         self.run_arduino_cli_command(command=["core", "update-index"])
         # Use Arduino CLI to get the list of installed platforms
         command_data = self.run_arduino_cli_command(command=["core", "list", "--format", "json"])
-        installed_platform_list = json.loads(command_data.stdout)
+        installed_platform_list = self.cli_core_list_platform_list(json.loads(command_data.stdout))
         for installed_platform in installed_platform_list:
             if installed_platform[self.cli_json_key("core list", "ID")] == platform[self.dependency_name_key]:
                 # The platform has been installed via Board Manager, so do an overwrite
@@ -1436,6 +1436,26 @@ class CompileSketches:
             file=sketches_report_path.joinpath(self.fqbn.replace(":", "-") + ".json"), mode="w", encoding="utf-8"
         ) as report_file:
             json.dump(obj=sketches_report, fp=report_file, indent=2)
+
+    def cli_core_list_platform_list(self, data):
+        """Extract the list of platform data from the `arduino-cli core list` command output according to the Arduino
+        CLI version in use.
+
+        Keyword arguments:
+        data -- Arduino CLI command output data
+        """
+        # Interface was changed at this Arduino CLI release:
+        # https://arduino.github.io/arduino-cli/dev/UPGRADING/#cli-changed-json-output-for-some-lib-core-config-board-and-sketch-commands
+        first_new_interface_version = "1.0.0"
+
+        if (
+            not semver.VersionInfo.is_valid(version=self.cli_version)
+            or semver.Version.parse(version=self.cli_version).compare(other=first_new_interface_version) >= 0
+        ):
+            # cli_version is either "latest" (which will now always be >=1.0.0) or an explicit version >=1.0.0
+            return data["platforms"]
+
+        return data
 
     def cli_json_key(self, command, original_key_name):
         """Return the appropriate JSON output key name for the Arduino CLI version in use.
