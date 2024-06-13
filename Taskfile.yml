@@ -241,46 +241,35 @@ tasks:
             echo "Please install: https://github.com/tcort/markdown-link-check#readme"
             exit 1
           fi
-          # Default behavior of the task on Windows is to exit the task when the first broken link causes a non-zero
-          # exit status, but it's better to check all links before exiting.
-          set +o errexit
-          STATUS=0
           # Using -regex instead of -name to avoid Task's behavior of globbing even when quoted on Windows
           # The odd method for escaping . in the regex is required for windows compatibility because mvdan.cc/sh gives
           # \ characters special treatment on Windows in an attempt to support them as path separators.
-          for file in $(
-            find . \
-              -type d -name '.git' -prune -o \
-              -type d -name '.licenses' -prune -o \
-              -type d -name '__pycache__' -prune -o \
-              -type d -name 'node_modules' -prune -o \
-              -regex ".*[.]md" -print
-          ); do
-            markdown-link-check \
-              --quiet \
-              --config "./.markdown-link-check.json" \
-              "$file"
-            STATUS=$(( $STATUS + $? ))
-          done
-          exit $STATUS
-        else
-          npx --package=markdown-link-check --call='
-            STATUS=0
-            for file in $(
-              find . \
-                -type d -name '.git' -prune -o \
-                -type d -name '.licenses' -prune -o \
-                -type d -name '__pycache__' -prune -o \
-                -type d -name 'node_modules' -prune -o \
-                -regex ".*[.]md" -print
-            ); do
+          find . \
+            -type d -name ".git" -prune -o \
+            -type d -name ".licenses" -prune -o \
+            -type d -name "__pycache__" -prune -o \
+            -type d -name "node_modules" -prune -o \
+            -regex ".*[.]md" \
+            -exec \
               markdown-link-check \
                 --quiet \
                 --config "./.markdown-link-check.json" \
-                "$file"
-              STATUS=$(( $STATUS + $? ))
-            done
-            exit $STATUS
+                \{\} \
+                +
+        else
+          npx --package=markdown-link-check --call='
+            find . \
+              -type d -name ".git" -prune -o \
+              -type d -name ".licenses" -prune -o \
+              -type d -name "__pycache__" -prune -o \
+              -type d -name "node_modules" -prune -o \
+              -regex ".*[.]md" \
+              -exec \
+                markdown-link-check \
+                  --quiet \
+                  --config "./.markdown-link-check.json" \
+                  \{\} \
+                  +
           '
         fi
 
