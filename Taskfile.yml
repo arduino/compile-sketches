@@ -104,8 +104,8 @@ tasks:
                 ' \
                   basename "$0" | \
                     grep \
-                      --perl-regexp \
-                      --regexp='"'"'([<>:"/\\|?*\x{0000}-\x{001F}])|(.+\.$)'"'"' \
+                      --extended-regexp \
+                      --regexp='"'"'([<>:"/\\|?*'"'"'"$(printf "\001-\037")"'"'"'])|(.+\.$)'"'"' \
                       --silent \
                   && \
                   echo "$0"
@@ -228,61 +228,39 @@ tasks:
   # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/check-markdown-task/Taskfile.yml
   markdown:check-links:
     desc: Check for broken links
+    vars:
+      # The command is defined in a Taskfile variable to allow it to be broken into multiple lines for readability.
+      # This can't be done in the `cmd` object of the Taskfile because `npx --call` uses the native shell, which causes
+      # standard newline escaping syntax to not work when the task is run on Windows.
+      #
+      # Using -regex instead of -name to avoid Task's behavior of globbing even when quoted on Windows
+      # The odd method for escaping . in the regex is required for windows compatibility because mvdan.cc/sh gives
+      # \ characters special treatment on Windows in an attempt to support them as path separators.
+      #
+      # prettier-ignore
+      CHECK_LINKS_COMMAND:
+        "
+          find . \
+            -type d -name \".git\" -prune -o \
+            -type d -name \".licenses\" -prune -o \
+            -type d -name \"__pycache__\" -prune -o \
+            -type d -name \"node_modules\" -prune -o \
+            -regex \".*[.]md\" \
+            -exec \
+              markdown-link-check \
+                --quiet \
+                --config \"./.markdown-link-check.json\" \
+                \\{\\} \
+                +
+        "
     deps:
       - task: docs:generate
       - task: npm:install-deps
     cmds:
       - |
-        if [[ "{{.OS}}" == "Windows_NT" ]]; then
-          # npx --call uses the native shell, which makes it too difficult to use npx for this application on Windows,
-          # so the Windows user is required to have markdown-link-check installed and in PATH.
-          if ! which markdown-link-check &>/dev/null; then
-            echo "markdown-link-check not found or not in PATH."
-            echo "Please install: https://github.com/tcort/markdown-link-check#readme"
-            exit 1
-          fi
-          # Default behavior of the task on Windows is to exit the task when the first broken link causes a non-zero
-          # exit status, but it's better to check all links before exiting.
-          set +o errexit
-          STATUS=0
-          # Using -regex instead of -name to avoid Task's behavior of globbing even when quoted on Windows
-          # The odd method for escaping . in the regex is required for windows compatibility because mvdan.cc/sh gives
-          # \ characters special treatment on Windows in an attempt to support them as path separators.
-          for file in $(
-            find . \
-              -type d -name '.git' -prune -o \
-              -type d -name '.licenses' -prune -o \
-              -type d -name '__pycache__' -prune -o \
-              -type d -name 'node_modules' -prune -o \
-              -regex ".*[.]md" -print
-          ); do
-            markdown-link-check \
-              --quiet \
-              --config "./.markdown-link-check.json" \
-              "$file"
-            STATUS=$(( $STATUS + $? ))
-          done
-          exit $STATUS
-        else
-          npx --package=markdown-link-check --call='
-            STATUS=0
-            for file in $(
-              find . \
-                -type d -name '.git' -prune -o \
-                -type d -name '.licenses' -prune -o \
-                -type d -name '__pycache__' -prune -o \
-                -type d -name 'node_modules' -prune -o \
-                -regex ".*[.]md" -print
-            ); do
-              markdown-link-check \
-                --quiet \
-                --config "./.markdown-link-check.json" \
-                "$file"
-              STATUS=$(( $STATUS + $? ))
-            done
-            exit $STATUS
-          '
-        fi
+        npx \
+          --package=markdown-link-check \
+          --call='{{.CHECK_LINKS_COMMAND}}'
 
   # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/check-markdown-task/Taskfile.yml
   markdown:fix:
@@ -313,13 +291,19 @@ tasks:
             -i \
             "{{.FILE_PATH}}"
 
+  # Parameter variables:
+  # - PROJECT_PATH: path of the npm-managed project. Default value: "./"
   # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/npm-task/Taskfile.yml
   npm:install-deps:
     desc: Install dependencies managed by npm
     run: once
+    dir: |
+      "{{default "./" .PROJECT_PATH}}"
     cmds:
       - npm install
 
+  # Parameter variables:
+  # - PROJECT_PATH: path of the npm-managed project. Default value: "./"
   # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/check-npm-task/Taskfile.yml
   npm:validate:
     desc: Validate npm configuration files against their JSON schema
@@ -332,6 +316,10 @@ tasks:
       AVA_SCHEMA_URL: https://json.schemastore.org/ava.json
       AVA_SCHEMA_PATH:
         sh: task utility:mktemp-file TEMPLATE="ava-schema-XXXXXXXXXX.json"
+      # Source: https://github.com/SchemaStore/schemastore/blob/master/src/schemas/json/base.json
+      BASE_SCHEMA_URL: https://json.schemastore.org/base.json
+      BASE_SCHEMA_PATH:
+        sh: task utility:mktemp-file TEMPLATE="base-schema-XXXXXXXXXX.json"
       # Source: https://github.com/SchemaStore/schemastore/blob/master/src/schemas/json/eslintrc.json
       ESLINTRC_SCHEMA_URL: https://json.schemastore.org/eslintrc.json
       ESLINTRC_SCHEMA_PATH:
@@ -344,6 +332,10 @@ tasks:
       NPM_BADGES_SCHEMA_URL: https://json.schemastore.org/npm-badges.json
       NPM_BADGES_SCHEMA_PATH:
         sh: task utility:mktemp-file TEMPLATE="npm-badges-schema-XXXXXXXXXX.json"
+      # Source: https://github.com/SchemaStore/schemastore/blob/master/src/schemas/json/partial-eslint-plugins.json
+      PARTIAL_ESLINT_PLUGINS_SCHEMA_URL: https://json.schemastore.org/partial-eslint-plugins.json
+      PARTIAL_ESLINT_PLUGINS_PATH:
+        sh: task utility:mktemp-file TEMPLATE="partial-eslint-plugins-schema-XXXXXXXXXX.json"
       # Source: https://github.com/SchemaStore/schemastore/blob/master/src/schemas/json/prettierrc.json
       PRETTIERRC_SCHEMA_URL: https://json.schemastore.org/prettierrc.json
       PRETTIERRC_SCHEMA_PATH:
@@ -356,7 +348,8 @@ tasks:
       STYLELINTRC_SCHEMA_URL: https://json.schemastore.org/stylelintrc.json
       STYLELINTRC_SCHEMA_PATH:
         sh: task utility:mktemp-file TEMPLATE="stylelintrc-schema-XXXXXXXXXX.json"
-      INSTANCE_PATH: "**/package.json"
+      INSTANCE_PATH: >-
+        {{default "." .PROJECT_PATH}}/package.json
       PROJECT_FOLDER:
         sh: pwd
       WORKING_FOLDER:
@@ -364,9 +357,11 @@ tasks:
     cmds:
       - wget --quiet --output-document="{{.SCHEMA_PATH}}" {{.SCHEMA_URL}}
       - wget --quiet --output-document="{{.AVA_SCHEMA_PATH}}" {{.AVA_SCHEMA_URL}}
+      - wget --quiet --output-document="{{.BASE_SCHEMA_PATH}}" {{.BASE_SCHEMA_URL}}
       - wget --quiet --output-document="{{.ESLINTRC_SCHEMA_PATH}}" {{.ESLINTRC_SCHEMA_URL}}
       - wget --quiet --output-document="{{.JSCPD_SCHEMA_PATH}}" {{.JSCPD_SCHEMA_URL}}
       - wget --quiet --output-document="{{.NPM_BADGES_SCHEMA_PATH}}" {{.NPM_BADGES_SCHEMA_URL}}
+      - wget --quiet --output-document="{{.PARTIAL_ESLINT_PLUGINS_PATH}}" {{.PARTIAL_ESLINT_PLUGINS_SCHEMA_URL}}
       - wget --quiet --output-document="{{.PRETTIERRC_SCHEMA_PATH}}" {{.PRETTIERRC_SCHEMA_URL}}
       - wget --quiet --output-document="{{.SEMANTIC_RELEASE_SCHEMA_PATH}}" {{.SEMANTIC_RELEASE_SCHEMA_URL}}
       - wget --quiet --output-document="{{.STYLELINTRC_SCHEMA_PATH}}" {{.STYLELINTRC_SCHEMA_URL}}
@@ -376,9 +371,11 @@ tasks:
           --all-errors \
           -s "{{.SCHEMA_PATH}}" \
           -r "{{.AVA_SCHEMA_PATH}}" \
+          -r "{{.BASE_SCHEMA_PATH}}" \
           -r "{{.ESLINTRC_SCHEMA_PATH}}" \
           -r "{{.JSCPD_SCHEMA_PATH}}" \
           -r "{{.NPM_BADGES_SCHEMA_PATH}}" \
+          -r "{{.PARTIAL_ESLINT_PLUGINS_PATH}}" \
           -r "{{.PRETTIERRC_SCHEMA_PATH}}" \
           -r "{{.SEMANTIC_RELEASE_SCHEMA_PATH}}" \
           -r "{{.STYLELINTRC_SCHEMA_PATH}}" \
