@@ -6,7 +6,6 @@ on:
   create:
   push:
     paths:
-      - ".python-version"
       - ".yamllint*"
       - "poetry.lock"
       - "pyproject.toml"
@@ -23,7 +22,6 @@ on:
       - "**.syntax"
   pull_request:
     paths:
-      - ".python-version"
       - ".yamllint*"
       - "poetry.lock"
       - "pyproject.toml"
@@ -99,7 +97,7 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v5
         with:
-          python-version-file: .python-version
+          python-version-file: pyproject.toml
 
       - name: Install Poetry
         run: |
