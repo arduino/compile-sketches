@@ -420,7 +420,6 @@ tasks:
     cmds:
       - |
         poetry install \
-          --no-root \
           {{if .POETRY_GROUPS}} --only {{.POETRY_GROUPS}} {{end}}
 
   poetry:sync:
