@@ -65,9 +65,6 @@ jobs:
     if: needs.run-determination.outputs.result == 'true'
     runs-on: ubuntu-latest
 
-    env:
-      COVERAGE_DATA_FILENAME: coverage.xml
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -98,14 +95,6 @@ jobs:
       - name: Display code coverage report
         run: task python:coverage-report
 
-      # codecov/codecov-action only makes the conversion if the `coverage` package is installed in the global runner
-      # environment
-      - name: Convert code coverage report to format required by Codecov
-        run: |
-          poetry run \
-            coverage xml \
-              -o "${{ github.workspace }}/${{ env.COVERAGE_DATA_FILENAME }}"
-
       # A token is used to avoid intermittent spurious job failures caused by rate limiting.
       - name: Set up Codecov upload token
         run: |
@@ -124,5 +113,5 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           fail_ci_if_error: true
-          file: ${{ env.COVERAGE_DATA_FILENAME }}
+          file: coverage.xml
           token: ${{ env.CODECOV_TOKEN }}
