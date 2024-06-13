@@ -1467,58 +1467,10 @@ class CompileSketches:
         final_original_interface_version = "0.17.0"  # Interface was changed in the next Arduino CLI release
 
         key_translation = {
-            "board details": {
-                "identification_pref": "identification_prefs",
-                "usbID": "usb_id",
-                "PID": "pid",
-                "VID": "vid",
-                "websiteURL": "website_url",
-                "archiveFileName": "archive_filename",
-                "propertiesId": "properties_id",
-                "toolsDependencies": "tools_dependencies",
-            },
-            "board list": {"FQBN": "fqbn", "VID": "vid", "PID": "pid"},
-            "board listall": {
-                "FQBN": "fqbn",
-                "Email": "email",
-                "ID": "id",
-                "Installed": "installed",
-                "Latest": "latest",
-                "Name": "name",
-                "Maintainer": "maintainer",
-                "Website": "website",
-            },
-            "board search": {
-                "FQBN": "fqbn",
-                "Email": "email",
-                "ID": "id",
-                "Installed": "installed",
-                "Latest": "latest",
-                "Name": "name",
-                "Maintainer": "maintainer",
-                "Website": "website",
-            },
             "core list": {
-                "Boards": "boards",
-                "Email": "email",
                 "ID": "id",
-                "Installed": "installed",
-                "Latest": "latest",
-                "Maintainer": "maintainer",
-                "Name": "name",
-                "Website": "website",
-            },
-            "core search": {
-                "Boards": "boards",
-                "Email": "email",
-                "ID": "id",
-                "Latest": "latest",
-                "Maintainer": "maintainer",
-                "Name": "name",
-                "Website": "website",
-            },
-            "lib deps": {"versionRequired": "version_required", "versionInstalled": "version_installed"},
-            "lib search": {"archivefilename": "archive_filename", "cachepath": "cache_path"},
+                "Installed": "installed"
+            }
         }
 
         if (
