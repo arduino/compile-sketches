@@ -2906,9 +2906,9 @@ def test_cli_core_list_platform_list(cli_version, data, assertion):
         ("0.17.0", "core list", "ID", "ID"),  # ==
         ("0.14.0-rc2", "core list", "ID", "ID"),  # <
         ("1.0.0", "foo", "ID", "ID"),  # Command has no translation
-        ("1.0.0", "core list", "foo", "foo"),
+        ("1.0.0", "core list", "foo", "foo"),  # Key has no translation
     ],
-)  # Key has no translation
+)
 def test_cli_json_key(cli_version, command, original_key, expected_key):
     compile_sketches = get_compilesketches_object(cli_version=cli_version)
 
