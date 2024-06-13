@@ -434,7 +434,6 @@ tasks:
           POETRY_GROUPS: dev,main
     cmds:
       - |
-        export PYTHONPATH="${PWD}/{{.PYTHON_PROJECT_PATH}}"
         poetry run \
           coverage run \
             --source="{{.PYTHON_PROJECT_PATH}}" \
