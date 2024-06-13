@@ -560,13 +560,13 @@ class CompileSketches:
         command_data = self.run_arduino_cli_command(command=["core", "list", "--format", "json"])
         installed_platform_list = self.cli_core_list_platform_list(json.loads(command_data.stdout))
         for installed_platform in installed_platform_list:
-            if installed_platform[self.cli_json_key("core list", "ID")] == platform[self.dependency_name_key]:
+            if installed_platform[self.cli_json_key("core list", "id")] == platform[self.dependency_name_key]:
                 # The platform has been installed via Board Manager, so do an overwrite
                 platform_installation_path.path = self.board_manager_platforms_path.joinpath(
                     platform_vendor,
                     "hardware",
                     platform_architecture,
-                    installed_platform[self.cli_json_key("core list", "Installed")],
+                    installed_platform[self.cli_json_key("core list", "installed_version")],
                 )
                 platform_installation_path.is_overwrite = True
 
@@ -1457,29 +1457,49 @@ class CompileSketches:
 
         return data
 
-    def cli_json_key(self, command, original_key_name):
+    def cli_json_key(self, command, key_name):
         """Return the appropriate JSON output key name for the Arduino CLI version in use.
 
         Keyword arguments:
         command -- Arduino CLI command (e.g., "core list")
-        original_key_name -- key name used by the original Arduino CLI JSON interface
+        key_name -- key name used by the current Arduino CLI JSON interface
         """
-        final_original_interface_version = "0.17.0"  # Interface was changed in the next Arduino CLI release
-
-        key_translation = {
+        key_translations = {
             "core list": {
-                "ID": "id",
-                "Installed": "installed"
+                "id": [
+                    {"constraints": [">=0.0.0", "<=0.17.0"], "name": "ID"},
+                    # https://arduino.github.io/arduino-cli/dev/UPGRADING/#arduino-cli-json-output-breaking-changes
+                    {"constraints": [">0.17.0"], "name": "id"},
+                ],
+                "installed_version": [
+                    {"constraints": [">=0.0.0", "<=0.17.0"], "name": "Installed"},
+                    # https://arduino.github.io/arduino-cli/dev/UPGRADING/#arduino-cli-json-output-breaking-changes
+                    {"constraints": [">0.17.0", "<1.0.0"], "name": "installed"},
+                    # https://arduino.github.io/arduino-cli/dev/UPGRADING/#cli-core-list-and-core-search-changed-json-output
+                    {"constraints": [">=1.0.0"], "name": "installed_version"},
+                ],
             }
         }
 
-        if (
-            not semver.VersionInfo.is_valid(version=self.cli_version)
-            or semver.Version.parse(version=self.cli_version).compare(other=final_original_interface_version) > 0
-        ) and (command in key_translation and original_key_name in key_translation[command]):
-            return key_translation[command][original_key_name]
+        if not semver.VersionInfo.is_valid(version=self.cli_version):
+            # cli_version is "latest", so use the current key name
+            return key_name
 
-        return original_key_name
+        for translation in key_translations[command][key_name]:
+            match = True
+            for constraint in translation["constraints"]:
+                if not semver.Version.parse(version=self.cli_version).match(match_expr=constraint):
+                    # The Arduino CLI version does not match the translation's version constraints
+                    match = False
+                    break
+
+            if match:
+                # The Arduino CLI version matches the translation's version constraints
+                return translation["name"]
+
+        raise RuntimeError(
+            f"Translation not implemented for `{key_name}` key of `arduino-cli {command}` for version {self.cli_version}"
+        )  # pragma: no cover
 
 
 def parse_list_input(list_input):

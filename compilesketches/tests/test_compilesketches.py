@@ -2899,20 +2899,18 @@ def test_cli_core_list_platform_list(cli_version, data, assertion):
 
 
 @pytest.mark.parametrize(
-    "cli_version, command, original_key, expected_key",
+    "cli_version, command, key_name, expected_key",
     [
-        ("latest", "core list", "ID", "id"),  # Non-semver
-        ("1.0.0", "core list", "ID", "id"),  # >
-        ("0.17.0", "core list", "ID", "ID"),  # ==
-        ("0.14.0-rc2", "core list", "ID", "ID"),  # <
-        ("1.0.0", "foo", "ID", "ID"),  # Command has no translation
-        ("1.0.0", "core list", "foo", "foo"),  # Key has no translation
+        ("latest", "core list", "installed_version", "installed_version"),  # Non-semver
+        ("0.1.2", "core list", "installed_version", "Installed"),
+        ("0.17.1", "core list", "installed_version", "installed"),
+        ("1.2.3", "core list", "installed_version", "installed_version"),
     ],
 )
-def test_cli_json_key(cli_version, command, original_key, expected_key):
+def test_cli_json_key(cli_version, command, key_name, expected_key):
     compile_sketches = get_compilesketches_object(cli_version=cli_version)
 
-    assert compile_sketches.cli_json_key(command, original_key) == expected_key
+    assert compile_sketches.cli_json_key(command, key_name) == expected_key
 
 
 @pytest.mark.parametrize("verbose", ["true", "false"])
