@@ -439,6 +439,9 @@ tasks:
             --source="{{.PYTHON_PROJECT_PATH}}" \
             --module \
               pytest "{{.PYTHON_PROJECT_PATH}}/tests"
+      - |
+        poetry run \
+          coverage xml
 
   # Make a temporary file named according to the passed TEMPLATE variable and print the path passed to stdout
   # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/windows-task/Taskfile.yml
