@@ -6,6 +6,7 @@
 [![Check License status](https://github.com/arduino/compile-sketches/actions/workflows/check-license.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-license.yml)
 [![Check Markdown status](https://github.com/arduino/compile-sketches/actions/workflows/check-markdown-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-markdown-task.yml)
 [![Check npm status](https://github.com/arduino/compile-sketches/actions/workflows/check-npm-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-npm-task.yml)
+[![Check Poetry status](https://github.com/arduino/compile-sketches/actions/workflows/check-poetry-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-poetry-task.yml)
 [![Check Prettier Formatting status](https://github.com/arduino/compile-sketches/actions/workflows/check-prettier-formatting-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-prettier-formatting-task.yml)
 [![Check Python status](https://github.com/arduino/compile-sketches/actions/workflows/check-python-task.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-python-task.yml)
 [![Check Taskfiles status](https://github.com/arduino/compile-sketches/actions/workflows/check-taskfiles.yml/badge.svg)](https://github.com/arduino/compile-sketches/actions/workflows/check-taskfiles.yml)
