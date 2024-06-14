@@ -423,6 +423,25 @@ tasks:
           --no-root \
           {{if .POETRY_GROUPS}} --only {{.POETRY_GROUPS}} {{end}}
 
+  poetry:sync:
+    desc: Sync poetry.lock
+    deps:
+      - task: poetry:install
+    cmds:
+      - |
+        poetry lock \
+          --no-cache \
+          --no-update
+
+  poetry:validate:
+    desc: Validate pyproject.toml
+    deps:
+      - task: poetry:install
+    cmds:
+      - |
+        poetry check \
+          --lock
+
   python:coverage-report:
     desc: Show code coverage report
     deps:
