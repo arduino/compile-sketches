@@ -32,6 +32,14 @@ optional = true
 [tool.poetry.group.external.dependencies]
 pyserial = "3.5"
 
+# The dependencies in this group are installed using pipx; NOT Poetry. The use of a `poetry` section is a hack required
+# in order to be able to manage updates of these dependencies via Dependabot, as used for all other dependencies.
+[tool.poetry.group.pipx]
+optional = true
+
+[tool.poetry.group.pipx.dependencies]
+poetry = "1.4.0"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

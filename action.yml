@@ -87,7 +87,13 @@ runs:
         # Install Poetry.
         pipx install \
           --python "$(which python)" \
-          poetry==1.4.0
+            "poetry==$( \
+              yq \
+                --input-format toml \
+                --output-format yaml \
+                '.tool.poetry.group.pipx.dependencies.poetry' \
+                < pyproject.toml
+            )"
 
         # Install Python dependencies.
         poetry install \
