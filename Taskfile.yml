@@ -381,10 +381,42 @@ tasks:
           -r "{{.STYLELINTRC_SCHEMA_PATH}}" \
           -d "{{.PROJECT_FOLDER}}/{{.INSTANCE_PATH}}"
 
+  poetry:install:
+    desc: Install Poetry
+    run: once
+    vars:
+      PYTHON_PATH:
+        sh: task utility:normalize-path RAW_PATH="$(which python)"
+    cmds:
+      - |
+        if ! which pipx &>/dev/null; then
+          echo "pipx not found or not in PATH."
+          echo "Please install: https://pipx.pypa.io/stable/installation/#installing-pipx"
+          exit 1
+        fi
+      - |
+        if ! which yq &>/dev/null; then
+          echo "yq not found or not in PATH."
+          echo "Please install: https://github.com/mikefarah/yq/#install"
+          exit 1
+        fi
+      - |
+        pipx install \
+          --python "{{.PYTHON_PATH}}" \
+          "poetry==$( \
+            yq \
+              --input-format toml \
+              --output-format yaml \
+              '.tool.poetry.group.pipx.dependencies.poetry' \
+              < pyproject.toml
+          )"
+
   # Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/assets/poetry-task/Taskfile.yml
   poetry:install-deps:
     desc: Install dependencies managed by Poetry
     run: when_changed
+    deps:
+      - task: poetry:install
     cmds:
       - |
         poetry install \
