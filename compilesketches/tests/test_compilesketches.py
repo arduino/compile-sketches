@@ -2886,6 +2886,7 @@ def test_create_sketches_report_file(monkeypatch, tmp_path):
 @pytest.mark.parametrize(
     "cli_version, data, assertion",
     [
+        ("latest", {"platforms": None}, []),  # Non-semver
         ("latest", {"platforms": [unittest.mock.sentinel.list_item]}, [unittest.mock.sentinel.list_item]),  # Non-semver
         ("2.0.0", {"platforms": [unittest.mock.sentinel.list_item]}, [unittest.mock.sentinel.list_item]),  # >
         ("1.0.0", {"platforms": [unittest.mock.sentinel.list_item]}, [unittest.mock.sentinel.list_item]),  # ==

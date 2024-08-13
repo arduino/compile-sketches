@@ -1453,6 +1453,11 @@ class CompileSketches:
             or semver.Version.parse(version=self.cli_version).compare(other=first_new_interface_version) >= 0
         ):
             # cli_version is either "latest" (which will now always be >=1.0.0) or an explicit version >=1.0.0
+
+            # Workaround for https://github.com/arduino/arduino-cli/issues/2690
+            if data["platforms"] is None:
+                return []
+
             return data["platforms"]
 
         return data
