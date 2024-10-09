@@ -145,7 +145,7 @@ jobs:
           echo "report-artifact-name=${{ github.job }}" >> "$GITHUB_OUTPUT"
 
       - name: Save sketches report as workflow artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           path: sketches-reports
           name: ${{ steps.report-artifact-name.outputs.report-artifact-name }}
