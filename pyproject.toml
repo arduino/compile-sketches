@@ -35,7 +35,7 @@ pyserial = "3.5"
 optional = true
 
 [tool.poetry.group.pipx.dependencies]
-poetry = "1.8.3"
+poetry = "1.8.4"
 
 [build-system]
 requires = ["poetry-core"]
