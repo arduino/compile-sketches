@@ -92,6 +92,7 @@ jobs:
       matrix:
         board:
           - fqbn: arduino:avr:uno
+            artifact-name-suffix: arduino-avr-uno
             platforms: |
               - name: arduino:avr
                 version: 1.8.3
@@ -100,6 +101,7 @@ jobs:
                 version: 1.1.7
           # Board that requires Boards Manager URL
           - fqbn: esp8266:esp8266:huzzah
+            artifact-name-suffix: esp8266-esp8266-huzzah
             platforms: |
               - name: esp8266:esp8266
                 source-url: https://arduino.esp8266.com/stable/package_esp8266com_index.json
@@ -140,18 +142,18 @@ jobs:
           [ -d ${{ env.TESTDATA_SKETCHES_PATH }}/BareMinimum/build ]
 
       - name: Set report artifact name
-        id: report-artifact-name
+        id: report-artifact-prefix
         run: |
-          echo "report-artifact-name=${{ github.job }}" >> "$GITHUB_OUTPUT"
+          echo "report-artifact-prefix=${{ github.job }}" >> "$GITHUB_OUTPUT"
 
       - name: Save sketches report as workflow artifact
         uses: actions/upload-artifact@v4
         with:
           path: sketches-reports
-          name: ${{ steps.report-artifact-name.outputs.report-artifact-name }}
+          name: ${{ steps.report-artifact-prefix.outputs.report-artifact-prefix }}-${{ matrix.board.artifact-name-suffix }}
 
     outputs:
-      report-artifact-name: ${{ steps.report-artifact-name.outputs.report-artifact-name }}
+      report-artifact-prefix: ${{ steps.report-artifact-prefix.outputs.report-artifact-prefix }}
 
   multiple-steps:
     name: multiple-steps (${{ matrix.board.source-type }})
@@ -322,8 +324,9 @@ jobs:
       - name: Download sketches reports artifact
         uses: actions/download-artifact@v4
         with:
-          name: ${{ needs.all-inputs.outputs.report-artifact-name }}
+          merge-multiple: true
           path: ${{ env.SKETCHES_REPORTS_PATH }}
+          pattern: ${{ needs.all-inputs.outputs.report-artifact-prefix }}*
 
       - name: Compare generated sketches report to golden report
         run: |
@@ -349,7 +352,7 @@ jobs:
                   "$reportPath" \
                 --slurpfile \
                   golden \
-                  "${{ env.TESTDATA_REPORTS_PATH }}/${{ needs.all-inputs.outputs.report-artifact-name }}/$(basename "$reportPath")" \
+                  "${{ env.TESTDATA_REPORTS_PATH }}/${{ needs.all-inputs.outputs.report-artifact-prefix }}/$(basename "$reportPath")" \
                 '($generated|.[0].boards) == ($golden|.[0].boards)'
             ) && (
               # Check the commit_hash value
