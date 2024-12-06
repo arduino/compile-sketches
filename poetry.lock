@@ -869,13 +869,13 @@ ptyprocess = ">=0.5"
 
 [[package]]
 name = "pkginfo"
-version = "1.11.1"
+version = "1.12.0"
 description = "Query metadata from sdists / bdists / installed packages."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pkginfo-1.11.1-py3-none-any.whl", hash = "sha256:bfa76a714fdfc18a045fcd684dbfc3816b603d9d075febef17cb6582bea29573"},
-    {file = "pkginfo-1.11.1.tar.gz", hash = "sha256:2e0dca1cf4c8e39644eed32408ea9966ee15e0d324c62ba899a393b3c6b467aa"},
+    {file = "pkginfo-1.12.0-py3-none-any.whl", hash = "sha256:dcd589c9be4da8973eceffa247733c144812759aa67eaf4bbf97016a02f39088"},
+    {file = "pkginfo-1.12.0.tar.gz", hash = "sha256:8ad91a0445a036782b9366ef8b8c2c50291f83a553478ba8580c73d3215700cf"},
 ]
 
 [package.extras]
@@ -914,13 +914,13 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "poetry"
-version = "1.8.4"
+version = "1.8.5"
 description = "Python dependency management and packaging made easy."
 optional = false
 python-versions = "<4.0,>=3.8"
 files = [
-    {file = "poetry-1.8.4-py3-none-any.whl", hash = "sha256:1223bb6dfdbdfbebc6790796b9b7a88ea1f1f4679e709594f698499010ffb129"},
-    {file = "poetry-1.8.4.tar.gz", hash = "sha256:5490f8da66d17eecd660e091281f8aaa5554381644540291817c249872c99202"},
+    {file = "poetry-1.8.5-py3-none-any.whl", hash = "sha256:5505fba69bf2a792b5d7402d21839c853644337392b745109b86a23010cce5f3"},
+    {file = "poetry-1.8.5.tar.gz", hash = "sha256:eb2c88d224f58f36df8f7b36d6c380c07d1001bca28bde620f68fc086e881b70"},
 ]
 
 [package.dependencies]
@@ -934,7 +934,7 @@ installer = ">=0.7.0,<0.8.0"
 keyring = ">=24.0.0,<25.0.0"
 packaging = ">=23.1"
 pexpect = ">=4.7.0,<5.0.0"
-pkginfo = ">=1.10,<2.0"
+pkginfo = ">=1.12,<2.0"
 platformdirs = ">=3.0.0,<5"
 poetry-core = "1.9.1"
 poetry-plugin-export = ">=1.6.0,<2.0.0"
@@ -1652,4 +1652,4 @@ dev = ["doc8", "flake8", "flake8-import-order", "rstcheck[sphinx]", "sphinx"]
 [metadata]
 lock-version = "2.0"
 python-versions = "3.12.4"
-content-hash = "a18036b4bd9c2cd583ee98d5e874dc40793cd5468d9feda428b07d4fc886274b"
+content-hash = "f363ffefcfc648010c27c1ee912f8b6b79d321a42c4c52a773410b6c13c271f3"
