@@ -14,7 +14,7 @@ semver = "3.0.2"
 [tool.poetry.group.dev.dependencies]
 black = "24.10.0"
 codespell = "2.3.0"
-coverage = "7.6.9"
+coverage = "7.6.10"
 pytest = "8.3.4"
 pytest-mock = "3.14.0"
 flake8 = "7.1.1"
