@@ -384,9 +384,6 @@ tasks:
   poetry:install:
     desc: Install Poetry
     run: once
-    vars:
-      PYTHON_PATH:
-        sh: task utility:normalize-path RAW_PATH="$(which python)"
     cmds:
       - |
         if ! which pipx &>/dev/null; then
@@ -401,8 +398,12 @@ tasks:
           exit 1
         fi
       - |
+        export PIPX_DEFAULT_PYTHON="$( \
+          task utility:normalize-path \
+            RAW_PATH="$(which python)" \
+        )"
         pipx install \
-          --python "{{.PYTHON_PATH}}" \
+          --force \
           "poetry==$( \
             yq \
               --input-format toml \
@@ -429,8 +430,7 @@ tasks:
     cmds:
       - |
         poetry lock \
-          --no-cache \
-          --no-update
+          --no-cache
 
   poetry:validate:
     desc: Validate pyproject.toml
