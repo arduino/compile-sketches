@@ -9,7 +9,7 @@ python = "3.12.4"
 GitPython = "3.1.44"
 PyGithub = "2.5.0"
 PyYAML = "6.0.2"
-semver = "3.0.2"
+semver = "3.0.4"
 
 [tool.poetry.group.dev.dependencies]
 black = "24.10.0"
