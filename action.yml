@@ -61,6 +61,12 @@ inputs:
       report
     default: "false"
     required: true
+  enable-issues-report:
+    description: >-
+      Set to true to cause the action to record the compiler messages (warnings
+      and errors) for each sketch compilation in the sketches report
+    default: "false"
+    required: false
 
 runs:
   using: composite
@@ -129,6 +135,7 @@ runs:
         INPUT_GITHUB-TOKEN: ${{ inputs.github-token }}
         INPUT_ENABLE-DELTAS-REPORT: ${{ inputs.enable-deltas-report }}
         INPUT_ENABLE-WARNINGS-REPORT: ${{ inputs.enable-warnings-report }}
+        INPUT_ENABLE-ISSUES-REPORT: ${{ inputs.enable-issues-report }}
         INPUT_SKETCHES-REPORT-PATH: ${{ inputs.sketches-report-path }}
       working-directory: ${{ github.action_path }}
       run: |
