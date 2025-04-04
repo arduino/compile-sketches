@@ -32,6 +32,7 @@ def get_compilesketches_object(
     deltas_base_ref="foodeltasbaseref",
     enable_deltas_report="false",
     enable_warnings_report="false",
+    enable_issues_report="false",
     sketches_report_path="foo report_folder_name",
 ):
     with unittest.mock.patch(
@@ -48,6 +49,7 @@ def get_compilesketches_object(
             github_token=github_token,
             enable_deltas_report=enable_deltas_report,
             enable_warnings_report=enable_warnings_report,
+            enable_issues_report=enable_issues_report,
             sketches_report_path=sketches_report_path,
         )
 
@@ -105,6 +107,7 @@ def setup_action_inputs(monkeypatch):
         enable_size_deltas_report = "FooEnableSizeDeltasReport"
         enable_deltas_report = "FooEnableDeltasReport"
         enable_warnings_report = "FooEnableWarningsReport"
+        enable_issues_report = "FooEnableIssuesReport"
         sketches_report_path = "FooSketchesReportPath"
         size_deltas_report_folder_name = "FooSizeDeltasReportFolderName"
 
@@ -118,6 +121,7 @@ def setup_action_inputs(monkeypatch):
     monkeypatch.setenv("INPUT_GITHUB-TOKEN", ActionInputs.github_token)
     monkeypatch.setenv("INPUT_ENABLE-DELTAS-REPORT", ActionInputs.enable_deltas_report)
     monkeypatch.setenv("INPUT_ENABLE-WARNINGS-REPORT", ActionInputs.enable_warnings_report)
+    monkeypatch.setenv("INPUT_ENABLE-ISSUES-REPORT", ActionInputs.enable_issues_report)
     monkeypatch.setenv("INPUT_SKETCHES-REPORT-PATH", ActionInputs.sketches_report_path)
 
     return ActionInputs()
@@ -245,6 +249,7 @@ def test_main(mocker, setup_action_inputs):
         github_token=setup_action_inputs.github_token,
         enable_deltas_report=setup_action_inputs.enable_deltas_report,
         enable_warnings_report=setup_action_inputs.enable_warnings_report,
+        enable_issues_report=setup_action_inputs.enable_issues_report,
         sketches_report_path=setup_action_inputs.sketches_report_path,
     )
 
@@ -269,6 +274,7 @@ def test_compilesketches():
     expected_deltas_base_ref = unittest.mock.sentinel.deltas_base_ref
     enable_deltas_report = "true"
     enable_warnings_report = "true"
+    enable_issues_report = "false"
     sketches_report_path = "FooSketchesReportFolder"
 
     with unittest.mock.patch(
@@ -285,6 +291,7 @@ def test_compilesketches():
             github_token=github_token,
             enable_deltas_report=enable_deltas_report,
             enable_warnings_report=enable_warnings_report,
+            enable_issues_report=enable_issues_report,
             sketches_report_path=sketches_report_path,
         )
 
@@ -299,6 +306,7 @@ def test_compilesketches():
     assert compile_sketches.deltas_base_ref == expected_deltas_base_ref
     assert compile_sketches.enable_deltas_report is True
     assert compile_sketches.enable_warnings_report is True
+    assert compile_sketches.enable_issues_report is False
     assert compile_sketches.sketches_report_path == pathlib.PurePath(sketches_report_path)
 
     assert get_compilesketches_object(cli_compile_flags="").cli_compile_flags is None
@@ -1722,6 +1730,49 @@ def test_get_sketch_report(mocker, enable_warnings_report, do_deltas_report):
     assert sketch_report == expected_sketch_report
 
 
+@pytest.mark.parametrize("enable_issues_report", ["true", "false"])
+def test_get_sketch_report_issues_report(mocker, enable_issues_report):
+    sketch = "/foo/SketchName"
+    success = unittest.mock.sentinel.success
+
+    class CompilationResult:
+        def __init__(self, sketch_input, success_input):
+            self.sketch = sketch_input
+            self.success = success_input
+
+    compilation_result = CompilationResult(sketch_input=sketch, success_input=success)
+
+    sizes_report = unittest.mock.sentinel.sizes_report
+    issues_report = unittest.mock.sentinel.issues_report
+
+    compile_sketches = get_compilesketches_object(
+        enable_warnings_report="false",
+        enable_issues_report=enable_issues_report,
+    )
+
+    mocker.patch(
+        "compilesketches.CompileSketches.get_sizes_from_output",
+        autospec=True,
+        return_value=unittest.mock.sentinel.sizes,
+    )
+    mocker.patch("compilesketches.CompileSketches.do_deltas_report", autospec=True, return_value=False)
+    mocker.patch("compilesketches.CompileSketches.get_sizes_report", autospec=True, return_value=sizes_report)
+    mocker.patch("compilesketches.CompileSketches.get_issues_from_output", autospec=True, return_value=issues_report)
+
+    sketch_report = compile_sketches.get_sketch_report(compilation_result=compilation_result)
+
+    if enable_issues_report == "true":
+        # noinspection PyUnresolvedReferences
+        compile_sketches.get_issues_from_output.assert_called_once_with(
+            compile_sketches, compilation_result=compilation_result
+        )
+        assert compile_sketches.ReportKeys.issues in sketch_report
+        assert sketch_report[compile_sketches.ReportKeys.issues] == issues_report
+    else:
+        compile_sketches.get_issues_from_output.assert_not_called()
+        assert compile_sketches.ReportKeys.issues not in sketch_report
+
+
 @pytest.mark.parametrize(
     "compilation_success, compilation_output, flash, maximum_flash, relative_flash, ram, maximum_ram, relative_ram",
     [
@@ -1974,6 +2025,37 @@ def test_get_warning_count_from_output(compilation_success, test_compilation_out
             output = test_compilation_output_file.read()
 
     assert compile_sketches.get_warning_count_from_output(CompilationResult()) == expected_warning_count
+
+
+@pytest.mark.parametrize(
+    "test_compilation_output_filename, expected_issues",
+    [
+        (
+            pathlib.Path("test_get_issues_from_output", "has-issues.txt"),
+            [
+                "/path/to/lib.h:42:5: warning: unused variable 'counter' [-Wunused-variable]",
+                "/path/to/lib.h:55:10: error: 'foo' was not declared in this scope",
+                "/path/to/lib.h:67:3: fatal error: missing.h: No such file or directory",
+                "/path/to/sketch/sketch.ino:100:15: warning: comparison between signed and unsigned [-Wsign-compare]",
+                "sketch.ino: error: expected ';' before '}' token",
+                "/path/to/lib.a(lib.o): undefined reference to `some_function()'",
+                "collect2: error: ld returned 1 exit status",
+            ],
+        ),
+        (pathlib.Path("test_get_issues_from_output", "no-issues.txt"), []),
+    ],
+)
+def test_get_issues_from_output(test_compilation_output_filename, expected_issues):
+    compile_sketches = get_compilesketches_object()
+
+    with open(
+        file=test_data_path.joinpath(test_compilation_output_filename), mode="r", encoding="utf-8"
+    ) as test_compilation_output_file:
+
+        class CompilationResult:
+            output = test_compilation_output_file.read()
+
+    assert compile_sketches.get_issues_from_output(CompilationResult()) == expected_issues
 
 
 @pytest.mark.parametrize(

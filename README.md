@@ -47,6 +47,7 @@ This action checks whether [Arduino](https://www.arduino.cc/) sketches compile a
   - [`enable-deltas-report`](#enable-deltas-report)
     - [How it works](#how-it-works)
   - [`enable-warnings-report`](#enable-warnings-report)
+  - [`enable-issues-report`](#enable-issues-report)
 - [Example usage](#example-usage)
 - [Additional resources](#additional-resources)
 
@@ -236,6 +237,12 @@ Dependencies defined via the [`libraries`](#libraries) or [`platforms`](#platfor
 ### `enable-warnings-report`
 
 Set to `true` to cause the action to record the compiler warning count for each sketch compilation in the sketches report.
+
+**Default**: `false`
+
+### `enable-issues-report`
+
+Set to `true` to cause the action to record lines that match standard compiler or linker warning/error patterns for each sketch compilation in the sketches report.
 
 **Default**: `false`
 
