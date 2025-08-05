@@ -1089,14 +1089,14 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "poetry"
-version = "2.1.3"
+version = "2.1.4"
 description = "Python dependency management and packaging made easy."
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["pipx"]
 files = [
-    {file = "poetry-2.1.3-py3-none-any.whl", hash = "sha256:7054d3f97ccce7f31961ead16250407c4577bfe57e2037a190ae2913fc40a20c"},
-    {file = "poetry-2.1.3.tar.gz", hash = "sha256:f2c9bd6790b19475976d88ea4553bcc3533c0dc73f740edc4fffe9e2add50594"},
+    {file = "poetry-2.1.4-py3-none-any.whl", hash = "sha256:0019b64d33fed9184a332f7fad60ca47aace4d6a0e9c635cdea21b76e96f32ce"},
+    {file = "poetry-2.1.4.tar.gz", hash = "sha256:bed4af5fc87fb145258ac5b1dae77de2cd7082ec494e3b2f66bca0f477cbfc5c"},
 ]
 
 [package.dependencies]
@@ -1119,7 +1119,7 @@ requests-toolbelt = ">=1.0.0,<2.0.0"
 shellingham = ">=1.5,<2.0"
 tomlkit = ">=0.11.4,<1.0.0"
 trove-classifiers = ">=2022.5.19"
-virtualenv = ">=20.26.6,<21.0.0"
+virtualenv = ">=20.26.6,<20.33.0"
 xattr = {version = ">=1.0.0,<2.0.0", markers = "sys_platform == \"darwin\""}
 
 [[package]]
@@ -1889,4 +1889,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "3.12.4"
-content-hash = "f8f59a40f7dfdb33602e361175b82d8c670a92cfde193e07ab5b7cda5727e2a8"
+content-hash = "999bf887a8d46c3b1f932b0adc652bb2f24cb10c6fc06e4be215b9227186fbe7"
