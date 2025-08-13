@@ -187,6 +187,14 @@ Keys:
 
 **Default**: `"- examples"`
 
+If you want to specify individual sketches to be compiled, you can do so by passing a multi-line string (a so called [literal block scalar](https://www.yaml.info/learn/quote.html#literal)), i.e.
+```
+sketch-paths: |
+  - examples/Example-01
+  - examples/Example-03
+  - examples/Example-03
+```
+
 ### `cli-compile-flags`
 
 YAML-format list of flags to add to the Arduino CLI command used to compile the sketches. For the available flags, see [the Arduino CLI command reference](https://arduino.github.io/arduino-cli/latest/commands/arduino-cli_compile/#options).
