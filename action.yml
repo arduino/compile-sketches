@@ -74,7 +74,7 @@ runs:
         echo "path=$(python -m site --user-site)" >> $GITHUB_OUTPUT
 
     - name: Install Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version-file: ${{ github.action_path }}/pyproject.toml
 
