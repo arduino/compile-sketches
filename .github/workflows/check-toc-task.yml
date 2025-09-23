@@ -7,12 +7,14 @@ on:
   push:
     paths:
       - ".github/workflows/check-toc-task.ya?ml"
+      - ".npmrc"
       - "package.json"
       - "package-lock.json"
       - "README.md"
   pull_request:
     paths:
       - ".github/workflows/check-toc-task.ya?ml"
+      - ".npmrc"
       - "package.json"
       - "package-lock.json"
       - "README.md"

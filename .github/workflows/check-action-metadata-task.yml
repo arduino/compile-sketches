@@ -8,6 +8,7 @@ on:
     paths:
       - ".github/workflows/check-action-metadata-task.ya?ml"
       - "action.ya?ml"
+      - ".npmrc"
       - "package.json"
       - "package-lock.json"
       - "Taskfile.ya?ml"
@@ -15,6 +16,7 @@ on:
     paths:
       - ".github/workflows/check-action-metadata-task.ya?ml"
       - "action.ya?ml"
+      - ".npmrc"
       - "package.json"
       - "package-lock.json"
       - "Taskfile.ya?ml"

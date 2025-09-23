@@ -7,6 +7,7 @@ on:
   push:
     paths:
       - ".github/workflows/check-prettier-formatting-task.ya?ml"
+      - ".npmrc"
       - "Taskfile.ya?ml"
       - "**/.prettierignore"
       - "**/.prettierrc*"
@@ -103,6 +104,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/check-prettier-formatting-task.ya?ml"
+      - ".npmrc"
       - "Taskfile.ya?ml"
       - "**/.prettierignore"
       - "**/.prettierrc*"
