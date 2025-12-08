@@ -12,7 +12,7 @@ PyYAML = "6.0.3"
 semver = "3.0.4"
 
 [tool.poetry.group.dev.dependencies]
-black = "25.11.0"
+black = "25.12.0"
 codespell = "2.4.1"
 coverage = "7.12.0"
 pytest = "9.0.1"
