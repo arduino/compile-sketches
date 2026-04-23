@@ -1721,14 +1721,21 @@ def get_archive_root_path(archive_extract_path):
 
 def get_head_commit_hash():
     """Return the head commit's hash."""
+    with open(file=os.environ["GITHUB_EVENT_PATH"]) as github_event_file:
+        event = json.load(github_event_file)
+
     if os.environ["GITHUB_EVENT_NAME"] == "pull_request":
         # When the workflow is triggered by a pull_request event, actions/checkout checks out the hypothetical merge
         # commit GitHub automatically generates for PRs. The user will expect the report to show the hash of the head
         # commit of the PR, not of this hidden merge commit. So it's necessary it get it from GITHUB_EVENT_PATH instead
         # of git rev-parse HEAD.
-        with open(file=os.environ["GITHUB_EVENT_PATH"]) as github_event_file:
-            commit_hash = json.load(github_event_file)["pull_request"]["head"]["sha"]
+        commit_hash = event["pull_request"]["head"]["sha"]
+    elif os.environ["GITHUB_EVENT_NAME"] == "push":
+        # For push events, the head ref is in the 'after' field of the event payload, so just use it.
+        # Avoids the need to have the full git repo available.
+        commit_hash = event["after"]
     else:
+        # For other event types, just get the head commit hash from the git repository.
         repository = git.Repo(path=os.environ["GITHUB_WORKSPACE"])
         commit_hash = repository.git.rev_parse("HEAD")
 

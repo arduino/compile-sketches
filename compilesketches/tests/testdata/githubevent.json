@@ -1,4 +1,5 @@
 {
+  "after": "push-head-sha",
   "pull_request": {
     "head": {
       "sha": "pull_request-head-sha"

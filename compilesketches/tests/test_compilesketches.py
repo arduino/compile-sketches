@@ -3260,7 +3260,12 @@ def test_clone_repository(tmp_path, git_ref):
 
 
 @pytest.mark.parametrize(
-    "github_event, expected_hash", [("pull_request", "pull_request-head-sha"), ("push", "push-head-sha")]
+    "github_event, expected_hash",
+    [
+        ("pull_request", "pull_request-head-sha"),
+        ("push", "push-head-sha"),
+        ("workflow_dispatch", "workflow_dispatch-head-sha"),
+    ],
 )
 def test_get_head_commit_hash(monkeypatch, mocker, github_event, expected_hash):
     # Stub
@@ -3275,6 +3280,6 @@ def test_get_head_commit_hash(monkeypatch, mocker, github_event, expected_hash):
     monkeypatch.setenv("GITHUB_EVENT_PATH", str(test_data_path.joinpath("githubevent.json")))
 
     mocker.patch("git.Repo", autospec=True, return_value=Repo())
-    mocker.patch.object(Repo, "rev_parse", return_value="push-head-sha")
+    mocker.patch.object(Repo, "rev_parse", return_value="workflow_dispatch-head-sha")
 
     assert compilesketches.get_head_commit_hash() == expected_hash
