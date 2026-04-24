@@ -58,6 +58,7 @@ def main():
         enable_deltas_report=os.environ["INPUT_ENABLE-DELTAS-REPORT"],
         enable_warnings_report=os.environ["INPUT_ENABLE-WARNINGS-REPORT"],
         enable_issues_report=os.environ["INPUT_ENABLE-ISSUES-REPORT"],
+        always_succeed=os.environ["INPUT_ALWAYS-SUCCEED"],
         sketches_report_path=os.environ["INPUT_SKETCHES-REPORT-PATH"],
     )
 
@@ -143,6 +144,7 @@ class CompileSketches:
         enable_deltas_report,
         enable_warnings_report,
         enable_issues_report,
+        always_succeed,
         sketches_report_path,
     ):
         """Process, store, and validate the action's inputs."""
@@ -176,6 +178,7 @@ class CompileSketches:
 
         self.enable_warnings_report = parse_boolean_input(boolean_input=enable_warnings_report)
         self.enable_issues_report = parse_boolean_input(boolean_input=enable_issues_report)
+        self.always_succeed = parse_boolean_input(boolean_input=always_succeed)
         # The enable-deltas-report input has a default value so it should always be either True or False
         if self.enable_warnings_report is None:
             print("::error::Invalid value for enable-warnings-report input")
@@ -250,7 +253,8 @@ class CompileSketches:
 
         if not all_compilations_successful:
             print("::error::One or more compilations failed")
-            sys.exit(1)
+            if not self.always_succeed:
+                sys.exit(1)
 
     def install_arduino_cli(self):
         """Install Arduino CLI."""
