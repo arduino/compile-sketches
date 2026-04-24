@@ -57,6 +57,8 @@ def main():
         github_token=os.environ["INPUT_GITHUB-TOKEN"],
         enable_deltas_report=os.environ["INPUT_ENABLE-DELTAS-REPORT"],
         enable_warnings_report=os.environ["INPUT_ENABLE-WARNINGS-REPORT"],
+        enable_issues_report=os.environ["INPUT_ENABLE-ISSUES-REPORT"],
+        always_succeed=os.environ["INPUT_ALWAYS-SUCCEED"],
         sketches_report_path=os.environ["INPUT_SKETCHES-REPORT-PATH"],
     )
 
@@ -80,6 +82,8 @@ class CompileSketches:
     enable_deltas_report -- set to "true" to cause the action to determine the change in memory usage
                                  ("true", "false")
     enable_warnings_report -- set to "true" to cause the action to add compiler warning count to the sketches report
+                                 ("true", "false")
+    enable_issues_report -- set to "true" to cause the action to add compiler warning and error messages to the sketches report
                                  ("true", "false")
     sketches_report_path -- folder to save the sketches report to
     """
@@ -108,6 +112,7 @@ class CompileSketches:
         compilation_success = "compilation_success"
         sizes = "sizes"
         warnings = "warnings"
+        issues = "issues"
         name = "name"
         absolute = "absolute"
         relative = "relative"
@@ -138,6 +143,8 @@ class CompileSketches:
         github_token,
         enable_deltas_report,
         enable_warnings_report,
+        enable_issues_report,
+        always_succeed,
         sketches_report_path,
     ):
         """Process, store, and validate the action's inputs."""
@@ -170,6 +177,8 @@ class CompileSketches:
             sys.exit(1)
 
         self.enable_warnings_report = parse_boolean_input(boolean_input=enable_warnings_report)
+        self.enable_issues_report = parse_boolean_input(boolean_input=enable_issues_report)
+        self.always_succeed = parse_boolean_input(boolean_input=always_succeed)
         # The enable-deltas-report input has a default value so it should always be either True or False
         if self.enable_warnings_report is None:
             print("::error::Invalid value for enable-warnings-report input")
@@ -229,7 +238,9 @@ class CompileSketches:
         for sketch in sketch_list:
             # It's necessary to clear the cache between each compilation to get a true compiler warning count, otherwise
             # only the first sketch compilation's warning count would reflect warnings from cached code
-            compilation_result = self.compile_sketch(sketch_path=sketch, clean_build_cache=self.enable_warnings_report)
+            compilation_result = self.compile_sketch(
+                sketch_path=sketch, clean_build_cache=self.enable_warnings_report or self.enable_issues_report
+            )
             if not compilation_result.success:
                 all_compilations_successful = False
 
@@ -242,7 +253,8 @@ class CompileSketches:
 
         if not all_compilations_successful:
             print("::error::One or more compilations failed")
-            sys.exit(1)
+            if not self.always_succeed:
+                sys.exit(1)
 
     def install_arduino_cli(self):
         """Install Arduino CLI."""
@@ -945,7 +957,7 @@ class CompileSketches:
             output = compilation_data.stdout
 
         if not CompilationResult.success:
-            print("::error::Compilation failed")
+            print("::error::Compilation failed:", path_relative_to_workspace(path=sketch_path))
         else:
             time_summary = ""
             if diff_time > 60:
@@ -1006,6 +1018,8 @@ class CompileSketches:
             sketch_report[self.ReportKeys.warnings] = self.get_warnings_report(
                 current_warnings=current_warning_count, previous_warnings=previous_warning_count
             )
+        if self.enable_issues_report:
+            sketch_report[self.ReportKeys.issues] = self.get_issues_from_output(compilation_result=compilation_result)
 
         return sketch_report
 
@@ -1107,6 +1121,22 @@ class CompileSketches:
             )
 
         return size_data
+
+    def get_issues_from_output(self, compilation_result):
+        """Parse the stdout from the compilation process and return all
+        compiler warning or error messages.
+
+        Keyword arguments:
+        compilation_result -- object returned by compile_sketch()
+        """
+        issues = []
+        compiler_issue_regex = re.compile("(:[0-9]+:[0-9]+|^\\S+): (fatal )?(warning|error):")
+        linker_issue_regex = re.compile(": undefined reference to")
+        for line in compilation_result.output.splitlines():
+            if compiler_issue_regex.search(line) or linker_issue_regex.search(line):
+                issues.append(line)
+
+        return issues
 
     def get_warning_count_from_output(self, compilation_result):
         """Parse the stdout from the compilation process and return the number of compiler warnings. Since the
@@ -1695,14 +1725,21 @@ def get_archive_root_path(archive_extract_path):
 
 def get_head_commit_hash():
     """Return the head commit's hash."""
+    with open(file=os.environ["GITHUB_EVENT_PATH"]) as github_event_file:
+        event = json.load(github_event_file)
+
     if os.environ["GITHUB_EVENT_NAME"] == "pull_request":
         # When the workflow is triggered by a pull_request event, actions/checkout checks out the hypothetical merge
         # commit GitHub automatically generates for PRs. The user will expect the report to show the hash of the head
         # commit of the PR, not of this hidden merge commit. So it's necessary it get it from GITHUB_EVENT_PATH instead
         # of git rev-parse HEAD.
-        with open(file=os.environ["GITHUB_EVENT_PATH"]) as github_event_file:
-            commit_hash = json.load(github_event_file)["pull_request"]["head"]["sha"]
+        commit_hash = event["pull_request"]["head"]["sha"]
+    elif os.environ["GITHUB_EVENT_NAME"] == "push":
+        # For push events, the head ref is in the 'after' field of the event payload, so just use it.
+        # Avoids the need to have the full git repo available.
+        commit_hash = event["after"]
     else:
+        # For other event types, just get the head commit hash from the git repository.
         repository = git.Repo(path=os.environ["GITHUB_WORKSPACE"])
         commit_hash = repository.git.rev_parse("HEAD")
 
