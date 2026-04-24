@@ -48,6 +48,7 @@ This action checks whether [Arduino](https://www.arduino.cc/) sketches compile a
     - [How it works](#how-it-works)
   - [`enable-warnings-report`](#enable-warnings-report)
   - [`enable-issues-report`](#enable-issues-report)
+  - [`fail-on-build-error`](#fail-on-build-error)
 - [Example usage](#example-usage)
 - [Additional resources](#additional-resources)
 
@@ -245,6 +246,12 @@ Set to `true` to cause the action to record the compiler warning count for each 
 Set to `true` to cause the action to record lines that match standard compiler or linker warning/error patterns for each sketch compilation in the sketches report.
 
 **Default**: `false`
+
+### `fail-on-build-error`
+
+Set to `false` to cause the action to ignore the result of sketch build operations and always return success to the workflow. The sketches report will still be produced and can be analyzed without automatically failing the workflow.
+
+**Default**: `true`
 
 ## Example usage
 
