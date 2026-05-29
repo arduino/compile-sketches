@@ -1,0 +1,21 @@
+In file included from /path/to/lib.h:10:0,
+                 from /path/to/sketch/sketch.ino:1:
+/path/to/lib.h:42:5: warning: unused variable 'counter' [-Wunused-variable]
+     int counter = 0;
+         ^~~~~~~
+/path/to/lib.h:42:5: note: declared here
+/path/to/lib.h:55:10: error: 'foo' was not declared in this scope
+     foo();
+     ^~~
+/path/to/lib.h:67:3: fatal error: missing.h: No such file or directory
+ #include "missing.h"
+   ^~~~~~~~~~~~
+/path/to/sketch/sketch.ino:100:15: warning: comparison between signed and unsigned [-Wsign-compare]
+     if (x < size) {
+               ^~~~
+sketch.ino: In function 'void setup()':
+sketch.ino: error: expected ';' before '}' token
+/path/to/lib.a(lib.o): undefined reference to `some_function()'
+collect2: error: ld returned 1 exit status
+Sketch uses 1234 bytes (4%) of program storage space. Maximum is 32256 bytes.
+Global variables use 200 bytes (9%) of dynamic memory, leaving 1848 bytes for local variables. Maximum is 2048 bytes.

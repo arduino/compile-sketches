@@ -32,6 +32,8 @@ def get_compilesketches_object(
     deltas_base_ref="foodeltasbaseref",
     enable_deltas_report="false",
     enable_warnings_report="false",
+    enable_issues_report="false",
+    always_succeed="false",
     sketches_report_path="foo report_folder_name",
 ):
     with unittest.mock.patch(
@@ -48,6 +50,8 @@ def get_compilesketches_object(
             github_token=github_token,
             enable_deltas_report=enable_deltas_report,
             enable_warnings_report=enable_warnings_report,
+            enable_issues_report=enable_issues_report,
+            always_succeed=always_succeed,
             sketches_report_path=sketches_report_path,
         )
 
@@ -105,6 +109,8 @@ def setup_action_inputs(monkeypatch):
         enable_size_deltas_report = "FooEnableSizeDeltasReport"
         enable_deltas_report = "FooEnableDeltasReport"
         enable_warnings_report = "FooEnableWarningsReport"
+        enable_issues_report = "FooEnableIssuesReport"
+        always_succeed = "FooAlwaysSucceed"
         sketches_report_path = "FooSketchesReportPath"
         size_deltas_report_folder_name = "FooSizeDeltasReportFolderName"
 
@@ -118,6 +124,8 @@ def setup_action_inputs(monkeypatch):
     monkeypatch.setenv("INPUT_GITHUB-TOKEN", ActionInputs.github_token)
     monkeypatch.setenv("INPUT_ENABLE-DELTAS-REPORT", ActionInputs.enable_deltas_report)
     monkeypatch.setenv("INPUT_ENABLE-WARNINGS-REPORT", ActionInputs.enable_warnings_report)
+    monkeypatch.setenv("INPUT_ENABLE-ISSUES-REPORT", ActionInputs.enable_issues_report)
+    monkeypatch.setenv("INPUT_ALWAYS-SUCCEED", ActionInputs.always_succeed)
     monkeypatch.setenv("INPUT_SKETCHES-REPORT-PATH", ActionInputs.sketches_report_path)
 
     return ActionInputs()
@@ -245,6 +253,8 @@ def test_main(mocker, setup_action_inputs):
         github_token=setup_action_inputs.github_token,
         enable_deltas_report=setup_action_inputs.enable_deltas_report,
         enable_warnings_report=setup_action_inputs.enable_warnings_report,
+        enable_issues_report=setup_action_inputs.enable_issues_report,
+        always_succeed=setup_action_inputs.always_succeed,
         sketches_report_path=setup_action_inputs.sketches_report_path,
     )
 
@@ -269,6 +279,8 @@ def test_compilesketches():
     expected_deltas_base_ref = unittest.mock.sentinel.deltas_base_ref
     enable_deltas_report = "true"
     enable_warnings_report = "true"
+    enable_issues_report = "false"
+    always_succeed = "false"
     sketches_report_path = "FooSketchesReportFolder"
 
     with unittest.mock.patch(
@@ -285,6 +297,8 @@ def test_compilesketches():
             github_token=github_token,
             enable_deltas_report=enable_deltas_report,
             enable_warnings_report=enable_warnings_report,
+            enable_issues_report=enable_issues_report,
+            always_succeed=always_succeed,
             sketches_report_path=sketches_report_path,
         )
 
@@ -299,6 +313,8 @@ def test_compilesketches():
     assert compile_sketches.deltas_base_ref == expected_deltas_base_ref
     assert compile_sketches.enable_deltas_report is True
     assert compile_sketches.enable_warnings_report is True
+    assert compile_sketches.enable_issues_report is False
+    assert compile_sketches.always_succeed is False
     assert compile_sketches.sketches_report_path == pathlib.PurePath(sketches_report_path)
 
     assert get_compilesketches_object(cli_compile_flags="").cli_compile_flags is None
@@ -400,6 +416,7 @@ def test_get_parent_commit_ref(mocker):
     git.Repo.assert_called_once_with(path=os.environ["GITHUB_WORKSPACE"])
 
 
+@pytest.mark.parametrize("always_succeed", ["true", "false"])
 @pytest.mark.parametrize("enable_warnings_report, expected_clean_build_cache", [("true", True), ("false", False)])
 @pytest.mark.parametrize(
     "compilation_success_list, expected_success",
@@ -411,7 +428,12 @@ def test_get_parent_commit_ref(mocker):
     ],
 )
 def test_compile_sketches(
-    mocker, enable_warnings_report, expected_clean_build_cache, compilation_success_list, expected_success
+    mocker,
+    always_succeed,
+    enable_warnings_report,
+    expected_clean_build_cache,
+    compilation_success_list,
+    expected_success,
 ):
     sketch_list = [unittest.mock.sentinel.sketch1, unittest.mock.sentinel.sketch2, unittest.mock.sentinel.sketch3]
 
@@ -421,7 +443,10 @@ def test_compile_sketches(
     sketch_report = unittest.mock.sentinel.sketch_report
     sketches_report = unittest.mock.sentinel.sketch_report_from_sketches_report
 
-    compile_sketches = get_compilesketches_object(enable_warnings_report=enable_warnings_report)
+    compile_sketches = get_compilesketches_object(
+        enable_warnings_report=enable_warnings_report,
+        always_succeed=always_succeed,
+    )
 
     mocker.patch("compilesketches.CompileSketches.install_arduino_cli", autospec=True)
     mocker.patch("compilesketches.CompileSketches.install_platforms", autospec=True)
@@ -432,7 +457,7 @@ def test_compile_sketches(
     mocker.patch("compilesketches.CompileSketches.get_sketches_report", autospec=True, return_value=sketches_report)
     mocker.patch("compilesketches.CompileSketches.create_sketches_report_file", autospec=True)
 
-    if expected_success:
+    if expected_success or always_succeed == "true":
         compile_sketches.compile_sketches()
     else:
         with pytest.raises(expected_exception=SystemExit, match="1"):
@@ -1592,7 +1617,9 @@ def test_compile_sketch(capsys, mocker, clean_build_cache, returncode, expected_
         + "::endgroup::"
     )
     if not expected_success:
-        expected_stdout += "\n::error::Compilation failed"
+        expected_stdout += "\n::error::Compilation failed: " + str(
+            compilesketches.path_relative_to_workspace(path=sketch_path)
+        )
     else:
         expected_stdout += "\nCompilation time elapsed: 0s"
     assert capsys.readouterr().out.strip() == expected_stdout
@@ -1720,6 +1747,49 @@ def test_get_sketch_report(mocker, enable_warnings_report, do_deltas_report):
     if enable_warnings_report == "true":
         expected_sketch_report[compile_sketches.ReportKeys.warnings] = warnings_report
     assert sketch_report == expected_sketch_report
+
+
+@pytest.mark.parametrize("enable_issues_report", ["true", "false"])
+def test_get_sketch_report_issues_report(mocker, enable_issues_report):
+    sketch = "/foo/SketchName"
+    success = unittest.mock.sentinel.success
+
+    class CompilationResult:
+        def __init__(self, sketch_input, success_input):
+            self.sketch = sketch_input
+            self.success = success_input
+
+    compilation_result = CompilationResult(sketch_input=sketch, success_input=success)
+
+    sizes_report = unittest.mock.sentinel.sizes_report
+    issues_report = unittest.mock.sentinel.issues_report
+
+    compile_sketches = get_compilesketches_object(
+        enable_warnings_report="false",
+        enable_issues_report=enable_issues_report,
+    )
+
+    mocker.patch(
+        "compilesketches.CompileSketches.get_sizes_from_output",
+        autospec=True,
+        return_value=unittest.mock.sentinel.sizes,
+    )
+    mocker.patch("compilesketches.CompileSketches.do_deltas_report", autospec=True, return_value=False)
+    mocker.patch("compilesketches.CompileSketches.get_sizes_report", autospec=True, return_value=sizes_report)
+    mocker.patch("compilesketches.CompileSketches.get_issues_from_output", autospec=True, return_value=issues_report)
+
+    sketch_report = compile_sketches.get_sketch_report(compilation_result=compilation_result)
+
+    if enable_issues_report == "true":
+        # noinspection PyUnresolvedReferences
+        compile_sketches.get_issues_from_output.assert_called_once_with(
+            compile_sketches, compilation_result=compilation_result
+        )
+        assert compile_sketches.ReportKeys.issues in sketch_report
+        assert sketch_report[compile_sketches.ReportKeys.issues] == issues_report
+    else:
+        compile_sketches.get_issues_from_output.assert_not_called()
+        assert compile_sketches.ReportKeys.issues not in sketch_report
 
 
 @pytest.mark.parametrize(
@@ -1974,6 +2044,37 @@ def test_get_warning_count_from_output(compilation_success, test_compilation_out
             output = test_compilation_output_file.read()
 
     assert compile_sketches.get_warning_count_from_output(CompilationResult()) == expected_warning_count
+
+
+@pytest.mark.parametrize(
+    "test_compilation_output_filename, expected_issues",
+    [
+        (
+            pathlib.Path("test_get_issues_from_output", "has-issues.txt"),
+            [
+                "/path/to/lib.h:42:5: warning: unused variable 'counter' [-Wunused-variable]",
+                "/path/to/lib.h:55:10: error: 'foo' was not declared in this scope",
+                "/path/to/lib.h:67:3: fatal error: missing.h: No such file or directory",
+                "/path/to/sketch/sketch.ino:100:15: warning: comparison between signed and unsigned [-Wsign-compare]",
+                "sketch.ino: error: expected ';' before '}' token",
+                "/path/to/lib.a(lib.o): undefined reference to `some_function()'",
+                "collect2: error: ld returned 1 exit status",
+            ],
+        ),
+        (pathlib.Path("test_get_issues_from_output", "no-issues.txt"), []),
+    ],
+)
+def test_get_issues_from_output(test_compilation_output_filename, expected_issues):
+    compile_sketches = get_compilesketches_object()
+
+    with open(
+        file=test_data_path.joinpath(test_compilation_output_filename), mode="r", encoding="utf-8"
+    ) as test_compilation_output_file:
+
+        class CompilationResult:
+            output = test_compilation_output_file.read()
+
+    assert compile_sketches.get_issues_from_output(CompilationResult()) == expected_issues
 
 
 @pytest.mark.parametrize(
@@ -3178,7 +3279,12 @@ def test_clone_repository(tmp_path, git_ref):
 
 
 @pytest.mark.parametrize(
-    "github_event, expected_hash", [("pull_request", "pull_request-head-sha"), ("push", "push-head-sha")]
+    "github_event, expected_hash",
+    [
+        ("pull_request", "pull_request-head-sha"),
+        ("push", "push-head-sha"),
+        ("workflow_dispatch", "workflow_dispatch-head-sha"),
+    ],
 )
 def test_get_head_commit_hash(monkeypatch, mocker, github_event, expected_hash):
     # Stub
@@ -3193,6 +3299,6 @@ def test_get_head_commit_hash(monkeypatch, mocker, github_event, expected_hash):
     monkeypatch.setenv("GITHUB_EVENT_PATH", str(test_data_path.joinpath("githubevent.json")))
 
     mocker.patch("git.Repo", autospec=True, return_value=Repo())
-    mocker.patch.object(Repo, "rev_parse", return_value="push-head-sha")
+    mocker.patch.object(Repo, "rev_parse", return_value="workflow_dispatch-head-sha")
 
     assert compilesketches.get_head_commit_hash() == expected_hash
