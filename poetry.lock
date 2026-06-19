@@ -1371,14 +1371,14 @@ cp2110 = ["hidapi"]
 
 [[package]]
 name = "pytest"
-version = "9.1.0"
+version = "9.1.1"
 description = "pytest: simple powerful testing with Python"
 optional = false
 python-versions = ">=3.10"
 groups = ["dev"]
 files = [
-    {file = "pytest-9.1.0-py3-none-any.whl", hash = "sha256:8ebb0e7888bdf2bdfc602ec51f8f62d50200af37356c74e503c79a94f5c81f32"},
-    {file = "pytest-9.1.0.tar.gz", hash = "sha256:41dd9148c08072446394cefd3d79701701335a9f4cae69ba92e39f6c7f5c061c"},
+    {file = "pytest-9.1.1-py3-none-any.whl", hash = "sha256:37a86b45efb9a47a61a36449063e8e18d0cab3161329fc099eb21783169c4f0c"},
+    {file = "pytest-9.1.1.tar.gz", hash = "sha256:1088fbde8f2b49d95a549a195707afa7a76a3ce9bcadc26b6d71f0ffda5fe313"},
 ]
 
 [package.dependencies]
@@ -2054,4 +2054,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "3.12.4"
-content-hash = "ede285b11b10992970edd9eb88e0f3347c1ee629a05e5da4dae853b86d8f3751"
+content-hash = "92d128f5cda97f5cf6041864dbc06b8d12bf953c42d16902aedfc1e66e03b131"
