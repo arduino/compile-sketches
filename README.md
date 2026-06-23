@@ -242,13 +242,39 @@ Set to `true` to cause the action to record the compiler warning count for each 
 ## Example usage
 
 ```yaml
-- uses: arduino/compile-sketches@v1
-  with:
-    fqbn: "arduino:avr:uno"
-    libraries: |
-      - name: Servo
-      - name: Stepper
-        version: 1.1.3
+# You will see this name in the Actions tab on GitHub
+name: Compile Sketches
+
+# Specify conditions for workflow to run
+on:
+  push: # push to main branch
+    branches:
+      -main
+  
+  pull_request: # PR to main branch
+    branches:
+      -main
+
+  workflow_dispatch: # Manually via button in the Actions tab
+
+
+# This workflow involves only one job to do, called compile-sketch
+jobs:
+  compile-sketch:
+    runs-on: ubuntu-latest # runner is latest Github-hosted Ubuntu
+    steps: # define what steps should be taken
+      # GA for checking out repo to runner -> https://github.com/actions/checkout
+      - uses: actions/checkout@v3
+      # GA for compiling sketches -> https://github.com/arduino/compile-sketches
+      - uses: arduino/compile-sketches@v1
+        with:
+          fqbn: "arduino:avr:uno" # specify fully qualified board name to compile sketches for
+          libraries: |
+            # load latest version of Servo library from arduino-libraries org
+            - name: Servo
+            # load version 1.1.3 of Stepper library 
+            - name: Stepper # 
+              version: 1.1.3
 ```
 
 ## Additional resources
