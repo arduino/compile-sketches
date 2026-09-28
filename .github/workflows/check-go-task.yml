@@ -1,14 +1,22 @@
-# Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/check-general-formatting-task.md
-name: Check General Formatting
+# Source: https://github.com/arduino/tooling-project-assets/blob/main/workflow-templates/check-go-task.md
+name: Check Go
 
-# See: https://docs.github.com/actions/using-workflows/events-that-trigger-workflows
+# See: https://docs.github.com/actions/reference/workflows-and-actions/events-that-trigger-workflows
 on:
   create:
   push:
+    paths:
+      - ".github/workflows/check-go-task.ya?ml"
+      - "**/go.mod"
+      - "**/go.sum"
   pull_request:
+    paths:
+      - ".github/workflows/check-go-task.ya?ml"
+      - "**/go.mod"
+      - "**/go.sum"
   schedule:
-    # Run every Tuesday at 8 AM UTC to catch breakage caused by changes to tools.
-    - cron: "0 8 * * TUE"
+    # Run periodically to catch breakage caused by external changes.
+    - cron: "0 7 * * WED"
   workflow_dispatch:
   repository_dispatch:
 
@@ -22,7 +30,7 @@ jobs:
       - name: Determine if the rest of the workflow should run
         id: determination
         run: |
-          RELEASE_BRANCH_REGEX="^refs/heads/v[0-9]+$"
+          RELEASE_BRANCH_REGEX="refs/heads/[0-9]+.[0-9]+.x"
           # The `create` event trigger doesn't support `branches` filters, so it's necessary to use Bash instead.
           if [[
             "$GITHUB_EVENT_NAME" != "create" ||
@@ -35,14 +43,22 @@ jobs:
             RESULT="false"
           fi
 
-          echo "result=$RESULT" >> $GITHUB_OUTPUT
+          echo "result=$RESULT" >>$GITHUB_OUTPUT
 
-  check:
+  check-config:
+    name: check-config (${{ matrix.module.path }})
     needs: run-determination
     if: needs.run-determination.outputs.result == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        module:
+          - path: .
 
     steps:
       - name: Checkout repository
@@ -51,11 +67,14 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v7
         with:
-          go-version-file: go.mod
+          go-version-file: ${{ matrix.module.path }}/go.mod
 
-      - name: Check formatting
+      - name: Run go mod tidy
+        working-directory: ${{ matrix.module.path }}
+        run: go mod tidy
+
+      - name: Check whether any tidying was needed
         run: |
-          go tool \
-            github.com/go-task/task/v3/cmd/task \
-              --silent \
-              general:check-formatting
+          git diff \
+            --color \
+            --exit-code
