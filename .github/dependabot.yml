@@ -13,6 +13,7 @@ updates:
     schedule:
       interval: daily
     labels:
+      - "topic: dependencies"
       - "topic: infrastructure"
   - package-ecosystem: npm
     assignees:
@@ -22,6 +23,7 @@ updates:
     schedule:
       interval: daily
     labels:
+      - "topic: dependencies"
       - "topic: infrastructure"
   - package-ecosystem: pip
     assignees:
@@ -31,4 +33,4 @@ updates:
     schedule:
       interval: daily
     labels:
-      - "topic: infrastructure"
+      - "topic: dependencies"
