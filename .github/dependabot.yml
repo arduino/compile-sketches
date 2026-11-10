@@ -15,6 +15,16 @@ updates:
     labels:
       - "topic: dependencies"
       - "topic: infrastructure"
+  - package-ecosystem: gomod
+    assignees:
+      - per1234
+    directory: /
+    labels:
+      - "topic: dependencies"
+      - "topic: infrastructure"
+    open-pull-requests-limit: 100
+    schedule:
+      interval: daily
   - package-ecosystem: npm
     assignees:
       - per1234
